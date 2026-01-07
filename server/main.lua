@@ -99,8 +99,17 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
     local themeName = Config.Theme or 'dark'
     local themeData = Config.Themes[themeName] or Config.Themes.dark
     
-    -- Retornar personagens, slots e tema
-    return characters, slots, themeData
+    -- Obter configuração de música
+    local musicConfig = Config.Music or {
+        enabled = false,
+        url = '',
+        volume = 0.3,
+        loop = true,
+        autoplay = true,
+    }
+    
+    -- Retornar personagens, slots, tema e música
+    return characters, slots, themeData, musicConfig
 end)
 
 -- Evento para definir bucket do player (client chama isso)

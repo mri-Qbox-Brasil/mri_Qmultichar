@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { ArrowLeft, Calendar } from 'lucide-react'
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 import { nationalities } from '../data/nationalities'
 
 declare function GetParentResourceName(): string
@@ -45,42 +45,83 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
   const [loading, setLoading] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [showNationalitySelect, setShowNationalitySelect] = useState(false)
+  const calendarRef = useRef<HTMLDivElement>(null)
 
-  // Calendário simples
+  // Calendário visual
   const minYear = 1900
   const maxYear = 2006
-  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).reverse()
+  const minDate = new Date(minYear, 0, 1)
+  const maxDate = new Date(maxYear, 11, 31)
+
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1)
+  const [currentYear, setCurrentYear] = useState(maxYear)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+
   const months = [
-    { value: 1, label: 'Janeiro' },
-    { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Março' },
-    { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' },
-    { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' },
-    { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' },
-    { value: 12, label: 'Dezembro' },
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
   ]
 
-  const [selectedDay, setSelectedDay] = useState<number | null>(null)
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
-  const [selectedYear, setSelectedYear] = useState<number | null>(null)
+  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month, 0).getDate()
   }
 
-  const handleDateSelect = (day: number, month: number, year: number) => {
-    setSelectedDay(day)
-    setSelectedMonth(month)
-    setSelectedYear(year)
-    const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+  const getFirstDayOfMonth = (month: number, year: number) => {
+    return new Date(year, month - 1, 1).getDay()
+  }
+
+  const isDateDisabled = (day: number, month: number, year: number) => {
+    const date = new Date(year, month - 1, day)
+    return date < minDate || date > maxDate
+  }
+
+  const handleDateClick = (day: number) => {
+    if (isDateDisabled(day, currentMonth, currentYear)) return
+    
+    const date = new Date(currentYear, currentMonth - 1, day)
+    setSelectedDate(date)
+    const formattedDate = `${String(day).padStart(2, '0')}/${String(currentMonth).padStart(2, '0')}/${currentYear}`
     setFormData({ ...formData, birthdate: formattedDate })
     setShowCalendar(false)
   }
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 1) {
+      if (currentYear > minYear) {
+        setCurrentMonth(12)
+        setCurrentYear(currentYear - 1)
+      }
+    } else {
+      setCurrentMonth(currentMonth - 1)
+    }
+  }
+
+  const handleNextMonth = () => {
+    if (currentMonth === 12) {
+      if (currentYear < maxYear) {
+        setCurrentMonth(1)
+        setCurrentYear(currentYear + 1)
+      }
+    } else {
+      setCurrentMonth(currentMonth + 1)
+    }
+  }
+
+  // Fechar calendário ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setShowCalendar(false)
+      }
+    }
+
+    if (showCalendar) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCalendar])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -298,78 +339,182 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
                 <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
                 {showCalendar && (
                   <div 
-                    className="absolute z-50 w-full mt-1 p-4 rounded-md border shadow-lg"
+                    ref={calendarRef}
+                    className="absolute z-50 w-full mt-1 p-2 rounded-md border shadow-lg"
                     style={{
                       backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                      minWidth: '280px',
+                      maxWidth: '320px'
                     }}
                   >
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      <select
-                        value={selectedDay || ''}
-                        onChange={(e) => setSelectedDay(parseInt(e.target.value))}
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                          color: theme?.colors.text.primary || '#F8FAFC'
-                        }}
-                        className="rounded-md border px-2 py-1"
-                      >
-                        <option value="">Dia</option>
-                        {selectedMonth && selectedYear && Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => i + 1).map(day => (
-                          <option key={day} value={day}>{day}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={selectedMonth || ''}
-                        onChange={(e) => {
-                          setSelectedMonth(parseInt(e.target.value))
-                          setSelectedDay(null)
-                        }}
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                          color: theme?.colors.text.primary || '#F8FAFC'
-                        }}
-                        className="rounded-md border px-2 py-1"
-                      >
-                        <option value="">Mês</option>
-                        {months.map(month => (
-                          <option key={month.value} value={month.value}>{month.label}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={selectedYear || ''}
-                        onChange={(e) => {
-                          setSelectedYear(parseInt(e.target.value))
-                          setSelectedDay(null)
-                        }}
-                        style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                          color: theme?.colors.text.primary || '#F8FAFC'
-                        }}
-                        className="rounded-md border px-2 py-1"
-                      >
-                        <option value="">Ano</option>
-                        {years.map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {selectedDay && selectedMonth && selectedYear && (
-                      <Button
+                    {/* Header do calendário */}
+                    <div className="flex items-center justify-between mb-2">
+                      <button
                         type="button"
-                        onClick={() => handleDateSelect(selectedDay, selectedMonth, selectedYear)}
+                        onClick={handlePrevMonth}
+                        disabled={currentMonth === 1 && currentYear === minYear}
                         style={{
-                          backgroundColor: theme?.colors.accent.primary || '#3B82F6',
-                          color: '#FFFFFF'
+                          color: theme?.colors.text.primary || '#F8FAFC',
+                          opacity: (currentMonth === 1 && currentYear === minYear) ? 0.3 : 1,
+                          cursor: (currentMonth === 1 && currentYear === minYear) ? 'not-allowed' : 'pointer',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          padding: '4px'
                         }}
-                        className="w-full"
+                        className="hover:bg-white/10 rounded"
                       >
-                        Confirmar Data
-                      </Button>
-                    )}
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={currentMonth}
+                          onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
+                          style={{
+                            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
+                            borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                            color: theme?.colors.text.primary || '#F8FAFC',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {months.map((month, index) => (
+                            <option 
+                              key={index + 1} 
+                              value={index + 1}
+                              style={{
+                                backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
+                                color: theme?.colors.text.primary || '#F8FAFC'
+                              }}
+                            >
+                              {month}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={currentYear}
+                          onChange={(e) => setCurrentYear(parseInt(e.target.value))}
+                          style={{
+                            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
+                            borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                            color: theme?.colors.text.primary || '#F8FAFC',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).reverse().map(year => (
+                            <option 
+                              key={year} 
+                              value={year}
+                              style={{
+                                backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
+                                color: theme?.colors.text.primary || '#F8FAFC'
+                              }}
+                            >
+                              {year}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleNextMonth}
+                        disabled={currentMonth === 12 && currentYear === maxYear}
+                        style={{
+                          color: theme?.colors.text.primary || '#F8FAFC',
+                          opacity: (currentMonth === 12 && currentYear === maxYear) ? 0.3 : 1,
+                          cursor: (currentMonth === 12 && currentYear === maxYear) ? 'not-allowed' : 'pointer',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          padding: '4px'
+                        }}
+                        className="hover:bg-white/10 rounded"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Dias da semana */}
+                    <div className="grid grid-cols-7 gap-0.5 mb-1">
+                      {weekDays.map(day => (
+                        <div
+                          key={day}
+                          className="text-center text-xs font-medium py-1"
+                          style={{ color: theme?.colors.text.muted || '#94A3B8' }}
+                        >
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Grade de dias */}
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {Array.from({ length: getFirstDayOfMonth(currentMonth, currentYear) }, (_, i) => (
+                        <div key={`empty-${i}`} style={{ aspectRatio: '1' }} />
+                      ))}
+                      {Array.from({ length: getDaysInMonth(currentMonth, currentYear) }, (_, i) => {
+                        const day = i + 1
+                        const isDisabled = isDateDisabled(day, currentMonth, currentYear)
+                        const isSelected = selectedDate && 
+                          selectedDate.getDate() === day &&
+                          selectedDate.getMonth() + 1 === currentMonth &&
+                          selectedDate.getFullYear() === currentYear
+                        
+                        const textColor = isSelected 
+                          ? '#FFFFFF'
+                          : isDisabled
+                          ? (theme?.colors.text.muted || '#94A3B8')
+                          : (theme?.colors.text.primary || '#F8FAFC')
+                        
+                        const bgColor = isSelected 
+                          ? (theme?.colors.accent.primary || '#3B82F6')
+                          : isDisabled
+                          ? 'rgba(255, 255, 255, 0.02)'
+                          : 'rgba(255, 255, 255, 0.05)'
+                        
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => handleDateClick(day)}
+                            disabled={isDisabled}
+                            style={{
+                              aspectRatio: '1',
+                              borderRadius: '4px',
+                              border: `1px solid ${isSelected ? (theme?.colors.accent.primary || '#3B82F6') : (theme?.colors.border || 'rgba(51, 65, 85, 0.5)')}`,
+                              backgroundColor: bgColor,
+                              color: textColor,
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.2s',
+                              opacity: isDisabled ? 0.4 : 1,
+                              fontSize: '12px',
+                              fontWeight: isSelected ? '600' : '400',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isDisabled && !isSelected) {
+                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isDisabled && !isSelected) {
+                                e.currentTarget.style.backgroundColor = bgColor
+                              }
+                            }}
+                          >
+                            {day}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

@@ -3,7 +3,20 @@ Config = {}
 Config.Locale = 'pt'
 
 -- Tema a ser utilizado (dark, blue, purple, green, red, orange, mri)
-Config.Theme = 'mri'
+Config.Theme = 'dark'
+
+-- Configuração de música de fundo
+-- Pode ser um link direto (URL) ou caminho relativo para arquivo na pasta html/sounds/
+-- Exemplo de link: 'https://example.com/music.mp3'
+-- Exemplo de arquivo local: 'sounds/background.mp3' (arquivo deve estar em html/sounds/)
+-- Deixe vazio ou nil para desabilitar música
+Config.Music = {
+    enabled = true, -- Ativar/desativar música
+    url = 'https://youtu.be/fregObNcHC8?si=_qk-0wCV-HJ4BVTQ', -- URL ou caminho do arquivo (ex: 'sounds/background.mp3' ou 'https://example.com/music.mp3')
+    volume = 0.3, -- Volume (0.0 a 1.0)
+    loop = true, -- Repetir música
+    autoplay = true, -- Tentar iniciar automaticamente (YouTube geralmente inicia mutado até interação do usuário)
+}
 
 Config.CharacterSlots = {
     defaultSlots = 3, -- Número padrão de slots

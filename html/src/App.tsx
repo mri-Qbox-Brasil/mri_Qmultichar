@@ -3,6 +3,7 @@ import { CharacterList } from './components/CharacterList'
 import { CharacterCreation } from './components/CharacterCreation'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { GlitchName } from './components/GlitchName'
+import { MusicPlayer } from './components/MusicPlayer'
 import { formatNumber } from './utils/formatNumber'
 
 declare function GetParentResourceName(): string
@@ -60,6 +61,14 @@ interface Theme {
   }
 }
 
+interface MusicConfig {
+  enabled: boolean
+  url: string
+  volume: number
+  loop: boolean
+  autoplay: boolean
+}
+
 function App() {
   const [isOpen, setIsOpen] = useState(false)
   const [characters, setCharacters] = useState<Character[]>([])
@@ -68,6 +77,7 @@ function App() {
   const [showCreation, setShowCreation] = useState(false)
   const [creatingSlot, setCreatingSlot] = useState<number | null>(null)
   const [theme, setTheme] = useState<Theme | null>(null)
+  const [music, setMusic] = useState<MusicConfig | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null)
 
@@ -128,6 +138,9 @@ function App() {
           setMaxSlots(data.amount || 3)
           if (data.theme) {
             setTheme(data.theme)
+          }
+          if (data.music) {
+            setMusic(data.music)
           }
           // Selecionar primeiro personagem se existir
           if (data.characters && data.characters.length > 0) {
@@ -249,6 +262,10 @@ function App() {
           }}
           onSuccess={handleCharacterCreated}
         />
+        {/* Player de música fixo na parte inferior */}
+        <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10001, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
+          <MusicPlayer music={music || undefined} theme={theme || undefined} />
+        </div>
       </div>
     )
   }
@@ -313,6 +330,7 @@ function App() {
               />
             </div>
           )}
+          
           {/* Esta área é completamente transparente - o jogo renderiza o preview do personagem aqui */}
         </div>
 
@@ -422,6 +440,11 @@ function App() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Player de música fixo na parte inferior */}
+      <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
+        <MusicPlayer music={music || undefined} theme={theme || undefined} />
       </div>
 
       {/* Delete Confirmation Dialog */}

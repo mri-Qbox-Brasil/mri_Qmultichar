@@ -185,16 +185,17 @@ end
 -- Callback para obter personagens
 RegisterNUICallback('getCharacters', function(_, cb)
     lib.print.info('[mri_Qmultichar] Callback getCharacters chamado')
-    local characters, amount, theme = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    local characters, amount, theme, music = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
     
     if characters then
         lib.print.info(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, amount or 3))
-        cb({ success = true, characters = characters, amount = amount or 3, theme = theme })
+        cb({ success = true, characters = characters, amount = amount or 3, theme = theme, music = music })
     else
         lib.print.error('[mri_Qmultichar] Erro ao carregar personagens')
         local themeName = Config.Theme or 'dark'
         local themeData = Config.Themes[themeName] or Config.Themes.dark
-        cb({ success = false, characters = {}, amount = 3, theme = themeData })
+        local musicConfig = Config.Music or { enabled = false, url = '', volume = 0.3, loop = true, autoplay = true }
+        cb({ success = false, characters = {}, amount = 3, theme = themeData, music = musicConfig })
     end
 end)
 
