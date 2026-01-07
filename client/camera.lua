@@ -156,6 +156,21 @@ end
 
 -- Configurar câmera com coordenadas customizadas
 local function setupPreviewCam(scenario, pedCoords, camConfig)
+    -- Verificar se está criando personagem (via export para verificar flag)
+    local isCreating = false
+    pcall(function()
+        if exports.mri_Qmultichar and exports.mri_Qmultichar.isInCharacterCreation then
+            isCreating = exports.mri_Qmultichar:isInCharacterCreation()
+        end
+    end)
+    
+    if isCreating then
+        lib.print.warn('[mri_Qmultichar] [CAMERA] setupPreviewCam chamado durante criação de personagem, ignorando...')
+        return
+    end
+    
+    lib.print.info('[mri_Qmultichar] [CAMERA] Configurando câmera de preview...')
+    
     camConfig = camConfig or {}
     local zoomOut = camConfig.zoomOut or false
     local camDistance = camConfig.camDistance or 1.6
@@ -261,8 +276,12 @@ local function setupPreviewCam(scenario, pedCoords, camConfig)
 end
 
 local function destroyPreviewCam()
-    if not previewCam then return end
+    if not previewCam then 
+        lib.print.info('[mri_Qmultichar] [CAMERA] destroyPreviewCam chamado mas não há câmera ativa')
+        return 
+    end
 
+    lib.print.info('[mri_Qmultichar] [CAMERA] Destruindo câmera de preview...')
     SetTimecycleModifier('default')
     SetTimecycleModifierStrength(0.0)
     SetCamActive(previewCam, false)
@@ -278,7 +297,21 @@ local function destroyPreviewCam()
     Citizen.Wait(100) -- Aguardar um pouco para garantir que o reset foi aplicado
     
     -- Remover bucket (voltar ao bucket padrão) - via server
-    TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+    -- MAS apenas se NÃO estiver criando personagem (para não interferir)
+    local isCreating = false
+    pcall(function()
+        if exports.mri_Qmultichar and exports.mri_Qmultichar.isInCharacterCreation then
+            isCreating = exports.mri_Qmultichar:isInCharacterCreation()
+        end
+    end)
+    
+    if not isCreating then
+        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+    else
+        lib.print.info('[mri_Qmultichar] [CAMERA] Não removendo bucket pois está criando personagem')
+    end
+    
+    lib.print.info('[mri_Qmultichar] [CAMERA] Câmera de preview destruída')
 end
 
 -- Preview para Police
@@ -519,6 +552,21 @@ local function randomPed()
 end
 
 local function previewPed(citizenId, jobName)
+    -- Verificar se está criando personagem (via export para verificar flag)
+    local isCreating = false
+    pcall(function()
+        if exports.mri_Qmultichar and exports.mri_Qmultichar.isInCharacterCreation then
+            isCreating = exports.mri_Qmultichar:isInCharacterCreation()
+        end
+    end)
+    
+    if isCreating then
+        lib.print.warn('[mri_Qmultichar] [PREVIEW] previewPed chamado durante criação de personagem, ignorando...')
+        return
+    end
+    
+    lib.print.info(string.format('[mri_Qmultichar] [PREVIEW] previewPed chamado - CitizenID: %s, Job: %s', citizenId or 'nil', jobName or 'nil'))
+    
     DoScreenFadeOut(500)
     Citizen.Wait(500)
     
@@ -544,6 +592,8 @@ local function previewPed(citizenId, jobName)
     
     -- Selecionar preview baseado no job
     jobName = jobName and jobName:lower() or 'unemployed'
+    
+    lib.print.info(string.format('[mri_Qmultichar] [PREVIEW] Configurando preview para job: %s', jobName))
     
     if jobName == 'police' or jobName == 'bcso' or jobName == 'sasp' then
         setupPolicePreview()

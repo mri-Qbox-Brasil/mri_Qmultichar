@@ -86,6 +86,12 @@ function App() {
         setIsOpen(false)
         setSelectedCharacter(null)
         setShowCreation(false)
+      } else if (data && data.action === 'refreshCharacters') {
+        console.log('[mri_Qmultichar] Recarregando personagens...')
+        // Pequeno delay para garantir que o servidor processou a deleção
+        setTimeout(() => {
+          loadCharacters()
+        }, 300)
       }
     }
 
@@ -185,10 +191,13 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          loadCharacters()
-          setSelectedCharacter(null)
-          setShowDeleteDialog(false)
-          setCharacterToDelete(null)
+          // Aguardar um pouco antes de recarregar para garantir que o servidor processou
+          setTimeout(() => {
+            loadCharacters()
+            setSelectedCharacter(null)
+            setShowDeleteDialog(false)
+            setCharacterToDelete(null)
+          }, 500)
         }
       })
       .catch((err) => console.error('Erro ao deletar personagem:', err))

@@ -68,6 +68,20 @@ Config.CharacterCreation = {
     profanityWords = {
         ['bad word'] = true,
     },
+    -- Localização onde o personagem será criado (illenium-appearance)
+    -- Esta é a localização que será usada quando criar um personagem novo
+    createLocation = vector4(-66.28, -822.13, 285.61 - 1, 70.82), -- Localização do illenium
+}
+
+-- Tabelas adicionais para deletar quando um personagem é deletado
+-- Formato: {nome_da_tabela, nome_da_coluna}
+-- Exemplo: {'player_vehicles', 'citizenid'} deleta todas as linhas onde citizenid = citizenid do personagem
+-- As tabelas padrão do qbx_core já são deletadas automaticamente
+Config.DeleteTables = {
+    -- Adicione aqui tabelas customizadas que devem ser deletadas
+    -- Exemplo:
+    -- {'minha_tabela_custom', 'citizenid'},
+    -- {'outra_tabela', 'player_id'},
 }
 
 return Config
