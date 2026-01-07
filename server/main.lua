@@ -112,6 +112,37 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
     return characters, slots, themeData, musicConfig
 end)
 
+-- Callback para obter foto do personagem
+lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(source, citizenId)
+    if not citizenId then
+        return nil
+    end
+    
+    -- Tentar obter foto usando export do MugShotBase64 se disponível
+    local success, photoUrl = pcall(function()
+        -- Verificar se o player está online
+        local player = exports.qbx_core:GetPlayerByCitizenId(citizenId)
+        if player and player.PlayerData.source then
+            local ped = GetPlayerPed(player.PlayerData.source)
+            if ped and ped ~= 0 then
+                -- Usar export do MugShotBase64 se disponível
+                if GetResourceState('MugShotBase64') == 'started' then
+                    return exports['MugShotBase64']:GetMugShotBase64(ped, false)
+                end
+            end
+        end
+        
+        -- Se não conseguir, retornar nil (usará fallback no frontend)
+        return nil
+    end)
+    
+    if success and photoUrl then
+        return photoUrl
+    end
+    
+    return nil
+end)
+
 -- Evento para definir bucket do player (client chama isso)
 RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
     local source = source

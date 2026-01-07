@@ -199,6 +199,18 @@ RegisterNUICallback('getCharacters', function(_, cb)
     end
 end)
 
+-- Callback para obter foto do personagem
+RegisterNUICallback('getCharacterPhoto', function(data, cb)
+    local citizenId = data.citizenid
+    if not citizenId then
+        cb({ success = false, photo = nil })
+        return
+    end
+    
+    local photo = lib.callback.await('mri_Qmultichar:server:getCharacterPhoto', false, citizenId)
+    cb({ success = photo ~= nil, photo = photo })
+end)
+
 -- Variável para prevenir múltiplos carregamentos simultâneos
 local isLoadingCharacter = false
 

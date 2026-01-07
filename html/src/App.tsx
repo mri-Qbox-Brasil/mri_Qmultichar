@@ -5,6 +5,10 @@ import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { GlitchName } from './components/GlitchName'
 import { MusicPlayer } from './components/MusicPlayer'
 import { formatNumber } from './utils/formatNumber'
+import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar'
+import { Badge } from './components/ui/badge'
+import { Briefcase, Wallet, Building2, Calendar, User, Trash2, Play, Shield, Crown } from 'lucide-react'
+import { cn } from './lib/utils'
 
 declare function GetParentResourceName(): string
 
@@ -33,6 +37,7 @@ export interface Character {
     grade: { name: string }
   }
   cid?: number
+  photo?: string
 }
 
 interface Theme {
@@ -80,6 +85,7 @@ function App() {
   const [music, setMusic] = useState<MusicConfig | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null)
+  const [selectedCharacterPhoto, setSelectedCharacterPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     console.log('[mri_Qmultichar] App montado, aguardando mensagens...')
@@ -232,6 +238,23 @@ function App() {
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character)
     setShowCreation(false)
+    
+    // Carregar foto do personagem
+    fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ citizenid: character.citizenid }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.photo) {
+          setSelectedCharacterPhoto(data.photo)
+        } else {
+          setSelectedCharacterPhoto(null)
+        }
+      })
+      .catch(() => setSelectedCharacterPhoto(null))
+    
     // Enviar evento para atualizar preview
     const jobName = character.job?.name || (character.job?.label ? character.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed')
     fetch(`https://${GetParentResourceName()}/getPreviewData`, {
@@ -275,17 +298,49 @@ function App() {
       <div className="h-full flex items-center justify-center gap-6" style={{ pointerEvents: 'none', background: 'transparent', padding: '2rem' }}>
         {/* Left Panel - My Characters */}
         <div 
-          className="w-80 rounded-2xl overflow-hidden shadow-2xl animate-slide-in" 
+          className={cn(
+            "w-80 rounded-2xl overflow-hidden",
+            "animate-in slide-in-from-left-4 fade-in duration-500"
+          )}
           style={{ 
             pointerEvents: 'auto', 
             maxHeight: '90vh',
-            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
             border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px ${theme?.colors.accent?.primary || '#3B82F6'}10`,
           }}
         >
-          <div className="p-5 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
-            <h2 className="text-xl font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>My Characters</h2>
-            <p className="text-sm mt-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>{characters.length} / {maxSlots} slots</p>
+          <div 
+            className="p-6 border-b relative overflow-hidden"
+            style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+          >
+            <div 
+              className="absolute inset-0 opacity-10"
+              style={{
+                background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
+              }}
+            />
+            <div className="relative z-10">
+              <h2 
+                className="text-2xl font-bold mb-2 flex items-center gap-2"
+                style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
+              >
+                <User className="w-6 h-6" />
+                My Characters
+              </h2>
+              <div className="flex items-center gap-2">
+                <Badge 
+                  variant="outline"
+                  style={{
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                    color: theme?.colors.text.secondary || '#CBD5E1',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  }}
+                >
+                  {characters.length} / {maxSlots} slots
+                </Badge>
+              </div>
+            </div>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)', scrollbarWidth: 'thin' }}>
             <CharacterList
@@ -336,105 +391,268 @@ function App() {
 
         {/* Right Panel - Character Info */}
         <div 
-          className="w-96 rounded-2xl shadow-2xl animate-slide-in" 
+          className={cn(
+            "w-96 rounded-2xl shadow-2xl",
+            "animate-in slide-in-from-right-4 fade-in duration-500"
+          )}
           style={{ 
             pointerEvents: 'auto', 
             maxHeight: '90vh',
-            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.9)',
+            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
             border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
-            animationDelay: '0.1s',
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px ${theme?.colors.accent?.primary || '#3B82F6'}10`,
           }}
         >
-          <div className="p-5 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
-            <h2 className="text-xl font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>Character Info</h2>
+          <div 
+            className="p-6 border-b relative overflow-hidden"
+            style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+          >
+            <div 
+              className="absolute inset-0 opacity-10"
+              style={{
+                background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
+              }}
+            />
+            <h2 
+              className="text-2xl font-bold relative z-10 flex items-center gap-2"
+              style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
+            >
+              <User className="w-6 h-6" />
+              Character Info
+            </h2>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {selectedCharacter ? (
-            <div className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                  <span className="text-gray-400 text-xs uppercase tracking-wider">Name</span>
-                  <p className="text-white font-bold text-lg mt-1">
+            <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Avatar Header */}
+              <div className="flex items-center gap-4 pb-4 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
+                <Avatar className="w-20 h-20 border-4 shadow-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
+                  {selectedCharacterPhoto ? (
+                    <AvatarImage 
+                      src={selectedCharacterPhoto} 
+                      alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="text-2xl font-bold text-white">
+                    {selectedCharacter.charinfo.firstname[0]}{selectedCharacter.charinfo.lastname[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h3 
+                    className="text-xl font-bold mb-1 bg-gradient-to-r bg-clip-text text-transparent"
+                    style={{
+                      backgroundImage: `linear-gradient(to right, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                    }}
+                  >
                     {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
-                  </p>
+                  </h3>
+                  <Badge 
+                    variant="outline"
+                    className="mt-1"
+                    style={{
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                      color: theme?.colors.text.secondary || '#CBD5E1',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    }}
+                  >
+                    <Shield className="w-3 h-3 mr-1" />
+                    {selectedCharacter.citizenid}
+                  </Badge>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider">Job</span>
-                    <p className="text-white font-semibold mt-1">{selectedCharacter.job?.label || 'UNEMPLOYED'}</p>
+              </div>
+
+              {/* Job & Grade */}
+              <div className="grid grid-cols-2 gap-3">
+                <div 
+                  className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                  }}
+                >
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                    style={{
+                      background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                    }}
+                  />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Briefcase className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                        Job
+                      </span>
+                    </div>
+                    <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                      {selectedCharacter.job?.label || 'UNEMPLOYED'}
+                    </p>
                   </div>
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider">Grade</span>
-                    <p className="text-white font-semibold mt-1">
+                </div>
+                <div 
+                  className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                  }}
+                >
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                    style={{
+                      background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                    }}
+                  />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Crown className="w-4 h-4" style={{ color: '#FBBF24' }} />
+                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                        Grade
+                      </span>
+                    </div>
+                    <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
                       {typeof selectedCharacter.job?.grade === 'object' 
                         ? selectedCharacter.job.grade.name 
                         : selectedCharacter.job?.grade || '0'}
                     </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider">Gender</span>
-                    <p className="text-white font-semibold mt-1">{selectedCharacter.charinfo.gender === 0 ? 'Male' : 'Female'}</p>
+              {/* Money Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div 
+                  className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
+                    borderColor: 'rgba(34, 197, 94, 0.3)',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wallet className="w-4 h-4 text-green-400" />
+                    <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">Cash</span>
                   </div>
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs uppercase tracking-wider">Birthdate</span>
-                    <p className="text-white font-semibold mt-1">{selectedCharacter.charinfo.birthdate || 'N/A'}</p>
-                  </div>
+                  <p className="font-bold text-xl text-green-300">
+                    ${formatNumber(selectedCharacter.money?.cash || 0)}
+                  </p>
                 </div>
+                <div 
+                  className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
+                    borderColor: 'rgba(59, 130, 246, 0.3)',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">Bank</span>
+                  </div>
+                  <p className="font-bold text-xl text-blue-300">
+                    ${formatNumber(selectedCharacter.money?.bank || 0)}
+                  </p>
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs font-medium">Cash</span>
-                    <p className="text-white font-semibold text-base mt-1">${formatNumber(selectedCharacter.money?.cash || 0)}</p>
+              {/* Additional Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div 
+                  className="p-3 rounded-lg border"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                  }}
+                >
+                  <span className="text-xs uppercase tracking-wider opacity-70 block mb-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                    Gender
+                  </span>
+                  <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                    {selectedCharacter.charinfo.gender === 0 ? 'Male' : 'Female'}
+                  </p>
+                </div>
+                <div 
+                  className="p-3 rounded-lg border"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                  }}
+                >
+                  <div className="flex items-center gap-1 mb-1">
+                    <Calendar className="w-3 h-3 opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
+                    <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                      Birthdate
+                    </span>
                   </div>
-                  <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                    <span className="text-gray-400 text-xs font-medium">Bank</span>
-                    <p className="text-white font-semibold text-base mt-1">${formatNumber(selectedCharacter.money?.bank || 0)}</p>
-                  </div>
+                  <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                    {selectedCharacter.charinfo.birthdate || 'N/A'}
+                  </p>
                 </div>
               </div>
               
+              {/* Action Buttons */}
               <div className="pt-4 space-y-3">
                 <button
                   onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
-                  className="w-full text-white font-semibold py-3 px-6 rounded-xl transition-all hover:scale-[1.02]"
+                  className={cn(
+                    "w-full font-semibold py-4 px-6 rounded-xl transition-all duration-300",
+                    "hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2",
+                    "relative overflow-hidden group"
+                  )}
                   style={{ 
-                    backgroundColor: theme?.colors.button.primary || '#3B82F6',
+                    background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`,
+                    color: '#FFFFFF',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme?.colors.button.primaryHover || '#2563EB'
+                    e.currentTarget.style.transform = 'scale(1.02)'
+                    e.currentTarget.style.boxShadow = `0 10px 40px ${theme?.colors.button.primary || '#3B82F6'}40`
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme?.colors.button.primary || '#3B82F6'
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
+                  <Play className="w-5 h-5" />
                   Choose Character
                 </button>
                 <button
                   onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
-                  className="w-full text-white font-semibold py-3 px-6 rounded-xl transition-all hover:scale-[1.02]"
+                  className={cn(
+                    "w-full font-semibold py-4 px-6 rounded-xl transition-all duration-300",
+                    "hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2",
+                    "relative overflow-hidden"
+                  )}
                   style={{ 
-                    backgroundColor: theme?.colors.button.danger || '#EF4444',
+                    background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`,
+                    color: '#FFFFFF',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme?.colors.button.dangerHover || '#DC2626'
+                    e.currentTarget.style.transform = 'scale(1.02)'
+                    e.currentTarget.style.boxShadow = `0 10px 40px ${theme?.colors.button.danger || '#EF4444'}40`
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme?.colors.button.danger || '#EF4444'
+                    e.currentTarget.style.transform = 'scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 >
+                  <Trash2 className="w-5 h-5" />
                   Delete Character
                 </button>
               </div>
             </div>
           ) : (
-            <div className="p-6 text-center">
-              <div className="bg-white/5 rounded-lg p-8 border border-white/10">
-                <p className="text-gray-400 text-lg">Select a character</p>
-                <p className="text-gray-500 text-sm mt-2">or create a new one</p>
+            <div className="p-6 text-center animate-in fade-in duration-500">
+              <div 
+                className="rounded-xl p-12 border"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                }}
+              >
+                <User className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
+                <p className="text-lg font-semibold mb-2" style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}>
+                  Select a character
+                </p>
+                <p className="text-sm opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                  or create a new one
+                </p>
               </div>
             </div>
             )}
