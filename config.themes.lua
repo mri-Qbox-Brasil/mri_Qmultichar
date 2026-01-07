@@ -161,7 +161,7 @@ Config.Themes = {
         }
     },
 
-    -- Tema MRI (Inspirado na logo Spacer - baseado na imagem)
+    -- Tema MRI (Inspirado na logo - baseado na imagem)
     mri = {
         name = 'MRI',
         colors = {

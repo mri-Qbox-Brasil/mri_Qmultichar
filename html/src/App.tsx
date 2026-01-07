@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { CharacterList } from './components/CharacterList'
 import { CharacterCreation } from './components/CharacterCreation'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
+import { GlitchName } from './components/GlitchName'
 import { formatNumber } from './utils/formatNumber'
 
 declare function GetParentResourceName(): string
@@ -288,9 +289,30 @@ function App() {
             background: 'transparent !important', 
             pointerEvents: 'none',
             position: 'relative',
-            minHeight: '600px'
+            minHeight: '600px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
           }}
         >
+          {/* Efeito de nome com glitch acima do preview */}
+          {selectedCharacter && (
+            <div style={{ 
+              position: 'absolute',
+              top: '20px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 1000,
+              width: '100%',
+              pointerEvents: 'none',
+            }}>
+              <GlitchName
+                name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                theme={theme || undefined}
+              />
+            </div>
+          )}
           {/* Esta área é completamente transparente - o jogo renderiza o preview do personagem aqui */}
         </div>
 
