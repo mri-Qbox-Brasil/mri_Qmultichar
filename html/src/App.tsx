@@ -94,24 +94,18 @@ function App() {
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    console.log('[mri_Qmultichar] App montado, aguardando mensagens...')
-    
     const handleMessage = (event: MessageEvent) => {
       const data = event.data
-      console.log('[mri_Qmultichar] Mensagem recebida:', data)
       
       if (data && data.action === 'open') {
-        console.log('[mri_Qmultichar] Abrindo NUI...')
         setIsOpen(true)
         loadCharacters()
       } else if (data && data.action === 'close') {
-        console.log('[mri_Qmultichar] Fechando NUI...')
         setIsOpen(false)
         setSelectedCharacter(null)
         setShowCreation(false)
         setShowSettings(false)
       } else if (data && data.action === 'refreshCharacters') {
-        console.log('[mri_Qmultichar] Recarregando personagens...')
         // Pequeno delay para garantir que o servidor processou a deleção
         setTimeout(() => {
           loadCharacters()
@@ -142,16 +136,10 @@ function App() {
 
     window.addEventListener('message', handleMessage)
     
-    // Debug: verificar se a mensagem está chegando após 2 segundos
-    setTimeout(() => {
-      console.log('[mri_Qmultichar] Estado após 2s - isOpen:', isOpen)
-    }, 2000)
-    
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
   const loadCharacters = () => {
-    console.log('[mri_Qmultichar] Carregando personagens...')
     fetch(`https://${GetParentResourceName()}/getCharacters`, {
       method: 'POST',
       headers: {
@@ -166,7 +154,6 @@ function App() {
         return res.json()
       })
       .then((data) => {
-        console.log('[mri_Qmultichar] Dados recebidos:', data)
         if (data && data.success) {
           setCharacters(data.characters || [])
           setMaxSlots(data.amount || 3)
@@ -248,13 +235,13 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Aguardar um pouco antes de recarregar para garantir que o servidor processou
+          // Aguardar mais tempo para garantir que o servidor processou completamente a deleção
           setTimeout(() => {
             loadCharacters()
             setSelectedCharacter(null)
             setShowDeleteDialog(false)
             setCharacterToDelete(null)
-          }, 500)
+          }, 1500) // Aumentado para 1.5 segundos para garantir sincronização completa
         }
       })
       .catch((err) => console.error('Erro ao deletar personagem:', err))
@@ -474,7 +461,7 @@ function App() {
               </p>
             )}
           </div>
-          <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+          <div className="overflow-hidden" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {selectedCharacter ? (
             <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Avatar Header */}
@@ -513,10 +500,10 @@ function App() {
                     {selectedCharacter.citizenid}
                   </Badge>
                 </div>
-              </div>
-
+                </div>
+                
               {/* Job & Grade */}
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                 <div 
                   className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
                   style={{
@@ -568,11 +555,11 @@ function App() {
                         : selectedCharacter.job?.grade || '0'}
                     </p>
                   </div>
+                  </div>
                 </div>
-              </div>
 
               {/* Money Cards */}
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                 <div 
                   className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
                   style={{
@@ -602,11 +589,11 @@ function App() {
                   <p className="font-bold text-xl text-blue-300">
                     ${formatNumber(selectedCharacter.money?.bank || 0)}
                   </p>
+                  </div>
                 </div>
-              </div>
 
               {/* Additional Info */}
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                 <div 
                   className="p-3 rounded-lg border"
                   style={{
@@ -620,7 +607,7 @@ function App() {
                   <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
                     {selectedCharacter.charinfo.gender === 0 ? 'Male' : 'Female'}
                   </p>
-                </div>
+                  </div>
                 <div 
                   className="p-3 rounded-lg border"
                   style={{
@@ -653,48 +640,72 @@ function App() {
                 <button
                   onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
                   className={cn(
-                    "w-full font-semibold py-4 px-6 rounded-xl transition-all duration-300",
-                    "hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2",
-                    "relative overflow-hidden group"
+                    "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
+                    "hover:scale-[1.02] flex items-center justify-center gap-2.5",
+                    "relative overflow-hidden group border",
+                    "active:scale-[0.98]"
                   )}
                   style={{ 
-                    background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`,
+                    background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`,
+                    borderColor: `${theme?.colors.button.primary || '#3B82F6'}80`,
                     color: '#FFFFFF',
+                    boxShadow: `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02)'
-                    e.currentTarget.style.boxShadow = `0 10px 40px ${theme?.colors.button.primary || '#3B82F6'}40`
+                    e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
+                    e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.primary || '#3B82F6'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                    e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`
                   }}
                 >
-                  <Play className="w-5 h-5" />
-                  Choose Character
+                  {/* Efeito de brilho sutil */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+                    style={{
+                      background: `radial-gradient(circle at center, ${theme?.colors.button.primary || '#3B82F6'} 0%, transparent 70%)`,
+                    }}
+                  />
+                  <Play className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
+                  <span className="relative z-10 text-sm tracking-wide">Choose Character</span>
                 </button>
                 <button
                   onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
                   className={cn(
-                    "w-full font-semibold py-4 px-6 rounded-xl transition-all duration-300",
-                    "hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2",
-                    "relative overflow-hidden"
+                    "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
+                    "hover:scale-[1.02] flex items-center justify-center gap-2.5",
+                    "relative overflow-hidden group border",
+                    "active:scale-[0.98]"
                   )}
                   style={{ 
-                    background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`,
+                    background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`,
+                    borderColor: `${theme?.colors.button.danger || '#EF4444'}80`,
                     color: '#FFFFFF',
+                    boxShadow: `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02)'
-                    e.currentTarget.style.boxShadow = `0 10px 40px ${theme?.colors.button.danger || '#EF4444'}40`
+                    e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
+                    e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.danger || '#EF4444'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                    e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`
                   }}
                 >
-                  <Trash2 className="w-5 h-5" />
-                  Delete Character
+                  {/* Efeito de brilho sutil */}
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+                    style={{
+                      background: `radial-gradient(circle at center, ${theme?.colors.button.danger || '#EF4444'} 0%, transparent 70%)`,
+                    }}
+                  />
+                  <Trash2 className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
+                  <span className="relative z-10 text-sm tracking-wide">Delete Character</span>
                 </button>
               </div>
             </div>

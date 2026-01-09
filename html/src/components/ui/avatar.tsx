@@ -37,6 +37,11 @@ const AvatarImage = React.forwardRef<
     <img
       ref={ref}
       className={cn("aspect-square h-full w-full", className)}
+      style={{
+        objectFit: 'cover',
+        objectPosition: 'top',
+        backgroundColor: '#222',
+      }}
       onError={handleError}
       {...props}
     />

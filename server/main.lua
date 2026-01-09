@@ -280,9 +280,6 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         return false
     end
     
-    -- Log de sucesso (similar ao qbx_core)
-    lib.print.info(string.format('[mri_Qmultichar] Personagem deletado com sucesso. Source: %s, CitizenID: %s', source, citizenId))
-    
     -- Deletar tabelas adicionais configuradas
     if Config.DeleteTables and #Config.DeleteTables > 0 then
         local deleteQueries = {}
@@ -317,7 +314,42 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         end
     end
     
+    -- Aguardar um pouco para garantir que a deleção foi processada completamente
+    Wait(200)
+    
+    -- Verificar se o personagem foi realmente deletado
+    local verifyResult = MySQL.single.await('SELECT citizenid FROM players WHERE citizenid = ?', {citizenId})
+    if verifyResult then
+        lib.print.error(string.format('[mri_Qmultichar] Personagem ainda existe após deleção! CitizenID: %s', citizenId))
+        return false
+    end
+    
+    -- Log de sucesso (similar ao qbx_core)
+    lib.print.info(string.format('[mri_Qmultichar] Personagem deletado com sucesso. Source: %s, CitizenID: %s', source, citizenId))
+    
     return true
+end)
+
+-- Callback para verificar se um slot está disponível
+lib.callback.register('mri_Qmultichar:server:checkSlotAvailable', function(source, slot)
+    if not slot then
+        return { available = false }
+    end
+    
+    local license = GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    
+    -- Verificar se há um personagem neste slot para este license
+    local result = MySQL.single.await('SELECT citizenid FROM players WHERE (license = ? OR license = ?) AND cid = ?', {license, license2, slot})
+    
+    if result then
+        -- Slot está ocupado
+        lib.print.warn(string.format('[mri_Qmultichar] Slot %d ocupado por CitizenID: %s', slot, result.citizenid))
+        return { available = false, citizenid = result.citizenid }
+    else
+        -- Slot está livre
+        return { available = true }
+    end
 end)
 
 -- Callback para atualizar configurações do player

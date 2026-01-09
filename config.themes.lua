@@ -187,6 +187,33 @@ Config.Themes = {
             }
         }
     },
+    
+    -- Tema Dashboard Dark (baseado nas imagens do dashboard)
+    dashboard = {
+        name = 'Dashboard Dark',
+        colors = {
+            background = 'rgba(0, 0, 0, 1)', -- Preto puro
+            card = 'rgba(0, 0, 0, 0.95)', -- Preto quase puro (cards)
+            border = 'rgba(51, 65, 85, 0.4)', -- Slate-600 (bordas sutis)
+            text = {
+                primary = '#F8FAFC', -- Slate-50 (texto principal branco)
+                secondary = '#CBD5E1', -- Slate-300 (texto secundário cinza claro)
+                muted = '#94A3B8', -- Slate-400 (texto muted cinza médio)
+            },
+            accent = {
+                primary = '#22C55E', -- Green-500 (verde - dinheiro em mãos)
+                secondary = '#3B82F6', -- Blue-500 (azul - dinheiro no banco)
+                success = '#22C55E', -- Green-500 (sucesso)
+                danger = '#EF4444', -- Red-500 (perigo/vermelho)
+            },
+            button = {
+                primary = '#22C55E', -- Green-500 (botão primário verde)
+                primaryHover = '#16A34A', -- Green-600 (hover verde escuro)
+                danger = '#EF4444', -- Red-500 (botão de perigo)
+                dangerHover = '#DC2626', -- Red-600 (hover vermelho escuro)
+            },
+        },
+    },
 }
 
 return Config.Themes

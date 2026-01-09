@@ -18,7 +18,10 @@ local isInCharacterCreation = false
 
 -- Variável para rastrear quando um personagem foi deletado (prevenir criação imediata)
 local lastDeleteTime = 0
-local DELETE_COOLDOWN = 2000 -- 2 segundos de cooldown após deletar
+local DELETE_COOLDOWN = 3000 -- 3 segundos de cooldown após deletar (aumentado para garantir sincronização)
+
+-- Sistema de Mugshot Nativo - Armazenar headshots ativos para limpeza posterior
+local activeHeadshots = {}
 
 -- Obter config do qbx_core via callback ou usar valores padrão
 local function getQbxConfig()
@@ -103,6 +106,31 @@ local function openMultichar()
     lib.print.info('[mri_Qmultichar] NUI aberta')
 end
 
+-- Função para limpar todos os headshots ativos
+local function CleanupHeadshots()
+    -- Garantir que activeHeadshots seja sempre uma tabela válida
+    if type(activeHeadshots) ~= 'table' then
+        activeHeadshots = {}
+        return
+    end
+    
+    -- Limpar headshots de forma segura
+    local count = #activeHeadshots
+    if count > 0 then
+        for i = 1, count do
+            local headshot = activeHeadshots[i]
+            if headshot and headshot ~= 0 then
+                pcall(function()
+                    UnregisterPedheadshot(headshot)
+                end)
+            end
+        end
+    end
+    
+    -- Resetar tabela
+    activeHeadshots = {}
+end
+
 -- Função para fechar a NUI
 local function closeMultichar()
     if not isNuiOpen then return end
@@ -112,6 +140,9 @@ local function closeMultichar()
     SendNUIMessage({
         action = 'close',
     })
+    
+    -- Limpar headshots ao fechar NUI (gerenciamento de memória)
+    CleanupHeadshots()
 end
 
 local function spawnLastLocation()
@@ -288,38 +319,52 @@ RegisterNUICallback('updateSettings', function(data, cb)
     cb({ success = success })
 end)
 
--- Função para obter headshot do ped
-local function getPedHeadshot(ped)
-    if not ped or ped == 0 then
-        return nil
+-- Função principal para obter mugshot (seguindo especificação)
+local function GetMugshot(ped)
+    if not DoesEntityExist(ped) or ped == 0 then
+        return nil, nil
+    end
+
+    local headshot = RegisterPedheadshot(ped)
+    if not headshot or headshot == 0 then
+        return nil, nil
     end
     
-    local headShotHandle = RegisterPedheadshot(ped)
-    if not headShotHandle or headShotHandle == 0 then
-        return nil
-    end
+    local timeout = 50 -- ~500ms (50 * 10ms)
     
-    local timeout = 50 -- 10 segundos (50 * 200ms)
-    local ready = false
-    
-    while timeout > 0 and not ready do
-        if IsPedheadshotReady(headShotHandle) then
-            ready = true
-            break
-        end
-        Wait(200)
+    while not IsPedheadshotReady(headshot) and timeout > 0 do
+        Wait(10)
         timeout = timeout - 1
     end
-    
-    local textureName = nil
-    if ready and IsPedheadshotValid(headShotHandle) then
-        textureName = GetPedheadshotTxdString(headShotHandle)
+
+    if IsPedheadshotReady(headshot) and IsPedheadshotValid(headshot) then
+        local txd = GetPedheadshotTxdString(headshot)
+        if txd and txd ~= "" then
+            -- Usar protocolo nui-img:// conforme especificação
+            local url = "nui-img://" .. txd .. "/" .. txd
+            -- Armazenar handle para limpeza posterior
+            table.insert(activeHeadshots, headshot)
+            return url, headshot
+        else
+            UnregisterPedheadshot(headshot)
+            return nil, nil
+        end
+    else
+        UnregisterPedheadshot(headshot)
+        return nil, nil
     end
-    
-    -- Não desregistrar imediatamente, manter por um tempo para a NUI carregar
-    -- UnregisterPedheadshot(headShotHandle)
-    
-    return textureName, headShotHandle
+end
+
+-- Função para limpar todos os headshots ativos
+local function CleanupHeadshots()
+    for _, headshot in ipairs(activeHeadshots) do
+        if headshot and headshot ~= 0 then
+            pcall(function()
+                UnregisterPedheadshot(headshot)
+            end)
+        end
+    end
+    activeHeadshots = {}
 end
 
 -- Função para criar ped temporário e obter headshot (similar ao renzu)
@@ -332,12 +377,20 @@ local function getCharacterHeadshot(citizenId)
     
     local data = result.data
     local tempPed = nil
+    local model = data.model or `mp_m_freemode_01`
+    
+    -- Carregar modelo
+    lib.requestModel(model, 10000)
+    if not HasModelLoaded(model) then
+        lib.print.error(string.format('[mri_Qmultichar] Falha ao carregar modelo: %s', model))
+        return nil
+    end
     
     -- Criar ped temporário invisível
-    lib.requestModel(data.model, 10000)
-    tempPed = CreatePed(4, data.model, 0.0, 0.0, 0.0, 0.0, false, true)
+    tempPed = CreatePed(4, model, 0.0, 0.0, 0.0, 0.0, false, true)
     
     if not tempPed or tempPed == 0 then
+        SetModelAsNoLongerNeeded(model)
         return nil
     end
     
@@ -366,39 +419,16 @@ local function getCharacterHeadshot(citizenId)
     
     Wait(500) -- Aguardar aparência ser aplicada
     
-    -- Gerar headshot
-    local headShotHandle = RegisterPedheadshot(tempPed)
-    if not headShotHandle or headShotHandle == 0 then
-        if DoesEntityExist(tempPed) then
-            DeleteEntity(tempPed)
-        end
-        return nil
-    end
+    -- Usar função GetMugshot para obter headshot
+    local imgUrl, headshotHandle = GetMugshot(tempPed)
     
-    local timeout = 50
-    local ready = false
-    
-    while timeout > 0 and not ready do
-        if IsPedheadshotReady(headShotHandle) then
-            ready = true
-            break
-        end
-        Wait(200)
-        timeout = timeout - 1
-    end
-    
-    local textureName = nil
-    if ready and IsPedheadshotValid(headShotHandle) then
-        textureName = GetPedheadshotTxdString(headShotHandle)
-    end
-    
-    -- Limpar
-    UnregisterPedheadshot(headShotHandle)
+    -- Limpar ped temporário
     if DoesEntityExist(tempPed) then
         DeleteEntity(tempPed)
     end
+    SetModelAsNoLongerNeeded(model)
     
-    return textureName
+    return imgUrl
 end
 
 -- Callback para obter configurações
@@ -415,14 +445,18 @@ RegisterNUICallback('getCharacterPhoto', function(data, cb)
         return
     end
     
-    -- Tentar primeiro com player online
-    local player = exports.qbx_core:GetPlayerByCitizenId(citizenId)
-    if player and player.PlayerData.source then
+    -- Tentar primeiro com player online (se disponível)
+    -- Nota: GetPlayerByCitizenId pode não estar disponível em todas as versões do qbx_core
+    local success, player = pcall(function()
+        return exports.qbx_core:GetPlayerByCitizenId(citizenId)
+    end)
+    
+    if success and player and player.PlayerData and player.PlayerData.source then
         local targetPed = GetPlayerPed(player.PlayerData.source)
         if targetPed and targetPed ~= 0 then
-            local textureName, handle = getPedHeadshot(targetPed)
-            if textureName then
-                cb({ success = true, photo = 'nui://' .. textureName })
+            local imgUrl, headshotHandle = GetMugshot(targetPed)
+            if imgUrl then
+                cb({ success = true, photo = imgUrl })
                 return
             end
         end
@@ -430,12 +464,12 @@ RegisterNUICallback('getCharacterPhoto', function(data, cb)
     
     -- Se não estiver online, criar ped temporário
     CreateThread(function()
-        local textureName = getCharacterHeadshot(citizenId)
-        if textureName then
+        local imgUrl = getCharacterHeadshot(citizenId)
+        if imgUrl then
             SendNUIMessage({
                 action = 'characterPhotoReady',
                 citizenid = citizenId,
-                photo = 'nui://' .. textureName
+                photo = imgUrl
             })
         else
             SendNUIMessage({
@@ -535,11 +569,20 @@ RegisterNUICallback('createCharacter', function(data, cb)
         return
     end
     
-    -- Verificar cooldown após deleção de personagem
+    -- Verificar cooldown após deleção de personagem (aumentado para garantir sincronização)
     local timeSinceDelete = GetGameTimer() - lastDeleteTime
-    if timeSinceDelete < DELETE_COOLDOWN then
-        local remainingTime = math.ceil((DELETE_COOLDOWN - timeSinceDelete) / 1000)
+    local cooldownTime = DELETE_COOLDOWN * 2 -- Dobrar o cooldown para garantir sincronização
+    if timeSinceDelete < cooldownTime then
+        local remainingTime = math.ceil((cooldownTime - timeSinceDelete) / 1000)
         cb({ success = false, message = string.format('Aguarde %d segundo(s) após deletar um personagem', remainingTime) })
+        return
+    end
+
+    -- Verificar se o slot está realmente livre no servidor antes de criar
+    local slotCheck = lib.callback.await('mri_Qmultichar:server:checkSlotAvailable', false, charData.cid)
+    if not slotCheck or not slotCheck.available then
+        lib.print.warn(string.format('[mri_Qmultichar] Slot %d não está disponível. Personagem ainda existe?', charData.cid))
+        cb({ success = false, message = 'Este slot ainda está ocupado. Aguarde alguns segundos e tente novamente.' })
         return
     end
 
@@ -693,12 +736,20 @@ RegisterNUICallback('createCharacter', function(data, cb)
             
             -- Abrir illenium (personagem já está na localização correta)
             lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Abrindo illenium-appearance...')
+            
+            -- Aguardar um pouco mais para garantir que tudo está pronto
+            Citizen.Wait(500)
+            
+            -- Abrir illenium usando eventos (método padrão)
             if GetResourceState('qbx_spawn') == 'missing' then
+                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando qb-clothes...')
                 TriggerEvent('qb-clothes:client:CreateFirstCharacter')
             else
                 if qbxConfig and qbxConfig.characters and qbxConfig.characters.startingApartment then
+                    lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando apartments spawn...')
                     TriggerEvent('apartments:client:setupSpawnUI', newData)
                 else
+                    lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando qb-clothes...')
                     TriggerEvent('qb-clothes:client:CreateFirstCharacter')
                 end
             end

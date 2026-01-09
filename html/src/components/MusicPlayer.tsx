@@ -39,18 +39,42 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
+  const [prevStreamerMode, setPrevStreamerMode] = useState(isStreamerMode)
   
-  // Escutar mensagens para desativar música (modo streamer)
+  // Detectar mudança no streamer mode e forçar recriação do player
+  useEffect(() => {
+    if (prevStreamerMode && !isStreamerMode) {
+      // Streamer mode foi desativado - forçar recriação do player
+      if (audioRef.current) {
+        audioRef.current.src = ''
+        audioRef.current = null
+      }
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.destroy?.()
+        } catch {}
+        ytPlayerRef.current = null
+      }
+    }
+    setPrevStreamerMode(isStreamerMode)
+  }, [isStreamerMode, prevStreamerMode])
+
+  // Escutar mensagens para desativar/ativar música (modo streamer)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.action === 'setStreamerMode') {
         if (event.data.enabled) {
+          // Desativar música
           setIsPlaying(false)
           if (audioRef.current) {
             audioRef.current.pause()
+            audioRef.current.src = ''
           }
           if (ytPlayerRef.current) {
-            ytPlayerRef.current.pauseVideo?.()
+            try {
+              ytPlayerRef.current.pauseVideo?.()
+              ytPlayerRef.current.stopVideo?.()
+            } catch {}
           }
         }
       }
@@ -86,6 +110,20 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
 
   useEffect(() => {
     if (!music || !music.enabled || !music.url || isStreamerMode) {
+      // Parar música se streamer mode estiver ativo
+      if (isStreamerMode) {
+        if (audioRef.current) {
+          audioRef.current.pause()
+          audioRef.current.src = ''
+        }
+        if (ytPlayerRef.current) {
+          try {
+            ytPlayerRef.current.pauseVideo?.()
+            ytPlayerRef.current.stopVideo?.()
+          } catch {}
+        }
+        setIsPlaying(false)
+      }
       return
     }
 
@@ -242,7 +280,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
       audio.pause()
       audio.src = ''
     }
-  }, [music, isYouTube])
+  }, [music, isYouTube, isStreamerMode])
   
   // Atualizar volume sem recriar o player
   useEffect(() => {

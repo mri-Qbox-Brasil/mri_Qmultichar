@@ -31,7 +31,7 @@ Config.Preview = {
     -- Localização fixa do personagem e câmera (sempre a mesma)
     -- Local aberto: Praia de Vespucci (área aberta sem paredes)
     default = {
-        pedCoords = vector4(-1200.0, -1500.0, 4.0, 150.0), -- Praia de Vespucci, local aberto
+        pedCoords = vector4(-1645.48, -1115.97, 13.03, 307.43), -- Praia de Vespucci, local aberto
         scenarios = {
             'WORLD_HUMAN_COP_IDLES',
             'WORLD_HUMAN_STAND_MOBILE',

@@ -43,11 +43,11 @@ interface CharacterListProps {
   characterPhotos?: Record<string, string>
 }
 
-export function CharacterList({
-  characters,
-  maxSlots,
+export function CharacterList({ 
+  characters, 
+  maxSlots, 
   selectedCharacter,
-  onSelect,
+  onSelect, 
   onCreate,
   theme,
   characterPhotos: externalPhotos = {}

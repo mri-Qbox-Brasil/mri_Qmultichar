@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings, Camera, Music, Music2, Palette, EyeOff, X } from 'lucide-react'
+import { Settings, Music, Music2, Palette, EyeOff, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 declare function GetParentResourceName(): string
@@ -39,21 +39,8 @@ export function SettingsPanel({
   onThemeChange,
   allowThemeChange = true
 }: SettingsPanelProps) {
-  const [cameraEffects, setCameraEffects] = useState(true)
-  const [cameraEffectType, setCameraEffectType] = useState('cinema')
   const [streamerMode, setStreamerMode] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState(theme?.name || 'dark')
-
-  // Opções de efeitos de câmera
-  const cameraEffectsOptions = [
-    { value: 'default', label: 'Normal', icon: '🎬' },
-    { value: 'cinema', label: 'Cinema', icon: '🎥' },
-    { value: 'grayscale', label: 'Preto e Branco', icon: '⚫' },
-    { value: 'sepia', label: 'Sépia', icon: '📸' },
-    { value: 'vintage', label: 'Vintage', icon: '📷' },
-    { value: 'dream', label: 'Sonho', icon: '✨' },
-    { value: 'nightvision', label: 'Visão Noturna', icon: '🌙' },
-  ]
 
   // Carregar configurações ao montar
   useEffect(() => {
@@ -65,12 +52,6 @@ export function SettingsPanel({
         })
         const data = await response.json()
         if (data.success) {
-          if (data.settings.cameraEffects !== undefined) {
-            setCameraEffects(data.settings.cameraEffects)
-          }
-          if (data.settings.cameraEffectType) {
-            setCameraEffectType(data.settings.cameraEffectType)
-          }
           if (data.settings.streamerMode !== undefined) {
             setStreamerMode(data.settings.streamerMode)
           }
@@ -97,35 +78,6 @@ export function SettingsPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         theme: themeName,
-        cameraEffects,
-        streamerMode
-      }),
-    }).catch(console.error)
-  }
-
-  const handleCameraEffects = (enabled: boolean) => {
-    setCameraEffects(enabled)
-    fetch(`https://${GetParentResourceName()}/updateSettings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        theme: selectedTheme,
-        cameraEffects: enabled,
-        cameraEffectType: enabled ? cameraEffectType : 'default',
-        streamerMode
-      }),
-    }).catch(console.error)
-  }
-
-  const handleCameraEffectType = (effectType: string) => {
-    setCameraEffectType(effectType)
-    fetch(`https://${GetParentResourceName()}/updateSettings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        theme: selectedTheme,
-        cameraEffects: true,
-        cameraEffectType: effectType,
         streamerMode
       }),
     }).catch(console.error)
@@ -138,7 +90,6 @@ export function SettingsPanel({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         theme: selectedTheme,
-        cameraEffects,
         streamerMode: enabled
       }),
     }).catch(console.error)
@@ -198,79 +149,6 @@ export function SettingsPanel({
       </div>
 
       <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-        {/* Efeitos de Câmera */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Camera className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-            <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-              Modo Foto / Efeitos de Câmera
-            </h3>
-          </div>
-          <div 
-            className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
-            style={{
-              backgroundColor: cameraEffects ? `${theme?.colors.accent?.primary || '#3B82F6'}15` : 'rgba(255, 255, 255, 0.05)',
-              borderColor: cameraEffects ? `${theme?.colors.accent?.primary || '#3B82F6'}60` : theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-            }}
-            onClick={() => handleCameraEffects(!cameraEffects)}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}>
-                {cameraEffects ? 'Ativado' : 'Desativado'}
-              </span>
-              <div 
-                className={cn(
-                  "w-12 h-6 rounded-full relative transition-all",
-                  cameraEffects ? "bg-blue-500" : "bg-gray-600"
-                )}
-              >
-                <div 
-                  className={cn(
-                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-lg",
-                    cameraEffects ? "left-6" : "left-0.5"
-                  )}
-                />
-              </div>
-            </div>
-            {cameraEffects && (
-              <div className="grid grid-cols-4 gap-2 mt-3">
-                {cameraEffectsOptions.map((effect) => (
-                  <button
-                    key={effect.value}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleCameraEffectType(effect.value)
-                    }}
-                    className={cn(
-                      "p-2 rounded-lg border transition-all hover:scale-110 text-center",
-                      cameraEffectType === effect.value && "ring-2"
-                    )}
-                    style={{
-                      backgroundColor: cameraEffectType === effect.value
-                        ? `${theme?.colors.accent?.primary || '#3B82F6'}30`
-                        : 'rgba(255, 255, 255, 0.05)',
-                      borderColor: cameraEffectType === effect.value
-                        ? theme?.colors.accent?.primary || '#3B82F6'
-                        : theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                      boxShadow: cameraEffectType === effect.value
-                        ? `0 0 0 2px ${theme?.colors.accent?.primary || '#3B82F6'}40`
-                        : 'none',
-                    }}
-                  >
-                    <div className="text-2xl mb-1">{effect.icon}</div>
-                    <div 
-                      className="text-xs font-medium"
-                      style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
-                    >
-                      {effect.label}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Modo Streamer */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
