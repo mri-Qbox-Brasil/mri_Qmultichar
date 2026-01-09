@@ -211,6 +211,81 @@ html, body, #root {
   scroll-behavior: smooth;
 }
 
+/* Animations from tailwindcss-animate */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes zoom-in-95 {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.slide-in-from-left-4 {
+  animation: slide-in-from-left 0.3s ease-out;
+  transform: translateX(-1rem);
+}
+
+.slide-in-from-right-4 {
+  animation: slide-in-from-right 0.3s ease-out;
+  transform: translateX(1rem);
+}
+
+.slide-in-from-bottom-4 {
+  animation: slide-in-from-bottom 0.3s ease-out;
+  transform: translateY(1rem);
+}
+
+.zoom-in-95 {
+  animation: zoom-in-95 0.2s ease-out;
+}
+
 /* Garantir que o container principal não bloqueie */
 #root > div {
   background: transparent !important;

@@ -13,6 +13,26 @@ CreateThread(function()
     ]])
 end)
 
+-- Criar tabela de configurações de player se não existir
+CreateThread(function()
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `player_settings` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT,
+            `license` VARCHAR(255) NOT NULL,
+            `license2` VARCHAR(255) DEFAULT NULL,
+            `theme` VARCHAR(50) DEFAULT 'dark',
+            `camera_effects` TINYINT(1) DEFAULT 1,
+            `camera_effect_type` VARCHAR(50) DEFAULT 'cinema',
+            `streamer_mode` TINYINT(1) DEFAULT 0,
+            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `license` (`license`),
+            KEY `license2` (`license2`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ]])
+    lib.print.info('[mri_Qmultichar] Tabela player_settings criada/verificada')
+end)
+
 -- Função para obter número de slots do jogador
 local function getPlayerSlots(license, license2)
     local result = MySQL.single.await('SELECT slots FROM character_slots WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 })
@@ -48,6 +68,57 @@ local function setPlayerSlots(license, license2, slots)
         })
     end
     return slots
+end
+
+-- Função para obter configurações do player do banco
+local function getPlayerSettingsFromDB(license, license2)
+    local result = MySQL.single.await('SELECT * FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
+    
+    if result then
+        return {
+            theme = result.theme or Config.Theme or 'dark',
+            cameraEffects = result.camera_effects ~= 0,
+            cameraEffectType = result.camera_effect_type or 'cinema',
+            streamerMode = result.streamer_mode ~= 0,
+        }
+    end
+    
+    -- Retornar padrões se não existir no banco
+    return {
+        theme = Config.Theme or 'dark',
+        cameraEffects = Config.CameraEffects ~= false,
+        cameraEffectType = 'cinema',
+        streamerMode = Config.StreamerMode or false,
+    }
+end
+
+-- Função para salvar configurações do player no banco
+local function savePlayerSettingsToDB(license, license2, settings)
+    -- Verificar se já existe registro
+    local existing = MySQL.single.await('SELECT id FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
+    
+    if existing then
+        -- Atualizar registro existente
+        MySQL.update.await('UPDATE player_settings SET theme = ?, camera_effects = ?, camera_effect_type = ?, streamer_mode = ?, license = ?, license2 = ? WHERE id = ?', {
+            settings.theme or Config.Theme or 'dark',
+            settings.cameraEffects and 1 or 0,
+            settings.cameraEffectType or 'cinema',
+            settings.streamerMode and 1 or 0,
+            license,
+            license2 or license,
+            existing.id
+        })
+    else
+        -- Criar novo registro
+        MySQL.insert.await('INSERT INTO player_settings (license, license2, theme, camera_effects, camera_effect_type, streamer_mode) VALUES (?, ?, ?, ?, ?, ?)', {
+            license,
+            license2 or license,
+            settings.theme or Config.Theme or 'dark',
+            settings.cameraEffects and 1 or 0,
+            settings.cameraEffectType or 'cinema',
+            settings.streamerMode and 1 or 0,
+        })
+    end
 end
 
 -- Callback para obter personagens
@@ -95,8 +166,11 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         end
     end
     
-    -- Obter tema atual
-    local themeName = Config.Theme or 'dark'
+    -- Obter tema atual do player (do banco ou padrão)
+    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    local playerSettings = getPlayerSettingsFromDB(license, license2)
+    local themeName = playerSettings.theme or Config.Theme or 'dark'
     local themeData = Config.Themes[themeName] or Config.Themes.dark
     
     -- Obter configuração de música
@@ -108,8 +182,8 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         autoplay = true,
     }
     
-    -- Retornar personagens, slots, tema e música
-    return characters, slots, themeData, musicConfig
+    -- Retornar personagens, slots, tema, música, configurações e temas disponíveis
+    return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}
 end)
 
 -- Callback para obter foto do personagem
@@ -244,6 +318,88 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
     end
     
     return true
+end)
+
+-- Callback para atualizar configurações do player
+lib.callback.register('mri_Qmultichar:server:updateSettings', function(source, data)
+    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    if not license then
+        return false
+    end
+    
+    -- Obter configurações atuais
+    local currentSettings = getPlayerSettingsFromDB(license, license2)
+    
+    -- Atualizar configurações com novos valores
+    if data.theme then
+        if Config.AllowThemeChange then
+            currentSettings.theme = data.theme
+            lib.print.info(string.format('[mri_Qmultichar] Tema alterado por %s: %s', GetPlayerName(source), data.theme))
+        end
+    end
+    
+    if data.cameraEffects ~= nil then
+        currentSettings.cameraEffects = data.cameraEffects
+        lib.print.info(string.format('[mri_Qmultichar] Efeitos de câmera alterados por %s: %s', GetPlayerName(source), tostring(data.cameraEffects)))
+    end
+    
+    if data.cameraEffectType then
+        currentSettings.cameraEffectType = data.cameraEffectType
+        lib.print.info(string.format('[mri_Qmultichar] Tipo de efeito de câmera alterado por %s: %s', GetPlayerName(source), data.cameraEffectType))
+    end
+    
+    if data.streamerMode ~= nil then
+        currentSettings.streamerMode = data.streamerMode
+        lib.print.info(string.format('[mri_Qmultichar] Modo streamer alterado por %s: %s', GetPlayerName(source), tostring(data.streamerMode)))
+    end
+    
+    -- Salvar no banco de dados
+    savePlayerSettingsToDB(license, license2, currentSettings)
+    
+    return true
+end)
+
+-- Callback para obter configurações do player
+lib.callback.register('mri_Qmultichar:server:getPlayerSettings', function(source)
+    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    
+    if not license then
+        return {
+            theme = Config.Theme or 'dark',
+            cameraEffects = Config.CameraEffects ~= false,
+            cameraEffectType = 'cinema',
+            streamerMode = Config.StreamerMode or false,
+        }
+    end
+    
+    return getPlayerSettingsFromDB(license, license2)
+end)
+
+-- Callback para obter dados do personagem para gerar headshot
+lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(source, citizenId)
+    if not citizenId then
+        return { success = false, data = nil }
+    end
+    
+    -- Obter dados do personagem do banco
+    local result = MySQL.single.await('SELECT charinfo FROM players WHERE citizenid = ?', { citizenId })
+    if not result then
+        return { success = false, data = nil }
+    end
+    
+    local charinfo = json.decode(result.charinfo)
+    local clothing = charinfo.skin or charinfo
+    
+    return { 
+        success = true, 
+        data = {
+            clothing = clothing,
+            model = charinfo.model or `mp_m_freemode_01`,
+            gender = charinfo.gender or 0
+        }
+    }
 end)
 
 -- Exportar funções

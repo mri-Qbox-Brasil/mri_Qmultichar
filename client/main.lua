@@ -3,6 +3,13 @@ local isNuiOpen = false
 -- Flag global para prevenir múltiplos spawns simultâneos
 local isSpawning = false
 
+-- Configurações do player
+local playerSettings = {
+    cameraEffects = true,
+    streamerMode = false,
+    theme = 'dark'
+}
+
 -- Variável para prevenir múltiplas criações simultâneas
 local isCreatingCharacter = false
 
@@ -55,12 +62,40 @@ local function getIlleniumLocation()
     return vector4(-66.28, -822.13, 285.61 - 1, 70.82)
 end
 
+-- Carregar configurações do player ao abrir NUI
+local function loadPlayerSettings()
+    local success, settings = pcall(function()
+        return lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
+    end)
+    
+    if success and settings then
+        playerSettings.cameraEffects = settings.cameraEffects ~= false
+        playerSettings.streamerMode = settings.streamerMode or false
+        playerSettings.theme = settings.theme or 'dark'
+        playerSettings.cameraEffectType = settings.cameraEffectType or 'cinema'
+        
+        -- Aplicar configurações
+        SendNUIMessage({ action = 'setStreamerMode', enabled = playerSettings.streamerMode })
+        
+        if playerSettings.theme then
+            SendNUIMessage({ action = 'updateTheme', theme = playerSettings.theme })
+        end
+        
+        -- Aplicar efeitos de câmera
+        if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
+            exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects, playerSettings.cameraEffectType)
+        end
+    end
+end
+
 -- Função para abrir a NUI
 local function openMultichar()
     if isNuiOpen then return end
     
     lib.print.info('[mri_Qmultichar] Abrindo NUI...')
     isNuiOpen = true
+    -- Carregar configurações do player
+    loadPlayerSettings()
     SetNuiFocus(true, true)
     SendNUIMessage({
         action = 'open',
@@ -185,18 +220,191 @@ end
 -- Callback para obter personagens
 RegisterNUICallback('getCharacters', function(_, cb)
     lib.print.info('[mri_Qmultichar] Callback getCharacters chamado')
-    local characters, amount, theme, music = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    local characters, amount, theme, music, allowThemeChange, availableThemes = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
     
     if characters then
         lib.print.info(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, amount or 3))
-        cb({ success = true, characters = characters, amount = amount or 3, theme = theme, music = music })
+        cb({ 
+            success = true, 
+            characters = characters, 
+            amount = amount or 3, 
+            theme = theme, 
+            music = music, 
+            allowThemeChange = allowThemeChange,
+            availableThemes = availableThemes or {}
+        })
     else
         lib.print.error('[mri_Qmultichar] Erro ao carregar personagens')
         local themeName = Config.Theme or 'dark'
         local themeData = Config.Themes[themeName] or Config.Themes.dark
         local musicConfig = Config.Music or { enabled = false, url = '', volume = 0.3, loop = true, autoplay = true }
-        cb({ success = false, characters = {}, amount = 3, theme = themeData, music = musicConfig })
+        cb({ 
+            success = false, 
+            characters = {}, 
+            amount = 3, 
+            theme = themeData, 
+            music = musicConfig, 
+            allowThemeChange = Config.AllowThemeChange or true,
+            availableThemes = Config.Themes or {}
+        })
     end
+end)
+
+-- Callback para atualizar configurações
+RegisterNUICallback('updateSettings', function(data, cb)
+    local success = lib.callback.await('mri_Qmultichar:server:updateSettings', false, data)
+    
+    if success then
+        -- Atualizar configurações locais
+        if data.streamerMode ~= nil then
+            playerSettings.streamerMode = data.streamerMode
+            -- Desativar música se modo streamer
+            SendNUIMessage({ action = 'setStreamerMode', enabled = data.streamerMode })
+        end
+        
+        if data.theme then
+            playerSettings.theme = data.theme
+            -- Atualizar tema
+            SendNUIMessage({ action = 'updateTheme', theme = data.theme })
+        end
+        
+        if data.cameraEffects ~= nil then
+            playerSettings.cameraEffects = data.cameraEffects
+            -- Aplicar efeitos de câmera
+            if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
+                exports.mri_Qmultichar:setCameraEffects(data.cameraEffects, data.cameraEffectType or 'cinema')
+            end
+        end
+        
+        if data.cameraEffectType then
+            playerSettings.cameraEffectType = data.cameraEffectType
+            -- Aplicar tipo de efeito
+            if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
+                exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects or true, data.cameraEffectType)
+            end
+        end
+    end
+    
+    cb({ success = success })
+end)
+
+-- Função para obter headshot do ped
+local function getPedHeadshot(ped)
+    if not ped or ped == 0 then
+        return nil
+    end
+    
+    local headShotHandle = RegisterPedheadshot(ped)
+    if not headShotHandle or headShotHandle == 0 then
+        return nil
+    end
+    
+    local timeout = 50 -- 10 segundos (50 * 200ms)
+    local ready = false
+    
+    while timeout > 0 and not ready do
+        if IsPedheadshotReady(headShotHandle) then
+            ready = true
+            break
+        end
+        Wait(200)
+        timeout = timeout - 1
+    end
+    
+    local textureName = nil
+    if ready and IsPedheadshotValid(headShotHandle) then
+        textureName = GetPedheadshotTxdString(headShotHandle)
+    end
+    
+    -- Não desregistrar imediatamente, manter por um tempo para a NUI carregar
+    -- UnregisterPedheadshot(headShotHandle)
+    
+    return textureName, headShotHandle
+end
+
+-- Função para criar ped temporário e obter headshot (similar ao renzu)
+local function getCharacterHeadshot(citizenId)
+    -- Obter dados do personagem do servidor
+    local result = lib.callback.await('mri_Qmultichar:server:getCharacterPhotoData', false, citizenId)
+    if not result or not result.success or not result.data then
+        return nil
+    end
+    
+    local data = result.data
+    local tempPed = nil
+    
+    -- Criar ped temporário invisível
+    lib.requestModel(data.model, 10000)
+    tempPed = CreatePed(4, data.model, 0.0, 0.0, 0.0, 0.0, false, true)
+    
+    if not tempPed or tempPed == 0 then
+        return nil
+    end
+    
+    -- Tornar ped invisível e sem colisão
+    SetEntityVisible(tempPed, false, false)
+    SetEntityCollision(tempPed, false, false)
+    FreezeEntityPosition(tempPed, true)
+    SetEntityInvincible(tempPed, true)
+    
+    -- Aplicar aparência do personagem
+    if data.clothing then
+        if type(data.clothing) == 'string' then
+            data.clothing = json.decode(data.clothing)
+        end
+        
+        if exports['illenium-appearance'] then
+            pcall(function()
+                exports['illenium-appearance']:setPedAppearance(tempPed, data.clothing)
+            end)
+        elseif exports['fivem-appearance'] then
+            pcall(function()
+                exports['fivem-appearance']:setPedAppearance(tempPed, data.clothing)
+            end)
+        end
+    end
+    
+    Wait(500) -- Aguardar aparência ser aplicada
+    
+    -- Gerar headshot
+    local headShotHandle = RegisterPedheadshot(tempPed)
+    if not headShotHandle or headShotHandle == 0 then
+        if DoesEntityExist(tempPed) then
+            DeleteEntity(tempPed)
+        end
+        return nil
+    end
+    
+    local timeout = 50
+    local ready = false
+    
+    while timeout > 0 and not ready do
+        if IsPedheadshotReady(headShotHandle) then
+            ready = true
+            break
+        end
+        Wait(200)
+        timeout = timeout - 1
+    end
+    
+    local textureName = nil
+    if ready and IsPedheadshotValid(headShotHandle) then
+        textureName = GetPedheadshotTxdString(headShotHandle)
+    end
+    
+    -- Limpar
+    UnregisterPedheadshot(headShotHandle)
+    if DoesEntityExist(tempPed) then
+        DeleteEntity(tempPed)
+    end
+    
+    return textureName
+end
+
+-- Callback para obter configurações
+RegisterNUICallback('getSettings', function(data, cb)
+    local settings = lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
+    cb({ success = true, settings = settings })
 end)
 
 -- Callback para obter foto do personagem
@@ -207,8 +415,39 @@ RegisterNUICallback('getCharacterPhoto', function(data, cb)
         return
     end
     
-    local photo = lib.callback.await('mri_Qmultichar:server:getCharacterPhoto', false, citizenId)
-    cb({ success = photo ~= nil, photo = photo })
+    -- Tentar primeiro com player online
+    local player = exports.qbx_core:GetPlayerByCitizenId(citizenId)
+    if player and player.PlayerData.source then
+        local targetPed = GetPlayerPed(player.PlayerData.source)
+        if targetPed and targetPed ~= 0 then
+            local textureName, handle = getPedHeadshot(targetPed)
+            if textureName then
+                cb({ success = true, photo = 'nui://' .. textureName })
+                return
+            end
+        end
+    end
+    
+    -- Se não estiver online, criar ped temporário
+    CreateThread(function()
+        local textureName = getCharacterHeadshot(citizenId)
+        if textureName then
+            SendNUIMessage({
+                action = 'characterPhotoReady',
+                citizenid = citizenId,
+                photo = 'nui://' .. textureName
+            })
+        else
+            SendNUIMessage({
+                action = 'characterPhotoReady',
+                citizenid = citizenId,
+                photo = nil
+            })
+        end
+    end)
+    
+    -- Retornar imediatamente (a foto será enviada via SendNUIMessage)
+    cb({ success = true, photo = nil, loading = true })
 end)
 
 -- Variável para prevenir múltiplos carregamentos simultâneos
@@ -733,6 +972,12 @@ CreateThread(function()
         Wait(250)
     end
     SetEntityInvincible(PlayerPedId(), false)
+end)
+
+-- Carregar configurações ao iniciar o resource
+CreateThread(function()
+    Wait(2000) -- Aguardar resource estar totalmente carregado
+    loadPlayerSettings()
 end)
 
 -- Exportar funções

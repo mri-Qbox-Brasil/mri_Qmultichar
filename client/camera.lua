@@ -1,6 +1,8 @@
 local previewCam = nil
 local previewVehicle = nil
 local previewPedEntity = nil -- Para paciente na cena de ambulance
+local cameraEffectsEnabled = true -- Efeitos de câmera ativados por padrão
+local cameraEffectType = 'cinema' -- Tipo de efeito de câmera
 
 local randomPeds = {
     {
@@ -261,6 +263,16 @@ local function setupPreviewCam(scenario, pedCoords, camConfig)
     
     Citizen.Wait(500)
     
+    -- Aplicar efeitos de câmera se habilitado
+    if cameraEffectsEnabled then
+        -- Timecycle modifiers para efeitos visuais
+        SetTimecycleModifier(cameraEffectType)
+        SetTimecycleModifierStrength(0.5)
+    else
+        SetTimecycleModifier('default')
+        SetTimecycleModifierStrength(0.0)
+    end
+    
     DoScreenFadeIn(1000)
     CreateThread(function()
         while DoesCamExist(previewCam) do
@@ -269,6 +281,14 @@ local function setupPreviewCam(scenario, pedCoords, camConfig)
             -- Manter horário noturno se configurado
             if isNight then
                 NetworkOverrideClockTime(22, 0, 0) -- 22:00 (noite)
+            end
+            -- Manter timecycle modifier se efeitos estiverem ativos
+            if cameraEffectsEnabled then
+                SetTimecycleModifier(cameraEffectType)
+                SetTimecycleModifierStrength(0.5)
+            else
+                SetTimecycleModifier('default')
+                SetTimecycleModifierStrength(0.0)
             end
             Wait(0)
         end
@@ -282,8 +302,7 @@ local function destroyPreviewCam()
     end
 
     lib.print.info('[mri_Qmultichar] [CAMERA] Destruindo câmera de preview...')
-    SetTimecycleModifier('default')
-    SetTimecycleModifierStrength(0.0)
+    -- Não resetar timecycle modifier aqui, deixar o export controlar
     SetCamActive(previewCam, false)
     DestroyCam(previewCam, true)
     previewCam = nil
@@ -617,6 +636,36 @@ end
 exports('setupPreviewCam', setupPreviewCam)
 exports('destroyPreviewCam', destroyPreviewCam)
 exports('previewPed', previewPed)
+
+-- Export para controlar efeitos de câmera
+exports('setCameraEffects', function(enabled, effectType)
+    cameraEffectsEnabled = enabled
+    if effectType then
+        cameraEffectType = effectType
+    end
+    
+    -- Aplicar globalmente (funciona mesmo sem câmera ativa)
+    if enabled then
+        SetTimecycleModifier(cameraEffectType)
+        SetTimecycleModifierStrength(0.5)
+        lib.print.info(string.format('[mri_Qmultichar] [CAMERA] Efeitos ativados: %s', cameraEffectType))
+    else
+        SetTimecycleModifier('default')
+        SetTimecycleModifierStrength(0.0)
+        lib.print.info('[mri_Qmultichar] [CAMERA] Efeitos desativados')
+    end
+    
+    -- Também aplicar se a câmera existir
+    if previewCam and DoesCamExist(previewCam) then
+        if enabled then
+            SetTimecycleModifier(cameraEffectType)
+            SetTimecycleModifierStrength(0.5)
+        else
+            SetTimecycleModifier('default')
+            SetTimecycleModifierStrength(0.0)
+        end
+    end
+end)
 
 -- Eventos para atualizar preview
 RegisterNetEvent('mri_Qmultichar:client:previewPed', function(citizenId, jobName)

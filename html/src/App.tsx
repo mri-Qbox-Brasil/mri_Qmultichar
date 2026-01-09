@@ -7,7 +7,8 @@ import { MusicPlayer } from './components/MusicPlayer'
 import { formatNumber } from './utils/formatNumber'
 import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar'
 import { Badge } from './components/ui/badge'
-import { Briefcase, Wallet, Building2, Calendar, User, Trash2, Play, Shield, Crown } from 'lucide-react'
+import { Briefcase, Wallet, Building2, Calendar, User, Trash2, Play, Shield, Crown, Settings, X } from 'lucide-react'
+import { SettingsPanel } from './components/SettingsPanel'
 import { cn } from './lib/utils'
 
 declare function GetParentResourceName(): string
@@ -86,6 +87,11 @@ function App() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null)
   const [selectedCharacterPhoto, setSelectedCharacterPhoto] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [allowThemeChange, setAllowThemeChange] = useState(true)
+  const [availableThemes, setAvailableThemes] = useState<{ [key: string]: Theme }>({})
+  const [streamerMode, setStreamerMode] = useState(false)
+  const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
 
   useEffect(() => {
     console.log('[mri_Qmultichar] App montado, aguardando mensagens...')
@@ -103,12 +109,34 @@ function App() {
         setIsOpen(false)
         setSelectedCharacter(null)
         setShowCreation(false)
+        setShowSettings(false)
       } else if (data && data.action === 'refreshCharacters') {
         console.log('[mri_Qmultichar] Recarregando personagens...')
         // Pequeno delay para garantir que o servidor processou a deleção
         setTimeout(() => {
           loadCharacters()
         }, 300)
+      } else if (data && data.action === 'setStreamerMode') {
+        // Desativar música se modo streamer
+        setStreamerMode(data.enabled)
+        if (data.enabled && music) {
+          setMusic({ ...music, enabled: false })
+        } else if (!data.enabled && music) {
+          setMusic({ ...music, enabled: true })
+        }
+      } else if (data && data.action === 'updateTheme') {
+        // Atualizar tema
+        if (availableThemes[data.theme]) {
+          setTheme(availableThemes[data.theme])
+        }
+      } else if (data && data.action === 'characterPhotoReady') {
+        // Foto do personagem pronta
+        if (data.photo) {
+          setCharacterPhotos(prev => ({
+            ...prev,
+            [data.citizenid]: data.photo
+          }))
+        }
       }
     }
 
@@ -147,6 +175,15 @@ function App() {
           }
           if (data.music) {
             setMusic(data.music)
+          }
+          if (data.allowThemeChange !== undefined) {
+            setAllowThemeChange(data.allowThemeChange)
+          }
+          if (data.availableThemes) {
+            setAvailableThemes(data.availableThemes)
+          }
+          if (data.availableThemes) {
+            setAvailableThemes(data.availableThemes)
           }
           // Selecionar primeiro personagem se existir
           if (data.characters && data.characters.length > 0) {
@@ -287,7 +324,7 @@ function App() {
         />
         {/* Player de música fixo na parte inferior */}
         <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10001, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
-          <MusicPlayer music={music || undefined} theme={theme || undefined} />
+          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
         </div>
       </div>
     )
@@ -299,7 +336,7 @@ function App() {
         {/* Left Panel - My Characters */}
         <div 
           className={cn(
-            "w-80 rounded-2xl overflow-hidden",
+            "w-96 rounded-2xl overflow-hidden flex flex-col",
             "animate-in slide-in-from-left-4 fade-in duration-500"
           )}
           style={{ 
@@ -311,7 +348,7 @@ function App() {
           }}
         >
           <div 
-            className="p-6 border-b relative overflow-hidden"
+            className="p-6 border-b relative overflow-hidden flex-shrink-0"
             style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
           >
             <div 
@@ -328,9 +365,10 @@ function App() {
                 <User className="w-6 h-6" />
                 My Characters
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Badge 
                   variant="outline"
+                  className="px-3 py-1"
                   style={{
                     borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
                     color: theme?.colors.text.secondary || '#CBD5E1',
@@ -339,10 +377,19 @@ function App() {
                 >
                   {characters.length} / {maxSlots} slots
                 </Badge>
+                {characters.length === 0 && (
+                  <div className="flex items-center gap-1.5 text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                    <div 
+                      className="w-1.5 h-1.5 rounded-full animate-pulse"
+                      style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
+                    />
+                    <span>Nenhum personagem criado</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)', scrollbarWidth: 'thin' }}>
+          <div className="overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: 'thin' }}>
             <CharacterList
               characters={characters}
               maxSlots={maxSlots}
@@ -350,6 +397,7 @@ function App() {
               onSelect={handleCharacterSelect}
               onCreate={handleCreateCharacter}
               theme={theme}
+              characterPhotos={characterPhotos}
             />
           </div>
         </div>
@@ -404,7 +452,7 @@ function App() {
           }}
         >
           <div 
-            className="p-6 border-b relative overflow-hidden"
+            className="p-6 border-b relative overflow-hidden flex-shrink-0"
             style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
           >
             <div 
@@ -420,6 +468,11 @@ function App() {
               <User className="w-6 h-6" />
               Character Info
             </h2>
+            {selectedCharacter && (
+              <p className="text-sm mt-1 relative z-10" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                Detalhes do personagem selecionado
+              </p>
+            )}
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {selectedCharacter ? (
@@ -587,8 +640,16 @@ function App() {
                 </div>
               </div>
               
+              {/* Separador */}
+              <div 
+                className="my-6 h-px"
+                style={{
+                  background: `linear-gradient(to right, transparent, ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}, transparent)`,
+                }}
+              />
+              
               {/* Action Buttons */}
-              <div className="pt-4 space-y-3">
+              <div className="pt-2 space-y-3">
                 <button
                   onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
                   className={cn(
@@ -640,19 +701,35 @@ function App() {
           ) : (
             <div className="p-6 text-center animate-in fade-in duration-500">
               <div 
-                className="rounded-xl p-12 border"
+                className="rounded-xl p-12 border relative overflow-hidden group"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.03)',
                   borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
                 }}
               >
-                <User className="w-16 h-16 mx-auto mb-4 opacity-30" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-                <p className="text-lg font-semibold mb-2" style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}>
-                  Select a character
-                </p>
-                <p className="text-sm opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                  or create a new one
-                </p>
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                  style={{
+                    background: `radial-gradient(circle, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, transparent 70%)`,
+                  }}
+                />
+                <div className="relative z-10">
+                  <div 
+                    className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+                    style={{
+                      backgroundColor: `${theme?.colors.accent?.primary || '#3B82F6'}20`,
+                      border: `2px solid ${theme?.colors.accent?.primary || '#3B82F6'}40`,
+                    }}
+                  >
+                    <User className="w-10 h-10" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                  </div>
+                  <p className="text-lg font-bold mb-2" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                    Select a character
+                  </p>
+                  <p className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                    or create a new one
+                  </p>
+                </div>
               </div>
             </div>
             )}
@@ -662,8 +739,45 @@ function App() {
 
       {/* Player de música fixo na parte inferior */}
       <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
-        <MusicPlayer music={music || undefined} theme={theme || undefined} />
+        <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
       </div>
+
+      {/* Botão de Configurações */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          setShowSettings(!showSettings)
+        }}
+        className={cn(
+          "fixed bottom-20 right-6 w-14 h-14 rounded-full shadow-xl",
+          "flex items-center justify-center transition-all duration-300",
+          "hover:scale-110 hover:shadow-2xl"
+        )}
+        style={{
+          backgroundColor: theme?.colors.accent?.primary || '#3B82F6',
+          color: '#FFFFFF',
+          boxShadow: `0 8px 32px ${theme?.colors.accent?.primary || '#3B82F6'}40`,
+          pointerEvents: 'auto',
+          zIndex: 99999,
+        }}
+      >
+        {showSettings ? <X className="w-6 h-6" /> : <Settings className="w-6 h-6" />}
+      </button>
+
+      {/* Painel de Configurações */}
+      {showSettings && (
+        <SettingsPanel
+          theme={theme}
+          availableThemes={availableThemes}
+          onClose={() => setShowSettings(false)}
+          onThemeChange={(themeName) => {
+            if (availableThemes[themeName]) {
+              setTheme(availableThemes[themeName])
+            }
+          }}
+          allowThemeChange={allowThemeChange}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog

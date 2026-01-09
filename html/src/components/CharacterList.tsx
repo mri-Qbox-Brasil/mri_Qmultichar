@@ -3,7 +3,6 @@ import { Plus, Briefcase, Wallet, Sparkles } from 'lucide-react'
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Skeleton } from './ui/skeleton'
-import { Loading } from './ui/loading'
 import { cn } from '@/lib/utils'
 import type { Character } from '../App'
 
@@ -41,22 +40,31 @@ interface CharacterListProps {
   onSelect: (character: Character) => void
   onCreate: (slot: number) => void
   theme: Theme | null
+  characterPhotos?: Record<string, string>
 }
 
-export function CharacterList({ 
-  characters, 
-  maxSlots, 
+export function CharacterList({
+  characters,
+  maxSlots,
   selectedCharacter,
-  onSelect, 
+  onSelect,
   onCreate,
-  theme
+  theme,
+  characterPhotos: externalPhotos = {}
 }: CharacterListProps) {
   const slots = Array.from({ length: maxSlots }, (_, i) => i + 1)
-  const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
+  const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>(externalPhotos)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
 
   // Carregar fotos dos personagens
   useEffect(() => {
+    // Usar fotos externas se disponíveis
+    if (Object.keys(externalPhotos).length > 0) {
+      setCharacterPhotos(externalPhotos)
+      setLoadingPhotos(false)
+      return
+    }
+    
     const loadPhotos = async () => {
       setLoadingPhotos(true)
       const photos: Record<string, string> = {}
@@ -84,7 +92,7 @@ export function CharacterList({
     } else {
       setLoadingPhotos(false)
     }
-  }, [characters])
+  }, [characters, externalPhotos])
 
   const getCharacterForSlot = (slot: number): Character | undefined => {
     // Buscar personagem pelo cid que corresponde exatamente ao slot
@@ -135,7 +143,7 @@ export function CharacterList({
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-6 space-y-4">
       {slots.map((slot) => {
         const character = getCharacterForSlot(slot)
         const isSelected = selectedCharacter?.citizenid === character?.citizenid
@@ -203,7 +211,7 @@ export function CharacterList({
                     <AvatarImage 
                       src={characterPhotos[character.citizenid]} 
                       alt={`${character.charinfo.firstname} ${character.charinfo.lastname}`}
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                     />
                   ) : null}
                   <AvatarFallback 
@@ -277,12 +285,18 @@ export function CharacterList({
                   </div>
                 </div>
               ) : (
-                <p 
-                  className="text-sm italic"
-                  style={{ color: theme?.colors.text.muted || '#94A3B8' }}
-                >
-                  Clique para criar personagem
-                </p>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
+                  />
+                  <p 
+                    className="text-sm"
+                    style={{ color: theme?.colors.text.muted || '#94A3B8' }}
+                  >
+                    Clique para criar personagem
+                  </p>
+                </div>
               )}
             </div>
 

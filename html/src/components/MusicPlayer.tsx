@@ -32,12 +32,32 @@ interface MusicPlayerProps {
       border?: string
     }
   }
+  isStreamerMode?: boolean
 }
 
-export function MusicPlayer({ music, theme }: MusicPlayerProps) {
+export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
+  
+  // Escutar mensagens para desativar música (modo streamer)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.action === 'setStreamerMode') {
+        if (event.data.enabled) {
+          setIsPlaying(false)
+          if (audioRef.current) {
+            audioRef.current.pause()
+          }
+          if (ytPlayerRef.current) {
+            ytPlayerRef.current.pauseVideo?.()
+          }
+        }
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const ytContainerIdRef = useRef<string>('yt-player-' + Math.random().toString(36).slice(2))
   const ytPlayerRef = useRef<any>(null)
@@ -65,7 +85,7 @@ export function MusicPlayer({ music, theme }: MusicPlayerProps) {
   }
 
   useEffect(() => {
-    if (!music || !music.enabled || !music.url) {
+    if (!music || !music.enabled || !music.url || isStreamerMode) {
       return
     }
 

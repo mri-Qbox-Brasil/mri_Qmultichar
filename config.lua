@@ -3,7 +3,10 @@ Config = {}
 Config.Locale = 'pt'
 
 -- Tema a ser utilizado (dark, blue, purple, green, red, orange, mri)
-Config.Theme = 'dark'
+Config.Theme = 'mri'
+
+-- Permitir que players mudem o tema (false = apenas admin pode mudar)
+Config.AllowThemeChange = true
 
 -- Configuração de música de fundo
 -- Pode ser um link direto (URL) ou caminho relativo para arquivo na pasta html/sounds/
