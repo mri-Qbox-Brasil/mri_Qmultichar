@@ -73,7 +73,8 @@ local function loadPlayerSettings()
     
     if success and settings then
         playerSettings.cameraEffects = settings.cameraEffects ~= false
-        playerSettings.streamerMode = settings.streamerMode or false
+        -- Garantir que streamerMode seja boolean explícito (false ou true, nunca nil)
+        playerSettings.streamerMode = settings.streamerMode == true
         playerSettings.theme = settings.theme or 'dark'
         playerSettings.cameraEffectType = settings.cameraEffectType or 'cinema'
         

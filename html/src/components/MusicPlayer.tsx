@@ -40,6 +40,10 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
   const [prevStreamerMode, setPrevStreamerMode] = useState(isStreamerMode)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const ytContainerIdRef = useRef<string>('yt-player-' + Math.random().toString(36).slice(2))
+  const ytPlayerRef = useRef<any>(null)
+  const isYouTube = !!music?.url && /(youtube\.com\/watch\?v=|youtu\.be\/)/i.test(music.url)
   
   // Detectar mudança no streamer mode e forçar recriação do player
   useEffect(() => {
@@ -76,16 +80,24 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
               ytPlayerRef.current.stopVideo?.()
             } catch {}
           }
+        } else {
+          // Reativar música se estava tocando antes e as configurações permitem
+          if (music && music.enabled && music.url) {
+            setIsPlaying(true) // Tentar tocar
+            if (isYouTube && ytPlayerRef.current) {
+              try {
+                ytPlayerRef.current.playVideo?.()
+              } catch {}
+            } else if (audioRef.current) {
+              audioRef.current.play().catch(console.error)
+            }
+          }
         }
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [])
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const ytContainerIdRef = useRef<string>('yt-player-' + Math.random().toString(36).slice(2))
-  const ytPlayerRef = useRef<any>(null)
-  const isYouTube = !!music?.url && /(youtube\.com\/watch\?v=|youtu\.be\/)/i.test(music.url)
+  }, [music, isYouTube])
   const [ytTitle, setYtTitle] = useState<string>('')
   const [ytThumb, setYtThumb] = useState<string>('')
 
@@ -109,21 +121,24 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   }
 
   useEffect(() => {
-    if (!music || !music.enabled || !music.url || isStreamerMode) {
-      // Parar música se streamer mode estiver ativo
-      if (isStreamerMode) {
-        if (audioRef.current) {
-          audioRef.current.pause()
-          audioRef.current.src = ''
-        }
-        if (ytPlayerRef.current) {
-          try {
-            ytPlayerRef.current.pauseVideo?.()
-            ytPlayerRef.current.stopVideo?.()
-          } catch {}
-        }
-        setIsPlaying(false)
+    // Se streamer mode estiver ativo, não tocar música
+    if (isStreamerMode) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
       }
+      if (ytPlayerRef.current) {
+        try {
+          ytPlayerRef.current.pauseVideo?.()
+          ytPlayerRef.current.stopVideo?.()
+        } catch {}
+      }
+      setIsPlaying(false)
+      return
+    }
+    
+    // Se não há música configurada ou desabilitada, não fazer nada
+    if (!music || !music.enabled || !music.url) {
       return
     }
 
@@ -352,6 +367,12 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
     // O useEffect vai atualizar o volume automaticamente
   }
 
+  // Se streamer mode estiver ativo, não renderizar o player
+  if (isStreamerMode) {
+    return null
+  }
+  
+  // Se não há música configurada ou desabilitada, não renderizar
   if (!music || !music.enabled || !music.url) {
     return null
   }

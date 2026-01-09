@@ -309,8 +309,24 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
                   color: theme?.colors.text.primary || '#F8FAFC'
                 }}
               >
-                <option value="0">Masculino</option>
-                <option value="1">Feminino</option>
+                <option 
+                  value="0"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    color: '#000000'
+                  }}
+                >
+                  Masculino
+                </option>
+                <option 
+                  value="1"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    color: '#000000'
+                  }}
+                >
+                  Feminino
+                </option>
               </select>
             </div>
 
@@ -340,12 +356,13 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
                 {showCalendar && (
                   <div 
                     ref={calendarRef}
-                    className="absolute z-50 w-full mt-1 p-2 rounded-md border shadow-lg"
+                    className="absolute z-50 mt-1 p-2 rounded-md border shadow-lg"
                     style={{
                       backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
                       borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                      minWidth: '280px',
-                      maxWidth: '320px'
+                      width: '240px',
+                      top: '100%',
+                      marginTop: '4px'
                     }}
                   >
                     {/* Header do calendário */}

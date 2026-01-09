@@ -75,11 +75,17 @@ local function getPlayerSettingsFromDB(license, license2)
     local result = MySQL.single.await('SELECT * FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
     
     if result then
+        -- Garantir que streamer_mode seja boolean explícito
+        local streamerModeValue = false
+        if result.streamer_mode then
+            streamerModeValue = result.streamer_mode ~= 0
+        end
+        
         return {
             theme = result.theme or Config.Theme or 'dark',
             cameraEffects = result.camera_effects ~= 0,
             cameraEffectType = result.camera_effect_type or 'cinema',
-            streamerMode = result.streamer_mode ~= 0,
+            streamerMode = streamerModeValue,
         }
     end
     
@@ -97,13 +103,16 @@ local function savePlayerSettingsToDB(license, license2, settings)
     -- Verificar se já existe registro
     local existing = MySQL.single.await('SELECT id FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
     
+    -- Garantir que streamerMode seja boolean explícito antes de salvar
+    local streamerModeValue = (settings.streamerMode == true) and 1 or 0
+    
     if existing then
         -- Atualizar registro existente
         MySQL.update.await('UPDATE player_settings SET theme = ?, camera_effects = ?, camera_effect_type = ?, streamer_mode = ?, license = ?, license2 = ? WHERE id = ?', {
             settings.theme or Config.Theme or 'dark',
             settings.cameraEffects and 1 or 0,
             settings.cameraEffectType or 'cinema',
-            settings.streamerMode and 1 or 0,
+            streamerModeValue,
             license,
             license2 or license,
             existing.id
@@ -116,7 +125,7 @@ local function savePlayerSettingsToDB(license, license2, settings)
             settings.theme or Config.Theme or 'dark',
             settings.cameraEffects and 1 or 0,
             settings.cameraEffectType or 'cinema',
-            settings.streamerMode and 1 or 0,
+            streamerModeValue,
         })
     end
 end
