@@ -781,27 +781,100 @@ RegisterNUICallback('createCharacter', function(data, cb)
             lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Flag isInCharacterCreation = true')
             
             -- Criar thread para manter jogador na localização correta durante criação
+            -- IMPORTANTE: Esta thread só deve rodar enquanto o illenium está aberto
             CreateThread(function()
                 local illeniumLocation = getIlleniumLocation()
+                local maxWaitTime = 300000 -- 5 minutos máximo (timeout de segurança)
+                local startTime = GetGameTimer()
                 lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento iniciada')
                 
                 while isInCharacterCreation do
+                    -- Timeout de segurança: se passou muito tempo, desativar
+                    if GetGameTimer() - startTime > maxWaitTime then
+                        lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Timeout na thread de monitoramento, desativando...')
+                        isInCharacterCreation = false
+                        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                        break
+                    end
+                    
+                    -- Verificar se o illenium ainda está aberto (se não estiver, desativar)
+                    if not exports['illenium-appearance'] or not exports['illenium-appearance'].isOpen then
+                        -- Verificar também eventos alternativos
+                        local isIlleniumOpen = false
+                        pcall(function()
+                            if exports['illenium-appearance'].isOpen then
+                                isIlleniumOpen = true
+                            end
+                        end)
+                        
+                        if not isIlleniumOpen then
+                            -- Aguardar um pouco antes de desativar (pode estar salvando)
+                            Wait(2000)
+                            -- Verificar novamente
+                            pcall(function()
+                                if exports['illenium-appearance'].isOpen then
+                                    isIlleniumOpen = true
+                                end
+                            end)
+                            
+                            if not isIlleniumOpen then
+                                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado, desativando monitoramento...')
+                                isInCharacterCreation = false
+                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                                break
+                            end
+                        end
+                    end
+                    
+                    -- Verificar se o personagem foi realmente carregado (se sim, desativar monitoramento)
+                    if LocalPlayer.state.isLoggedIn then
+                        lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado (isLoggedIn = true), desativando monitoramento...')
+                        isInCharacterCreation = false
+                        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                        break
+                    end
+                    
                     local currentCoords = GetEntityCoords(cache.ped)
                     local distance = #(vector3(currentCoords.x, currentCoords.y, currentCoords.z) - vector3(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z))
                     
                     -- Se o jogador se afastou da localização do illenium, reposicionar
+                    -- Mas apenas se o illenium ainda estiver aberto
                     if distance > 5.0 then
-                        lib.print.warn(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
-                        RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-                        while not HasCollisionLoadedAroundEntity(cache.ped) do 
-                            Wait(0) 
-                        end
-                        SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
-                        SetEntityHeading(cache.ped, illeniumLocation.w)
+                        local isOpen = false
+                        pcall(function()
+                            if exports['illenium-appearance'] and exports['illenium-appearance'].isOpen then
+                                isOpen = true
+                            end
+                        end)
                         
-                        local afterPos = GetEntityCoords(cache.ped)
-                        lib.print.info(string.format('[mri_Qmultichar] [CRIAÇÃO] Reposicionado para: %.2f, %.2f, %.2f', 
-                            afterPos.x, afterPos.y, afterPos.z))
+                        if isOpen then
+                            lib.print.warn(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
+                            RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
+                            while not HasCollisionLoadedAroundEntity(cache.ped) do 
+                                Wait(0) 
+                            end
+                            SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
+                            SetEntityHeading(cache.ped, illeniumLocation.w)
+                            
+                            local afterPos = GetEntityCoords(cache.ped)
+                            lib.print.info(string.format('[mri_Qmultichar] [CRIAÇÃO] Reposicionado para: %.2f, %.2f, %.2f', 
+                                afterPos.x, afterPos.y, afterPos.z))
+                        else
+                            -- Illenium fechado, aguardar um pouco e verificar se o personagem foi carregado
+                            Wait(3000) -- Aguardar 3 segundos para dar tempo do personagem ser carregado
+                            if LocalPlayer.state.isLoggedIn then
+                                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado após fechar illenium, desativando...')
+                                isInCharacterCreation = false
+                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                                break
+                            else
+                                -- Se ainda não foi carregado, desativar mesmo assim (illenium fechado)
+                                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado durante monitoramento, desativando...')
+                                isInCharacterCreation = false
+                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                                break
+                            end
+                        end
                     end
                     
                     Wait(500) -- Verificar a cada meio segundo
@@ -854,7 +927,7 @@ RegisterNetEvent('illenium-appearance:client:characterSaved', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento characterSaved recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
-        Citizen.Wait(500)
+        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
         isInCharacterCreation = false
         lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
@@ -868,7 +941,7 @@ RegisterNetEvent('qb-clothes:client:characterSaved', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes characterSaved recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
-        Citizen.Wait(500)
+        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
         isInCharacterCreation = false
         lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
@@ -882,7 +955,7 @@ RegisterNetEvent('illenium-appearance:client:close', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento close recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
-        Citizen.Wait(500)
+        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
         isInCharacterCreation = false
         lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
@@ -893,7 +966,7 @@ RegisterNetEvent('qb-clothes:client:close', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes close recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
-        Citizen.Wait(500)
+        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
         isInCharacterCreation = false
         lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
