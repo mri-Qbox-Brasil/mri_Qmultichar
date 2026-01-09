@@ -56,15 +56,37 @@ export function CharacterList({
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>(externalPhotos)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
 
-  // Carregar fotos dos personagens
+  // Escutar mensagens do client para atualizar fotos
   useEffect(() => {
-    // Usar fotos externas se disponíveis
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data
+      if (data && data.action === 'characterPhotoReady') {
+        if (data.photo) {
+          console.log('[mri_Qmultichar] CharacterList: Foto recebida:', data.citizenid, data.photo)
+          setCharacterPhotos(prev => {
+            const updated = {
+              ...prev,
+              [data.citizenid]: data.photo
+            }
+            console.log('[mri_Qmultichar] CharacterList: Fotos atualizadas:', updated)
+            return updated
+          })
+        }
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  // Sincronizar com fotos externas
+  useEffect(() => {
     if (Object.keys(externalPhotos).length > 0) {
       setCharacterPhotos(externalPhotos)
-      setLoadingPhotos(false)
-      return
     }
-    
+  }, [externalPhotos])
+
+  // Carregar fotos dos personagens
+  useEffect(() => {
     const loadPhotos = async () => {
       setLoadingPhotos(true)
       const photos: Record<string, string> = {}
@@ -79,11 +101,12 @@ export function CharacterList({
           if (data.success && data.photo) {
             photos[character.citizenid] = data.photo
           }
+          // Se está carregando (loading = true), a foto será enviada via SendNUIMessage
         } catch (error) {
           console.error('Erro ao carregar foto:', error)
         }
       }
-      setCharacterPhotos(photos)
+      setCharacterPhotos(prev => ({ ...prev, ...photos }))
       setLoadingPhotos(false)
     }
     
@@ -92,7 +115,7 @@ export function CharacterList({
     } else {
       setLoadingPhotos(false)
     }
-  }, [characters, externalPhotos])
+  }, [characters])
 
   const getCharacterForSlot = (slot: number): Character | undefined => {
     // Buscar personagem pelo cid que corresponde exatamente ao slot
@@ -212,6 +235,12 @@ export function CharacterList({
                       src={characterPhotos[character.citizenid]} 
                       alt={`${character.charinfo.firstname} ${character.charinfo.lastname}`}
                       className="object-cover w-full h-full"
+                      onError={(e) => {
+                        console.error('[mri_Qmultichar] Erro ao carregar imagem:', characterPhotos[character.citizenid], e)
+                      }}
+                      onLoad={() => {
+                        console.log('[mri_Qmultichar] Imagem carregada com sucesso:', characterPhotos[character.citizenid])
+                      }}
                     />
                   ) : null}
                   <AvatarFallback 

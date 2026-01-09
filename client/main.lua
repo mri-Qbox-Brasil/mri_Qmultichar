@@ -320,18 +320,48 @@ RegisterNUICallback('updateSettings', function(data, cb)
     cb({ success = success })
 end)
 
--- Função principal para obter mugshot (seguindo especificação)
+-- Função principal para obter mugshot (usa MugShotBase64 para retornar base64)
 local function GetMugshot(ped)
     if not DoesEntityExist(ped) or ped == 0 then
+        lib.print.error('[mri_Qmultichar] Ped inválido para GetMugshot')
         return nil, nil
     end
 
+    -- Verificar se ped está visível (necessário para headshot)
+    if not IsEntityVisible(ped) then
+        lib.print.warn('[mri_Qmultichar] Ped não está visível, tornando visível...')
+        SetEntityVisible(ped, true, false)
+        Wait(100)
+    end
+
+    -- Usar MugShotBase64 se disponível (retorna base64 que funciona no navegador)
+    if GetResourceState('MugShotBase64') == 'started' then
+        local success, base64 = pcall(function()
+            return exports['MugShotBase64']:GetMugShotBase64(ped, false)
+        end)
+        if success and base64 then
+            -- Garantir que a string base64 tenha o prefixo correto
+            if not string.find(base64, "^data:image") then
+                base64 = "data:image/png;base64," .. base64
+            end
+            lib.print.info('[mri_Qmultichar] Headshot gerado com sucesso usando MugShotBase64')
+            return base64, nil
+        else
+            lib.print.warn('[mri_Qmultichar] MugShotBase64 falhou ou não retornou dados')
+        end
+    else
+        lib.print.warn('[mri_Qmultichar] MugShotBase64 não está disponível, usando método nativo')
+    end
+
+    -- Fallback: usar método nativo (mas converter para base64 não é possível aqui)
+    -- Então vamos usar o método nativo apenas se MugShotBase64 não estiver disponível
     local headshot = RegisterPedheadshot(ped)
     if not headshot or headshot == 0 then
+        lib.print.error('[mri_Qmultichar] Falha ao registrar headshot')
         return nil, nil
     end
     
-    local timeout = 50 -- ~500ms (50 * 10ms)
+    local timeout = 100 -- ~1000ms (100 * 10ms)
     
     while not IsPedheadshotReady(headshot) and timeout > 0 do
         Wait(10)
@@ -341,16 +371,19 @@ local function GetMugshot(ped)
     if IsPedheadshotReady(headshot) and IsPedheadshotValid(headshot) then
         local txd = GetPedheadshotTxdString(headshot)
         if txd and txd ~= "" then
-            -- Usar protocolo nui-img:// conforme especificação
+            -- Usar protocolo nui-img:// (pode não funcionar no navegador, mas é o fallback)
             local url = "nui-img://" .. txd .. "/" .. txd
             -- Armazenar handle para limpeza posterior
             table.insert(activeHeadshots, headshot)
+            lib.print.warn(string.format('[mri_Qmultichar] Headshot gerado com método nativo (pode não funcionar): %s', url))
             return url, headshot
         else
+            lib.print.error('[mri_Qmultichar] TXD string vazia')
             UnregisterPedheadshot(headshot)
             return nil, nil
         end
     else
+        lib.print.error('[mri_Qmultichar] Headshot não está pronto ou inválido')
         UnregisterPedheadshot(headshot)
         return nil, nil
     end
@@ -373,12 +406,22 @@ local function getCharacterHeadshot(citizenId)
     -- Obter dados do personagem do servidor
     local result = lib.callback.await('mri_Qmultichar:server:getCharacterPhotoData', false, citizenId)
     if not result or not result.success or not result.data then
+        lib.print.error(string.format('[mri_Qmultichar] Falha ao obter dados do personagem: %s', citizenId))
         return nil
     end
     
     local data = result.data
     local tempPed = nil
-    local model = data.model or `mp_m_freemode_01`
+    
+    -- Determinar modelo baseado no gênero
+    local model = data.model
+    if not model then
+        if data.gender == 1 then
+            model = `mp_f_freemode_01`
+        else
+            model = `mp_m_freemode_01`
+        end
+    end
     
     -- Carregar modelo
     lib.requestModel(model, 10000)
@@ -387,19 +430,22 @@ local function getCharacterHeadshot(citizenId)
         return nil
     end
     
-    -- Criar ped temporário invisível
-    tempPed = CreatePed(4, model, 0.0, 0.0, 0.0, 0.0, false, true)
+    -- Criar ped temporário em localização remota (mas visível para o headshot)
+    local coords = vector3(0.0, 0.0, -200.0) -- Localização remota
+    tempPed = CreatePed(4, model, coords.x, coords.y, coords.z, 0.0, false, true)
     
     if not tempPed or tempPed == 0 then
         SetModelAsNoLongerNeeded(model)
+        lib.print.error('[mri_Qmultichar] Falha ao criar ped temporário')
         return nil
     end
     
-    -- Tornar ped invisível e sem colisão
-    SetEntityVisible(tempPed, false, false)
+    -- Configurar ped (sem colisão, mas VISÍVEL para o headshot funcionar)
     SetEntityCollision(tempPed, false, false)
     FreezeEntityPosition(tempPed, true)
     SetEntityInvincible(tempPed, true)
+    SetEntityVisible(tempPed, true, false) -- IMPORTANTE: ped precisa estar visível para headshot
+    SetBlockingOfNonTemporaryEvents(tempPed, true)
     
     -- Aplicar aparência do personagem
     if data.clothing then
@@ -407,18 +453,47 @@ local function getCharacterHeadshot(citizenId)
             data.clothing = json.decode(data.clothing)
         end
         
+        -- Aguardar um pouco antes de aplicar aparência
+        Wait(200)
+        
+        local appearanceApplied = false
         if exports['illenium-appearance'] then
-            pcall(function()
+            local success = pcall(function()
                 exports['illenium-appearance']:setPedAppearance(tempPed, data.clothing)
+                appearanceApplied = true
             end)
+            if not success then
+                lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com illenium-appearance')
+            end
         elseif exports['fivem-appearance'] then
-            pcall(function()
+            local success = pcall(function()
                 exports['fivem-appearance']:setPedAppearance(tempPed, data.clothing)
+                appearanceApplied = true
             end)
+            if not success then
+                lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com fivem-appearance')
+            end
         end
+        
+        if appearanceApplied then
+            lib.print.info('[mri_Qmultichar] Aparência aplicada com sucesso')
+        end
+    else
+        lib.print.warn('[mri_Qmultichar] Nenhuma aparência fornecida para o personagem')
     end
     
-    Wait(500) -- Aguardar aparência ser aplicada
+    -- Aguardar aparência ser aplicada e ped ser renderizado
+    Wait(1000) -- Aumentar tempo de espera
+    
+    -- Forçar renderização do ped
+    SetEntityAlpha(tempPed, 255, false)
+    
+    -- Verificar se ped ainda existe e está válido
+    if not DoesEntityExist(tempPed) or tempPed == 0 then
+        lib.print.error('[mri_Qmultichar] Ped foi deletado antes de gerar headshot')
+        SetModelAsNoLongerNeeded(model)
+        return nil
+    end
     
     -- Usar função GetMugshot para obter headshot
     local imgUrl, headshotHandle = GetMugshot(tempPed)
@@ -438,41 +513,41 @@ RegisterNUICallback('getSettings', function(data, cb)
     cb({ success = true, settings = settings })
 end)
 
--- Callback para obter foto do personagem
+-- Callback para obter foto do personagem (tenta metadata do idcard primeiro, depois cria ped temporário)
 RegisterNUICallback('getCharacterPhoto', function(data, cb)
     local citizenId = data.citizenid
     if not citizenId then
+        lib.print.error('[mri_Qmultichar] getCharacterPhoto: citizenId não fornecido')
         cb({ success = false, photo = nil })
         return
     end
     
-    -- Tentar primeiro com player online (se disponível)
-    -- Nota: GetPlayerByCitizenId pode não estar disponível em todas as versões do qbx_core
-    local success, player = pcall(function()
-        return exports.qbx_core:GetPlayerByCitizenId(citizenId)
+    lib.print.info(string.format('[mri_Qmultichar] getCharacterPhoto: Buscando foto para %s', citizenId))
+    
+    -- Primeiro tentar buscar foto do servidor (metadata do idcard ou player online)
+    local success, photoUrl = pcall(function()
+        return lib.callback.await('mri_Qmultichar:server:getCharacterPhoto', false, citizenId)
     end)
     
-    if success and player and player.PlayerData and player.PlayerData.source then
-        local targetPed = GetPlayerPed(player.PlayerData.source)
-        if targetPed and targetPed ~= 0 then
-            local imgUrl, headshotHandle = GetMugshot(targetPed)
-            if imgUrl then
-                cb({ success = true, photo = imgUrl })
-                return
-            end
-        end
+    if success and photoUrl then
+        lib.print.info(string.format('[mri_Qmultichar] Foto encontrada no servidor: %s', photoUrl))
+        cb({ success = true, photo = photoUrl })
+        return
     end
     
-    -- Se não estiver online, criar ped temporário
+    -- Se não encontrou no servidor (player offline ou sem mugshot), criar ped temporário
+    lib.print.info(string.format('[mri_Qmultichar] Player offline ou sem mugshot, criando ped temporário para %s...', citizenId))
     CreateThread(function()
         local imgUrl = getCharacterHeadshot(citizenId)
         if imgUrl then
+            lib.print.info(string.format('[mri_Qmultichar] Headshot gerado com sucesso (offline): %s', imgUrl))
             SendNUIMessage({
                 action = 'characterPhotoReady',
                 citizenid = citizenId,
                 photo = imgUrl
             })
         else
+            lib.print.error(string.format('[mri_Qmultichar] Falha ao gerar headshot (offline) para %s', citizenId))
             SendNUIMessage({
                 action = 'characterPhotoReady',
                 citizenid = citizenId,

@@ -45,6 +45,7 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
   const [loading, setLoading] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [showNationalitySelect, setShowNationalitySelect] = useState(false)
+  const [showGenderSelect, setShowGenderSelect] = useState(false)
   const calendarRef = useRef<HTMLDivElement>(null)
 
   // Calendário visual
@@ -109,19 +110,25 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
     }
   }
 
-  // Fechar calendário ao clicar fora
+  // Fechar calendário e selects ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
         setShowCalendar(false)
       }
+      // Fechar selects ao clicar fora
+      const target = event.target as HTMLElement
+      if (!target.closest('.relative')) {
+        setShowNationalitySelect(false)
+        setShowGenderSelect(false)
+      }
     }
 
-    if (showCalendar) {
+    if (showCalendar || showNationalitySelect || showGenderSelect) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showCalendar])
+  }, [showCalendar, showNationalitySelect, showGenderSelect])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -289,45 +296,65 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <label 
                 className="block text-sm font-medium mb-2"
                 style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
               >
                 Gênero
               </label>
-              <select
-                required
-                value={formData.gender}
-                onChange={(e) =>
-                  setFormData({ ...formData, gender: e.target.value })
-                }
-                className="flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  color: theme?.colors.text.primary || '#F8FAFC'
-                }}
-              >
-                <option 
-                  value="0"
+              <div className="relative">
+                <Input
+                  type="text"
+                  required
+                  readOnly
+                  value={formData.gender === '0' ? 'Masculino' : 'Feminino'}
+                  onClick={() => setShowGenderSelect(!showGenderSelect)}
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    color: '#000000'
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                    color: theme?.colors.text.primary || '#F8FAFC',
+                    cursor: 'pointer'
                   }}
-                >
-                  Masculino
-                </option>
-                <option 
-                  value="1"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    color: '#000000'
-                  }}
-                >
-                  Feminino
-                </option>
-              </select>
+                  placeholder="Selecione o gênero"
+                />
+                {showGenderSelect && (
+                  <div 
+                    className="absolute z-50 w-full mt-1 rounded-md border shadow-lg"
+                    style={{
+                      backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
+                    }}
+                  >
+                    <div
+                      onClick={() => {
+                        setFormData({ ...formData, gender: '0' })
+                        setShowGenderSelect(false)
+                      }}
+                      className="px-4 py-2 cursor-pointer hover:bg-white/10"
+                      style={{
+                        color: theme?.colors.text.primary || '#F8FAFC',
+                        backgroundColor: formData.gender === '0' ? theme?.colors.accent.primary + '33' : 'transparent'
+                      }}
+                    >
+                      Masculino
+                    </div>
+                    <div
+                      onClick={() => {
+                        setFormData({ ...formData, gender: '1' })
+                        setShowGenderSelect(false)
+                      }}
+                      className="px-4 py-2 cursor-pointer hover:bg-white/10"
+                      style={{
+                        color: theme?.colors.text.primary || '#F8FAFC',
+                        backgroundColor: formData.gender === '1' ? theme?.colors.accent.primary + '33' : 'transparent'
+                      }}
+                    >
+                      Feminino
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="relative">

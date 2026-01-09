@@ -126,10 +126,15 @@ function App() {
       } else if (data && data.action === 'characterPhotoReady') {
         // Foto do personagem pronta
         if (data.photo) {
+          console.log('[mri_Qmultichar] Foto recebida via characterPhotoReady:', data.citizenid, data.photo)
           setCharacterPhotos(prev => ({
             ...prev,
             [data.citizenid]: data.photo
           }))
+          // Se for o personagem selecionado, atualizar também selectedCharacterPhoto
+          if (selectedCharacter && selectedCharacter.citizenid === data.citizenid) {
+            setSelectedCharacterPhoto(data.photo)
+          }
         }
       }
     }
@@ -435,28 +440,22 @@ function App() {
             maxHeight: '90vh',
             backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
             border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px ${theme?.colors.accent?.primary || '#3B82F6'}10`,
+            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3)`,
           }}
         >
           <div 
             className="p-6 border-b relative overflow-hidden flex-shrink-0"
             style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
           >
-            <div 
-              className="absolute inset-0 opacity-10"
-              style={{
-                background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
-              }}
-            />
             <h2 
-              className="text-2xl font-bold relative z-10 flex items-center gap-2"
+              className="text-2xl font-bold flex items-center gap-2"
               style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
             >
               <User className="w-6 h-6" />
               Character Info
             </h2>
             {selectedCharacter && (
-              <p className="text-sm mt-1 relative z-10" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+              <p className="text-sm mt-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
                 Detalhes do personagem selecionado
               </p>
             )}
@@ -467,10 +466,16 @@ function App() {
               {/* Avatar Header */}
               <div className="flex items-center gap-4 pb-4 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
                 <Avatar className="w-20 h-20 border-4 shadow-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
-                  {selectedCharacterPhoto ? (
+                  {(selectedCharacterPhoto || (selectedCharacter && characterPhotos[selectedCharacter.citizenid])) ? (
                     <AvatarImage 
-                      src={selectedCharacterPhoto} 
+                      src={selectedCharacterPhoto || (selectedCharacter ? characterPhotos[selectedCharacter.citizenid] : '')} 
                       alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                      onError={(e) => {
+                        console.error('[mri_Qmultichar] Erro ao carregar imagem do personagem selecionado:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''], e)
+                      }}
+                      onLoad={() => {
+                        console.log('[mri_Qmultichar] Imagem do personagem selecionado carregada:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''])
+                      }}
                       className="object-cover"
                     />
                   ) : null}

@@ -195,27 +195,43 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
     return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}
 end)
 
--- Callback para obter foto do personagem
+-- Callback para obter foto do personagem (busca do metadata do idcard primeiro, depois gera se necessário)
 lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(source, citizenId)
     if not citizenId then
         return nil
     end
     
-    -- Tentar obter foto usando export do MugShotBase64 se disponível
+    -- Tentar obter mugshot do metadata do idcard
     local success, photoUrl = pcall(function()
         -- Verificar se o player está online
         local player = exports.qbx_core:GetPlayerByCitizenId(citizenId)
         if player and player.PlayerData.source then
-            local ped = GetPlayerPed(player.PlayerData.source)
+            local src = player.PlayerData.source
+            
+            -- Buscar item id_card no inventário do player
+            if exports.ox_inventory then
+                local idCard = exports.ox_inventory:Search(src, 1, 'id_card')
+                if idCard and #idCard > 0 then
+                    -- Pegar o primeiro id_card encontrado
+                    local card = idCard[1]
+                    if card and card.metadata and card.metadata.mugShot then
+                        lib.print.info(string.format('[mri_Qmultichar] Mugshot encontrado no metadata do idcard para %s', citizenId))
+                        return card.metadata.mugShot
+                    end
+                end
+            end
+            
+            -- Se não encontrou no metadata, tentar gerar novo mugshot usando MugShotBase64
+            local ped = GetPlayerPed(src)
             if ped and ped ~= 0 then
-                -- Usar export do MugShotBase64 se disponível
                 if GetResourceState('MugShotBase64') == 'started' then
+                    lib.print.info(string.format('[mri_Qmultichar] Gerando novo mugshot para %s (player online)', citizenId))
                     return exports['MugShotBase64']:GetMugShotBase64(ped, false)
                 end
             end
         end
         
-        -- Se não conseguir, retornar nil (usará fallback no frontend)
+        -- Se player não está online, retornar nil (client vai criar ped temporário)
         return nil
     end)
     
@@ -223,6 +239,7 @@ lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(source
         return photoUrl
     end
     
+    -- Retornar nil para que o client crie ped temporário
     return nil
 end)
 
@@ -427,18 +444,36 @@ lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(so
     -- Obter dados do personagem do banco
     local result = MySQL.single.await('SELECT charinfo FROM players WHERE citizenid = ?', { citizenId })
     if not result then
+        lib.print.error(string.format('[mri_Qmultichar] Personagem não encontrado: %s', citizenId))
         return { success = false, data = nil }
     end
     
     local charinfo = json.decode(result.charinfo)
+    if not charinfo then
+        lib.print.error(string.format('[mri_Qmultichar] Falha ao decodificar charinfo: %s', citizenId))
+        return { success = false, data = nil }
+    end
+    
+    -- Obter dados de aparência (skin/clothing)
     local clothing = charinfo.skin or charinfo
+    local gender = charinfo.gender or 0
+    local model = charinfo.model
+    
+    -- Se não houver modelo, determinar baseado no gênero
+    if not model then
+        if gender == 1 then
+            model = `mp_f_freemode_01`
+        else
+            model = `mp_m_freemode_01`
+        end
+    end
     
     return { 
         success = true, 
         data = {
             clothing = clothing,
-            model = charinfo.model or `mp_m_freemode_01`,
-            gender = charinfo.gender or 0
+            model = model,
+            gender = gender
         }
     }
 end)
