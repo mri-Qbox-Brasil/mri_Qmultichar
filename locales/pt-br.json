@@ -1,0 +1,119 @@
+{
+    "characters": {
+        "title": "Personagens",
+        "select_character": "Selecione um Personagem",
+        "create_character": "Criar Novo Personagem",
+        "delete_character": "Deletar Personagem",
+        "confirm_delete": "Tem certeza que deseja deletar este personagem?",
+        "delete_warning": "Esta ação não pode ser desfeita!",
+        "no_characters": "Nenhum personagem encontrado",
+        "max_characters": "Você atingiu o limite máximo de personagens",
+        "character_deleted": "Personagem deletado com sucesso",
+        "character_created": "Personagem criado com sucesso",
+        "error_creating": "Erro ao criar personagem",
+        "error_deleting": "Erro ao deletar personagem",
+        "error_loading": "Erro ao carregar personagens",
+        "character_info": "Informações do Personagem",
+        "details_subtitle": "Detalhes do personagem selecionado",
+        "job": "Trabalho",
+        "grade": "Grau",
+        "cash": "Dinheiro",
+        "bank": "Banco",
+        "gender": "Gênero",
+        "birthdate": "Data de Nascimento",
+        "unemployed": "Desempregado",
+        "male": "Masculino",
+        "female": "Feminino"
+    },
+    "character_creation": {
+        "title": "Criação de Personagem",
+        "first_name": "Nome",
+        "last_name": "Sobrenome",
+        "date_of_birth": "Data de Nascimento",
+        "gender": "Gênero",
+        "male": "Masculino",
+        "female": "Feminino",
+        "nationality": "Nacionalidade",
+        "create": "Criar",
+        "cancel": "Cancelar",
+        "invalid_name": "Nome inválido",
+        "invalid_date": "Data inválida",
+        "select_gender": "Selecione o gênero",
+        "select_nationality": "Selecione a nacionalidade"
+    },
+    "settings": {
+        "title": "Configurações",
+        "music": "Música",
+        "sounds": "Sons",
+        "language": "Idioma",
+        "theme": "Tema",
+        "close": "Fechar"
+    },
+    "buttons": {
+        "create": "Criar",
+        "delete": "Deletar",
+        "select": "Selecionar",
+        "choose_character": "Selecionar Personagem",
+        "cancel": "Cancelar",
+        "confirm": "Confirmar",
+        "back": "Voltar"
+    },
+    "messages": {
+        "loading": "Carregando...",
+        "saving": "Salvando...",
+        "error": "Ocorreu um erro",
+        "success": "Sucesso",
+        "warning": "Aviso"
+    },
+    "server": {
+        "character_not_found": "Personagem não encontrado",
+        "character_limit_reached": "Limite de personagens atingido",
+        "database_error": "Erro no banco de dados",
+        "invalid_data": "Dados inválidos"
+    },
+    "commands": {
+        "player_not_found": "Jogador não encontrado",
+        "setslots": {
+            "help": "Define o número de slots de personagem de um jogador",
+            "usage": "Uso: /setslots [id] [slots]",
+            "invalid_range": "Número de slots deve estar entre 1 e %{max}",
+            "success_source": "Slots do jogador %{name} definidos para %{slots}",
+            "success_target": "Seus slots de personagem foram alterados para %{slots}",
+            "params": {
+                "id": "ID do jogador",
+                "slots": "Número de slots"
+            }
+        },
+        "getslots": {
+            "help": "Ver o número de slots de personagem de um jogador",
+            "usage": "Uso: /getslots [id]",
+            "result": "Jogador %{name} tem %{slots} slots de personagem"
+        },
+        "addslots": {
+            "help": "Adiciona slots de personagem a um jogador",
+            "usage": "Uso: /addslots [id] [slots]",
+            "invalid_amount": "Número de slots deve ser maior que 0",
+            "success_source": "Adicionados %{amount} slots ao jogador %{name}. Total: %{total}",
+            "success_target": "Você recebeu %{amount} slots adicionais! Total: %{total}",
+            "params": {
+                "id": "ID do jogador",
+                "slots": "Número de slots para adicionar"
+            }
+        },
+        "removeslots": {
+            "help": "Remove slots de personagem de um jogador",
+            "usage": "Uso: /removeslots [id] [slots]",
+            "invalid_amount": "Número de slots deve ser maior que 0",
+            "success_source": "Removidos %{amount} slots do jogador %{name}. Total: %{total}",
+            "success_target": "Você perdeu %{amount} slots. Total: %{total}",
+            "params": {
+                "id": "ID do jogador",
+                "slots": "Número de slots para remover"
+            }
+        },
+        "myslots": {
+            "help": "Ver seu número de slots de personagem",
+            "result": "Você tem %{slots} slots de personagem disponíveis"
+        }
+    }
+}

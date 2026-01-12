@@ -1,6 +1,6 @@
 Config = {}
 
-Config.Locale = 'pt'
+Config.Locale = 'pt-br'
 
 -- Tema a ser utilizado (dark, blue, purple, green, red, orange, mri)
 Config.Theme = 'mri'

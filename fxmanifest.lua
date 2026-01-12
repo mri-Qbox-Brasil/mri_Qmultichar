@@ -6,6 +6,8 @@ description 'Multichar externo com NUI moderna baseada em shadcn/ui'
 author 'MRI'
 version '1.0.0'
 
+ox_lib 'locale'
+
 shared_scripts {
     '@ox_lib/init.lua',
     'config.lua',
@@ -28,6 +30,7 @@ ui_page 'html/dist/index.html'
 files {
     'html/index.html',
     'html/dist/**/*',
+    'locales/*.json',
 }
 
 provide 'qb-multichar'

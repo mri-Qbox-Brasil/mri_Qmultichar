@@ -191,8 +191,18 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         autoplay = true,
     }
     
-    -- Retornar personagens, slots, tema, música, configurações e temas disponíveis
-    return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}
+    -- Carregar locales
+    local localeFile = LoadResourceFile(GetCurrentResourceName(), string.format('locales/%s.json', Config.Locale or 'pt-br'))
+    local locales = {}
+    if localeFile then
+        local success, decoded = pcall(json.decode, localeFile)
+        if success and decoded then
+            locales = decoded
+        end
+    end
+    
+    -- Retornar personagens, slots, tema, música, configurações, temas disponíveis e locales
+    return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}, locales
 end)
 
 -- Callback para obter foto do personagem (busca do metadata do idcard primeiro, depois gera se necessário)

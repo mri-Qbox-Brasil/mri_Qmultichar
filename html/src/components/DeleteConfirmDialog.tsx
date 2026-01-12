@@ -28,9 +28,10 @@ interface DeleteConfirmDialogProps {
   onConfirm: () => void
   characterName?: string
   theme: Theme | null
+  locales?: any
 }
 
-export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, theme }: DeleteConfirmDialogProps) {
+export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, theme, locales = {} }: DeleteConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
@@ -50,11 +51,12 @@ export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, t
             </DialogTitle>
           </div>
           <DialogDescription style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}>
-            Tem certeza que deseja deletar o personagem{' '}
+            {locales.characters?.confirm_delete || 'Tem certeza que deseja deletar este personagem?'} {' '}
             <span style={{ color: theme?.colors.text.primary || '#F8FAFC', fontWeight: 'bold' }}>
-              {characterName || 'este personagem'}
+              {characterName || ''}
             </span>
-            ? Esta ação não pode ser desfeita.
+            {' '}
+            {locales.characters?.delete_warning || 'Esta ação não pode ser desfeita!'}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -68,7 +70,7 @@ export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, t
               backgroundColor: 'transparent'
             }}
           >
-            Cancelar
+            {locales.buttons?.cancel || 'Cancelar'}
           </Button>
           <Button
             type="button"
@@ -78,7 +80,7 @@ export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, t
               color: '#FFFFFF'
             }}
           >
-            Deletar
+            {locales.buttons?.delete || 'Deletar'}
           </Button>
         </DialogFooter>
       </DialogContent>

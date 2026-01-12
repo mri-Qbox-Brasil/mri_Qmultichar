@@ -32,9 +32,10 @@ interface CharacterCreationProps {
   theme: Theme | null
   onCancel: () => void
   onSuccess: () => void
+  locales?: any
 }
 
-export function CharacterCreation({ slot, theme, onCancel, onSuccess }: CharacterCreationProps) {
+export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = {} }: CharacterCreationProps) {
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -350,7 +351,7 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess }: Characte
                         backgroundColor: formData.gender === '1' ? theme?.colors.accent.primary + '33' : 'transparent'
                       }}
                     >
-                      Feminino
+                      {locales.character_creation?.female || 'Feminino'}
                     </div>
                   </div>
                 )}

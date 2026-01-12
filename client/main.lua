@@ -252,7 +252,7 @@ end
 -- Callback para obter personagens
 RegisterNUICallback('getCharacters', function(_, cb)
     lib.print.info('[mri_Qmultichar] Callback getCharacters chamado')
-    local characters, amount, theme, music, allowThemeChange, availableThemes = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    local characters, amount, theme, music, allowThemeChange, availableThemes, locales = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
     
     if characters then
         lib.print.info(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, amount or 3))
@@ -263,13 +263,23 @@ RegisterNUICallback('getCharacters', function(_, cb)
             theme = theme, 
             music = music, 
             allowThemeChange = allowThemeChange,
-            availableThemes = availableThemes or {}
+            availableThemes = availableThemes or {},
+            locales = locales or {}
         })
     else
         lib.print.error('[mri_Qmultichar] Erro ao carregar personagens')
         local themeName = Config.Theme or 'dark'
         local themeData = Config.Themes[themeName] or Config.Themes.dark
         local musicConfig = Config.Music or { enabled = false, url = '', volume = 0.3, loop = true, autoplay = true }
+        -- Carregar locales mesmo em caso de erro
+        local localeFile = LoadResourceFile(GetCurrentResourceName(), string.format('locales/%s.json', Config.Locale or 'pt-br'))
+        local locales = {}
+        if localeFile then
+            local success, decoded = pcall(json.decode, localeFile)
+            if success and decoded then
+                locales = decoded
+            end
+        end
         cb({ 
             success = false, 
             characters = {}, 
@@ -277,7 +287,8 @@ RegisterNUICallback('getCharacters', function(_, cb)
             theme = themeData, 
             music = musicConfig, 
             allowThemeChange = Config.AllowThemeChange or true,
-            availableThemes = Config.Themes or {}
+            availableThemes = Config.Themes or {},
+            locales = locales
         })
     end
 end)
@@ -1006,8 +1017,8 @@ RegisterNUICallback('deleteCharacter', function(data, cb)
         Citizen.Wait(500)
         
         lib.notify({
-            title = 'Sucesso',
-            description = 'Personagem deletado com sucesso',
+            title = locale('messages.success'),
+            description = locale('characters.character_deleted'),
             type = 'success'
         })
         
@@ -1019,11 +1030,11 @@ RegisterNUICallback('deleteCharacter', function(data, cb)
         cb({ success = true })
     else
         lib.notify({
-            title = 'Erro',
-            description = 'Falha ao deletar personagem',
+            title = locale('messages.error'),
+            description = locale('characters.error_deleting'),
             type = 'error'
         })
-        cb({ success = false, message = 'Falha ao deletar personagem' })
+        cb({ success = false, message = locale('characters.error_deleting') })
     end
 end)
 

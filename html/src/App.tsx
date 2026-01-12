@@ -92,6 +92,7 @@ function App() {
   const [availableThemes, setAvailableThemes] = useState<{ [key: string]: Theme }>({})
   const [streamerMode, setStreamerMode] = useState(false)
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
+  const [locales, setLocales] = useState<any>({})
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -176,6 +177,9 @@ function App() {
           }
           if (data.availableThemes) {
             setAvailableThemes(data.availableThemes)
+          }
+          if (data.locales) {
+            setLocales(data.locales)
           }
           // Selecionar primeiro personagem se existir
           if (data.characters && data.characters.length > 0) {
@@ -355,7 +359,7 @@ function App() {
                 style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
               >
                 <User className="w-6 h-6" />
-                My Characters
+                {locales.characters?.title || 'My Characters'}
               </h2>
               <div className="flex items-center gap-3 flex-wrap">
                 <Badge 
@@ -375,7 +379,7 @@ function App() {
                       className="w-1.5 h-1.5 rounded-full animate-pulse"
                       style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
                     />
-                    <span>Nenhum personagem criado</span>
+                    <span>{locales.characters?.no_characters || 'Nenhum personagem criado'}</span>
                   </div>
                 )}
               </div>
@@ -452,7 +456,7 @@ function App() {
               style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
             >
               <User className="w-6 h-6" />
-              Character Info
+              {locales.characters?.character_info || 'Character Info'}
             </h2>
             {selectedCharacter && (
               <p className="text-sm mt-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
@@ -526,11 +530,11 @@ function App() {
                     <div className="flex items-center gap-2 mb-2">
                       <Briefcase className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
                       <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                        Job
+                        {locales.characters?.job || 'Job'}
                       </span>
                     </div>
                     <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      {selectedCharacter.job?.label || 'UNEMPLOYED'}
+                      {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
                     </p>
                   </div>
                 </div>
@@ -551,7 +555,7 @@ function App() {
                     <div className="flex items-center gap-2 mb-2">
                       <Crown className="w-4 h-4" style={{ color: '#FBBF24' }} />
                       <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                        Grade
+                        {locales.characters?.grade || 'Grade'}
                       </span>
                     </div>
                     <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
@@ -574,7 +578,7 @@ function App() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Wallet className="w-4 h-4 text-green-400" />
-                    <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">Cash</span>
+                    <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">{locales.characters?.cash || 'Cash'}</span>
                   </div>
                   <p className="font-bold text-xl text-green-300">
                     ${formatNumber(selectedCharacter.money?.cash || 0)}
@@ -589,7 +593,7 @@ function App() {
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Building2 className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">Bank</span>
+                    <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">{locales.characters?.bank || 'Bank'}</span>
                   </div>
                   <p className="font-bold text-xl text-blue-300">
                     ${formatNumber(selectedCharacter.money?.bank || 0)}
@@ -607,10 +611,10 @@ function App() {
                   }}
                 >
                   <span className="text-xs uppercase tracking-wider opacity-70 block mb-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    Gender
+                    {locales.characters?.gender || 'Gender'}
                   </span>
                   <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                    {selectedCharacter.charinfo.gender === 0 ? 'Male' : 'Female'}
+                    {selectedCharacter.charinfo.gender === 0 ? (locales.characters?.male || 'Male') : (locales.characters?.female || 'Female')}
                   </p>
                   </div>
                 <div 
@@ -623,7 +627,7 @@ function App() {
                   <div className="flex items-center gap-1 mb-1">
                     <Calendar className="w-3 h-3 opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
                     <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                      Birthdate
+                      {locales.characters?.birthdate || 'Birthdate'}
                     </span>
                   </div>
                   <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
@@ -675,7 +679,7 @@ function App() {
                     }}
                   />
                   <Play className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                  <span className="relative z-10 text-sm tracking-wide">Choose Character</span>
+                  <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.choose_character || 'Choose Character'}</span>
                 </button>
                 <button
                   onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
@@ -710,7 +714,7 @@ function App() {
                     }}
                   />
                   <Trash2 className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                  <span className="relative z-10 text-sm tracking-wide">Delete Character</span>
+                  <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.delete || 'Delete Character'}</span>
                 </button>
               </div>
             </div>
