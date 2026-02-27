@@ -60,14 +60,14 @@ export function GlitchName({ name, theme }: GlitchNameProps) {
           }
         }
         setDisplayText(randomText)
-        
+
         frame++
-        
+
         // Revelar próximo caractere
         if (frame % revealSpeed === 0 && currentIndex < targetLength) {
           currentIndex++
         }
-        
+
         animationRef.current = requestAnimationFrame(animate)
       } else {
         // Mostrar o nome final
@@ -118,9 +118,9 @@ export function GlitchName({ name, theme }: GlitchNameProps) {
             0 0 70px ${accentColor},
             0 0 100px ${accentColor}80
           `,
-          letterSpacing: '0.3em',
-          fontFamily: '"Courier New", monospace',
-          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          fontFamily: 'Inter, "Outfit", system-ui, -apple-system, sans-serif',
+          textTransform: 'none',
           animation: isAnimating ? 'glitch 0.15s infinite, pulse 2s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
           userSelect: 'none',
           whiteSpace: 'nowrap',

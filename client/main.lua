@@ -96,15 +96,40 @@ end
 local function openMultichar()
     if isNuiOpen then return end
     
-    lib.print.info('[mri_Qmultichar] Abrindo NUI...')
+    lib.print.info('[mri_Qmultichar] Preparando dados para abrir NUI...')
+    
+    -- Obter todos os dados necessários antes de abrir para evitar flicker
+    local characters, amount, theme, music, allowThemeChange, availableThemes, locales = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    
+    -- Obter e aplicar configurações de efeitos
+    local settings = lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
+    if settings then
+        playerSettings.cameraEffects = settings.cameraEffects ~= false
+        playerSettings.streamerMode = settings.streamerMode == true
+        playerSettings.theme = settings.theme or 'dark'
+        playerSettings.cameraEffectType = settings.cameraEffectType or 'cinema'
+        
+        -- Aplicar efeitos de câmera
+        if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
+            exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects, playerSettings.cameraEffectType)
+        end
+    end
+
     isNuiOpen = true
-    -- Carregar configurações do player
-    loadPlayerSettings()
     SetNuiFocus(true, true)
+    
+    lib.print.info('[mri_Qmultichar] Abrindo NUI com dados carregados')
     SendNUIMessage({
         action = 'open',
+        characters = characters,
+        amount = amount or 3,
+        theme = theme,
+        music = music,
+        allowThemeChange = allowThemeChange,
+        availableThemes = availableThemes or {},
+        locales = locales or {},
+        streamerMode = playerSettings.streamerMode
     })
-    lib.print.info('[mri_Qmultichar] NUI aberta')
 end
 
 -- Função para limpar todos os headshots ativos

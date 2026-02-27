@@ -161,29 +161,29 @@ Config.Themes = {
         }
     },
 
-    -- Tema MRI (Inspirado na logo - baseado na imagem)
+    -- Tema MRI (Refinado conforme a imagem)
     mri = {
         name = 'MRI',
         colors = {
-            background = 'rgba(5, 46, 22, 0.95)', -- green-950 (fundo escuro da imagem)
-            card = 'rgba(20, 83, 45, 0.9)', -- green-900 (painéis verdes escuros)
-            border = 'rgba(34, 197, 94, 0.3)', -- green-500 (brilho verde claro)
+            background = 'rgba(9, 9, 11, 0.98)', -- Quase preto (Zinc-950)
+            card = 'rgba(18, 18, 22, 0.95)', -- Dark Zinc/Slate
+            border = 'rgba(39, 39, 42, 0.5)', -- Zinc-800
             text = {
-                primary = '#F0FDF4', -- green-50 (texto principal claro - FOFDF4)
-                secondary = '#DCFCE7', -- green-100 (texto secundário - DCFCE7)
-                muted = '#BBF7D0', -- green-200 (texto muted - BBF7D0)
+                primary = '#FFFFFF', -- Branco puro
+                secondary = '#A1A1AA', -- Zinc-400
+                muted = '#71717A', -- Zinc-500
             },
             accent = {
-                primary = '#22C55E', -- green-500 (destaque verde - 22CBE/22C55E)
-                secondary = '#16A34A', -- green-600 (hover/destaque - 16A344)
-                success = '#22C55E', -- green-500
-                danger = '#EF4444', -- red-500 (vermelho da imagem)
+                primary = '#00FFA3', -- Neon Green (Vibrante)
+                secondary = '#00D186', -- Neon Green Darker
+                success = '#00FFA3',
+                danger = '#FF3B3B', -- Vermelho vibrante
             },
             button = {
-                primary = '#22C55E', -- green-500 (22CBE)
-                primaryHover = '#16A34A', -- green-600 (16A344)
-                danger = '#EF4444', -- red-500
-                dangerHover = '#DC2626', -- red-600
+                primary = '#00FFA3', -- Fundo neon
+                primaryHover = '#00D186',
+                danger = '#FF3B3B',
+                dangerHover = '#E63535',
             }
         }
     },

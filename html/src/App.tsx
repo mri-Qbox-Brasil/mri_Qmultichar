@@ -99,8 +99,36 @@ function App() {
       const data = event.data
       
       if (data && data.action === 'open') {
-        setIsOpen(true)
-        loadCharacters()
+        // Aplicar dados iniciais recebidos para evitar flicker
+        if (data.locales) setLocales(data.locales);
+        if (data.availableThemes) setAvailableThemes(data.availableThemes);
+        if (data.theme) setTheme(data.theme);
+        if (data.music) setMusic(data.music);
+        if (data.allowThemeChange !== undefined) setAllowThemeChange(data.allowThemeChange);
+        if (data.streamerMode !== undefined) setStreamerMode(data.streamerMode);
+        
+        if (data.characters) {
+          setCharacters(data.characters);
+          setMaxSlots(data.amount || 3);
+          if (data.characters.length > 0) {
+            setSelectedCharacter(data.characters[0]);
+            // Atualizar preview do primeiro personagem
+            const firstChar = data.characters[0];
+            const jobName = firstChar.job?.name || (firstChar.job?.label ? firstChar.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed');
+            fetch(`https://${GetParentResourceName()}/getPreviewData`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                citizenid: firstChar.citizenid,
+                job: jobName
+              }),
+            }).catch(console.error);
+          }
+        } else {
+          loadCharacters();
+        }
+        
+        setIsOpen(true);
       } else if (data && data.action === 'close') {
         setIsOpen(false)
         setSelectedCharacter(null)
