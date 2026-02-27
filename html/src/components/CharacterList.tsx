@@ -43,11 +43,11 @@ interface CharacterListProps {
   characterPhotos?: Record<string, string>
 }
 
-export function CharacterList({ 
-  characters, 
-  maxSlots, 
+export function CharacterList({
+  characters,
+  maxSlots,
   selectedCharacter,
-  onSelect, 
+  onSelect,
   onCreate,
   theme,
   characterPhotos: externalPhotos = {}
@@ -91,6 +91,7 @@ export function CharacterList({
       setLoadingPhotos(true)
       const photos: Record<string, string> = {}
       for (const character of characters) {
+        if (characterPhotos[character.citizenid]) continue;
         try {
           const response = await fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
             method: 'POST',
@@ -109,7 +110,7 @@ export function CharacterList({
       setCharacterPhotos(prev => ({ ...prev, ...photos }))
       setLoadingPhotos(false)
     }
-    
+
     if (characters.length > 0) {
       loadPhotos()
     } else {
@@ -121,7 +122,7 @@ export function CharacterList({
     // Buscar personagem pelo cid que corresponde exatamente ao slot
     const byCid = characters.find(char => char.cid === slot)
     if (byCid) return byCid
-    
+
     // Se não encontrou por cid, verificar se há personagem disponível
     // que não está sendo usado em outro slot
     const usedCitizenIds = new Set<string>()
@@ -131,7 +132,7 @@ export function CharacterList({
         if (char) usedCitizenIds.add(char.citizenid)
       }
     })
-    
+
     // Encontrar primeiro personagem não usado
     for (const char of characters) {
       if (!usedCitizenIds.has(char.citizenid)) {
@@ -141,7 +142,7 @@ export function CharacterList({
         }
       }
     }
-    
+
     return undefined
   }
 
@@ -192,23 +193,23 @@ export function CharacterList({
               "animate-in fade-in slide-in-from-left-4"
             )}
             style={{
-              backgroundColor: isSelected 
-                ? `${theme?.colors.accent.primary || '#3B82F6'}15` 
+              backgroundColor: isSelected
+                ? `${theme?.colors.accent.primary || '#3B82F6'}15`
                 : isEmpty
-                ? 'rgba(255, 255, 255, 0.02)'
-                : 'rgba(255, 255, 255, 0.04)',
-              borderColor: isSelected 
-                ? `${theme?.colors.accent.primary || '#3B82F6'}60` 
+                  ? 'rgba(255, 255, 255, 0.02)'
+                  : 'rgba(255, 255, 255, 0.04)',
+              borderColor: isSelected
+                ? `${theme?.colors.accent.primary || '#3B82F6'}60`
                 : theme?.colors.border || 'rgba(51, 65, 85, 0.3)',
               animationDelay: `${(slot - 1) * 0.08}s`,
-              boxShadow: isSelected 
-                ? `0 8px 32px ${theme?.colors.accent.primary || '#3B82F6'}20` 
+              boxShadow: isSelected
+                ? `0 8px 32px ${theme?.colors.accent.primary || '#3B82F6'}20`
                 : '0 4px 16px rgba(0, 0, 0, 0.1)',
             }}
           >
             {/* Glow effect on hover */}
             {isSelected && (
-              <div 
+              <div
                 className="absolute inset-0 rounded-2xl opacity-20 blur-xl -z-10"
                 style={{
                   background: `radial-gradient(circle, ${theme?.colors.accent.primary || '#3B82F6'} 0%, transparent 70%)`,
@@ -221,18 +222,18 @@ export function CharacterList({
               {loadingPhotos && character ? (
                 <Skeleton className="w-16 h-16 rounded-full" />
               ) : (
-                <Avatar 
+                <Avatar
                   className={cn(
                     "w-16 h-16 border-2 transition-all duration-300",
                     "group-hover:scale-110 group-hover:rotate-3",
-                    isEmpty 
+                    isEmpty
                       ? "bg-gradient-to-br from-slate-700/50 to-slate-800/50 border-slate-600/30"
                       : `bg-gradient-to-br ${getAvatarGradient(slot - 1)} border-white/20 shadow-lg`
                   )}
                 >
                   {character && characterPhotos[character.citizenid] ? (
-                    <AvatarImage 
-                      src={characterPhotos[character.citizenid]} 
+                    <AvatarImage
+                      src={characterPhotos[character.citizenid]}
                       alt={`${character.charinfo.firstname} ${character.charinfo.lastname}`}
                       className="object-cover w-full h-full"
                       onError={(e) => {
@@ -243,7 +244,7 @@ export function CharacterList({
                       }}
                     />
                   ) : null}
-                  <AvatarFallback 
+                  <AvatarFallback
                     className={cn(
                       "text-lg font-bold",
                       isEmpty ? "text-slate-400" : "text-white"
@@ -257,10 +258,10 @@ export function CharacterList({
                   </AvatarFallback>
                 </Avatar>
               )}
-              
+
               {/* Status indicator */}
               {character && !loadingPhotos && (
-                <div 
+                <div
                   className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center shadow-lg animate-pulse"
                   style={{
                     backgroundColor: theme?.colors.accent.primary || '#3B82F6',
@@ -275,7 +276,7 @@ export function CharacterList({
             {/* Info */}
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2">
-                <h3 
+                <h3
                   className={cn(
                     "font-bold text-base truncate transition-colors",
                     isSelected && "bg-gradient-to-r bg-clip-text text-transparent"
@@ -286,16 +287,16 @@ export function CharacterList({
                     color: theme?.colors.text.primary || '#FFFFFF'
                   }}
                 >
-                  {character 
+                  {character
                     ? `${character.charinfo.firstname} ${character.charinfo.lastname}`
                     : `Slot ${slot}`
                   }
                 </h3>
               </div>
-              
+
               {character ? (
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Badge 
+                  <Badge
                     variant="outline"
                     className="text-xs px-2 py-0.5 border-opacity-30 bg-opacity-10"
                     style={{
@@ -307,7 +308,7 @@ export function CharacterList({
                     <Briefcase className="w-3 h-3 mr-1" />
                     {character.job?.label || 'Unemployed'}
                   </Badge>
-                  
+
                   <div className="flex items-center gap-1 text-xs opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
                     <Wallet className="w-3 h-3" />
                     <span>${(character.money?.cash || 0).toLocaleString()}</span>
@@ -315,11 +316,11 @@ export function CharacterList({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div 
+                  <div
                     className="w-1.5 h-1.5 rounded-full animate-pulse"
                     style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
                   />
-                  <p 
+                  <p
                     className="text-sm"
                     style={{ color: theme?.colors.text.muted || '#94A3B8' }}
                   >
@@ -330,22 +331,22 @@ export function CharacterList({
             </div>
 
             {/* Arrow indicator */}
-            <div 
+            <div
               className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
                 "opacity-0 group-hover:opacity-100 group-hover:translate-x-1",
                 isSelected && "opacity-100"
               )}
               style={{
-                backgroundColor: isSelected 
-                  ? `${theme?.colors.accent.primary || '#3B82F6'}20` 
+                backgroundColor: isSelected
+                  ? `${theme?.colors.accent.primary || '#3B82F6'}20`
                   : 'rgba(255, 255, 255, 0.05)',
               }}
             >
-              <svg 
-                className="w-5 h-5" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
                 style={{ color: theme?.colors.accent.primary || '#3B82F6' }}
               >

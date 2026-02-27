@@ -29,7 +29,7 @@
         "title": "Criação de Personagem",
         "first_name": "Nome",
         "last_name": "Sobrenome",
-        "date_of_birth": "Data de Nascimento",
+        "date_of_birth": "Data",
         "gender": "Gênero",
         "male": "Masculino",
         "female": "Feminino",

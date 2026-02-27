@@ -15,7 +15,7 @@ Config.AllowThemeChange = true
 -- Deixe vazio ou nil para desabilitar música
 Config.Music = {
     enabled = true, -- Ativar/desativar música
-    url = 'https://youtu.be/fregObNcHC8?si=_qk-0wCV-HJ4BVTQ', -- URL ou caminho do arquivo (ex: 'sounds/background.mp3' ou 'https://example.com/music.mp3')
+    url = 'https://youtu.be/xAgUYyosqVM?si=G511dtT_olRxkkSZ', -- URL ou caminho do arquivo (ex: 'sounds/background.mp3' ou 'https://example.com/music.mp3')
     volume = 0.3, -- Volume (0.0 a 1.0)
     loop = true, -- Repetir música
     autoplay = true, -- Tentar iniciar automaticamente (YouTube geralmente inicia mutado até interação do usuário)

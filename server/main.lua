@@ -205,43 +205,29 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
     return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}, locales
 end)
 
--- Callback para obter foto do personagem (busca do metadata do idcard primeiro, depois gera se necessário)
+-- Callback para obter foto do personagem (gera se o player estiver online)
 lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(source, citizenId)
     if not citizenId then
         return nil
     end
     
-    -- Tentar obter mugshot do metadata do idcard
+    -- Tentar obter mugshot apenas se o player estiver online para garantir que é a aparência atual
     local success, photoUrl = pcall(function()
-        -- Verificar se o player está online
+        -- Verificar se o player está online e usar o ped atual dele
         local player = exports.qbx_core:GetPlayerByCitizenId(citizenId)
         if player and player.PlayerData.source then
             local src = player.PlayerData.source
-            
-            -- Buscar item id_card no inventário do player
-            if exports.ox_inventory then
-                local idCard = exports.ox_inventory:Search(src, 1, 'id_card')
-                if idCard and #idCard > 0 then
-                    -- Pegar o primeiro id_card encontrado
-                    local card = idCard[1]
-                    if card and card.metadata and card.metadata.mugShot then
-                        lib.print.info(string.format('[mri_Qmultichar] Mugshot encontrado no metadata do idcard para %s', citizenId))
-                        return card.metadata.mugShot
-                    end
-                end
-            end
-            
-            -- Se não encontrou no metadata, tentar gerar novo mugshot usando MugShotBase64
             local ped = GetPlayerPed(src)
+            
             if ped and ped ~= 0 then
                 if GetResourceState('MugShotBase64') == 'started' then
-                    lib.print.info(string.format('[mri_Qmultichar] Gerando novo mugshot para %s (player online)', citizenId))
+                    lib.print.info(string.format('[mri_Qmultichar] Gerando novo mugshot atualizado para %s (player online)', citizenId))
                     return exports['MugShotBase64']:GetMugShotBase64(ped, false)
                 end
             end
         end
         
-        -- Se player não está online, retornar nil (client vai criar ped temporário)
+        -- Se player não está online, retornar nil (client vai criar ped temporário com dados de preview)
         return nil
     end)
     
@@ -272,6 +258,36 @@ end)
 local function doesTableExist(tableName)
     local result = MySQL.single.await('SELECT COUNT(*) as count FROM information_schema.TABLES WHERE TABLE_NAME = ? AND TABLE_SCHEMA in (SELECT DATABASE())', {tableName})
     return result and result.count > 0
+end
+
+-- Função para deletar dados adicionais de um personagem (Export)
+local function DeleteCharacterData(citizenId)
+    if not citizenId then return false end
+    
+    if Config.DeleteTables and #Config.DeleteTables > 0 then
+        local deleteQueries = {}
+        
+        for i = 1, #Config.DeleteTables do
+            local tableConfig = Config.DeleteTables[i]
+            if type(tableConfig) == 'table' and #tableConfig >= 2 then
+                local tableName = tableConfig[1]
+                local columnName = tableConfig[2]
+                
+                if doesTableExist(tableName) then
+                    deleteQueries[#deleteQueries + 1] = {
+                        query = string.format('DELETE FROM `%s` WHERE `%s` = ?', tableName, columnName),
+                        values = {citizenId}
+                    }
+                end
+            end
+        end
+        
+        if #deleteQueries > 0 then
+            local deleteSuccess = MySQL.transaction.await(deleteQueries)
+            return deleteSuccess
+        end
+    end
+    return true
 end
 
 -- Callback customizado para deletar personagem com tabelas adicionais
@@ -316,38 +332,11 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         return false
     end
     
+    
     -- Deletar tabelas adicionais configuradas
-    if Config.DeleteTables and #Config.DeleteTables > 0 then
-        local deleteQueries = {}
-        
-        for i = 1, #Config.DeleteTables do
-            local tableConfig = Config.DeleteTables[i]
-            if type(tableConfig) == 'table' and #tableConfig >= 2 then
-                local tableName = tableConfig[1]
-                local columnName = tableConfig[2]
-                
-                -- Verificar se a tabela existe
-                if doesTableExist(tableName) then
-                    deleteQueries[#deleteQueries + 1] = {
-                        query = string.format('DELETE FROM `%s` WHERE `%s` = ?', tableName, columnName),
-                        values = {citizenId}
-                    }
-                else
-                    lib.print.warn(string.format('[mri_Qmultichar] Tabela %s não existe no banco de dados. Pulando...', tableName))
-                end
-            end
-        end
-        
-        -- Executar queries de deleção adicionais
-        if #deleteQueries > 0 then
-            local deleteSuccess = MySQL.transaction.await(deleteQueries)
-            if not deleteSuccess then
-                lib.print.error(string.format('[mri_Qmultichar] Falha ao deletar dados adicionais do personagem. CitizenID: %s', citizenId))
-                -- Não retornar false aqui, pois o personagem principal já foi deletado
-            else
-                lib.print.info(string.format('[mri_Qmultichar] Dados adicionais deletados com sucesso. CitizenID: %s, Tabelas: %d', citizenId, #deleteQueries))
-            end
-        end
+    local additionalDeleteSuccess = DeleteCharacterData(citizenId)
+    if not additionalDeleteSuccess then
+        lib.print.error(string.format('[mri_Qmultichar] Falha ao deletar dados adicionais do personagem via export. CitizenID: %s', citizenId))
     end
     
     -- Aguardar um pouco para garantir que a deleção foi processada completamente
@@ -488,7 +477,34 @@ lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(so
     }
 end)
 
+-- Função para adicionar uma tabela à lista de deleção (Export)
+local function AddDeleteTable(tableName, columnName)
+    if not tableName or not columnName then
+        return false
+    end
+    
+    if not Config.DeleteTables then
+        Config.DeleteTables = {}
+    end
+    
+    -- Verificar se já existe
+    for i = 1, #Config.DeleteTables do
+        if Config.DeleteTables[i][1] == tableName then
+            Config.DeleteTables[i][2] = columnName
+            lib.print.info(string.format('[mri_Qmultichar] Tabela de deleção atualizada: %s (%s)', tableName, columnName))
+            return true
+        end
+    end
+    
+    table.insert(Config.DeleteTables, {tableName, columnName})
+    lib.print.info(string.format('[mri_Qmultichar] Nova tabela de deleção adicionada: %s (%s)', tableName, columnName))
+    return true
+end
+
 -- Exportar funções
 exports('getPlayerSlots', getPlayerSlots)
 exports('setPlayerSlots', setPlayerSlots)
+exports('SetCharacterSlots', setPlayerSlots) -- Alias solicitado
+exports('AddDeleteTable', AddDeleteTable)
+exports('DeleteCharacterData', DeleteCharacterData)
 

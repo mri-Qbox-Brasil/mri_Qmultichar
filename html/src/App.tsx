@@ -95,9 +95,16 @@ function App() {
   const [locales, setLocales] = useState<any>({})
 
   useEffect(() => {
+    // Sinalizar que a NUI está carregada e pronta
+    fetch(`https://${GetParentResourceName()}/nuiStarted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).catch(console.error);
+
     const handleMessage = (event: MessageEvent) => {
       const data = event.data
-      
+
       if (data && data.action === 'open') {
         // Aplicar dados iniciais recebidos para evitar flicker
         if (data.locales) setLocales(data.locales);
@@ -106,7 +113,7 @@ function App() {
         if (data.music) setMusic(data.music);
         if (data.allowThemeChange !== undefined) setAllowThemeChange(data.allowThemeChange);
         if (data.streamerMode !== undefined) setStreamerMode(data.streamerMode);
-        
+
         if (data.characters) {
           setCharacters(data.characters);
           setMaxSlots(data.amount || 3);
@@ -118,7 +125,7 @@ function App() {
             fetch(`https://${GetParentResourceName()}/getPreviewData`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
+              body: JSON.stringify({
                 citizenid: firstChar.citizenid,
                 job: jobName
               }),
@@ -127,7 +134,7 @@ function App() {
         } else {
           loadCharacters();
         }
-        
+
         setIsOpen(true);
       } else if (data && data.action === 'close') {
         setIsOpen(false)
@@ -169,7 +176,7 @@ function App() {
     }
 
     window.addEventListener('message', handleMessage)
-    
+
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
@@ -217,7 +224,7 @@ function App() {
             fetch(`https://${GetParentResourceName()}/getPreviewData`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
+              body: JSON.stringify({
                 citizenid: data.characters[0].citizenid,
                 job: jobName
               }),
@@ -261,7 +268,7 @@ function App() {
 
   const confirmDelete = () => {
     if (!characterToDelete) return
-    
+
     fetch(`https://${GetParentResourceName()}/deleteCharacter`, {
       method: 'POST',
       headers: {
@@ -299,7 +306,7 @@ function App() {
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character)
     setShowCreation(false)
-    
+
     // Carregar foto do personagem
     fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
       method: 'POST',
@@ -315,7 +322,7 @@ function App() {
         }
       })
       .catch(() => setSelectedCharacterPhoto(null))
-    
+
     // Enviar evento para atualizar preview
     const jobName = character.job?.name || (character.job?.label ? character.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed')
     fetch(`https://${GetParentResourceName()}/getPreviewData`, {
@@ -323,7 +330,7 @@ function App() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         citizenid: character.citizenid,
         job: jobName
       }),
@@ -358,31 +365,31 @@ function App() {
     <div className="fixed inset-0" style={{ background: 'transparent', pointerEvents: 'none' }}>
       <div className="h-full flex items-center justify-center gap-6" style={{ pointerEvents: 'none', background: 'transparent', padding: '2rem' }}>
         {/* Left Panel - My Characters */}
-        <div 
+        <div
           className={cn(
             "w-96 rounded-2xl overflow-hidden flex flex-col",
             "animate-in slide-in-from-left-4 fade-in duration-500"
           )}
-          style={{ 
-            pointerEvents: 'auto', 
+          style={{
+            pointerEvents: 'auto',
             maxHeight: '90vh',
             backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
             border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
             boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px ${theme?.colors.accent?.primary || '#3B82F6'}10`,
           }}
         >
-          <div 
+          <div
             className="p-6 border-b relative overflow-hidden flex-shrink-0"
             style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
           >
-            <div 
+            <div
               className="absolute inset-0 opacity-10"
               style={{
                 background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
               }}
             />
             <div className="relative z-10">
-              <h2 
+              <h2
                 className="text-2xl font-bold mb-2 flex items-center gap-2"
                 style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
               >
@@ -390,7 +397,7 @@ function App() {
                 {locales.characters?.title || 'My Characters'}
               </h2>
               <div className="flex items-center gap-3 flex-wrap">
-                <Badge 
+                <Badge
                   variant="outline"
                   className="px-3 py-1"
                   style={{
@@ -403,7 +410,7 @@ function App() {
                 </Badge>
                 {characters.length === 0 && (
                   <div className="flex items-center gap-1.5 text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    <div 
+                    <div
                       className="w-1.5 h-1.5 rounded-full animate-pulse"
                       style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
                     />
@@ -427,10 +434,10 @@ function App() {
         </div>
 
         {/* Center - Character Preview - ÁREA COMPLETAMENTE TRANSPARENTE PARA MOSTRAR O JOGO */}
-        <div 
-          className="flex-1 preview-area" 
-          style={{ 
-            background: 'transparent !important', 
+        <div
+          className="flex-1 preview-area"
+          style={{
+            background: 'transparent !important',
             pointerEvents: 'none',
             position: 'relative',
             minHeight: '600px',
@@ -442,7 +449,7 @@ function App() {
         >
           {/* Efeito de nome com glitch acima do preview */}
           {selectedCharacter && (
-            <div style={{ 
+            <div style={{
               position: 'absolute',
               top: '20px',
               left: '50%',
@@ -457,29 +464,29 @@ function App() {
               />
             </div>
           )}
-          
+
           {/* Esta área é completamente transparente - o jogo renderiza o preview do personagem aqui */}
         </div>
 
         {/* Right Panel - Character Info */}
-        <div 
+        <div
           className={cn(
             "w-96 rounded-2xl shadow-2xl",
             "animate-in slide-in-from-right-4 fade-in duration-500"
           )}
-          style={{ 
-            pointerEvents: 'auto', 
+          style={{
+            pointerEvents: 'auto',
             maxHeight: '90vh',
             backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
             border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
             boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3)`,
           }}
         >
-          <div 
+          <div
             className="p-6 border-b relative overflow-hidden flex-shrink-0"
             style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
           >
-            <h2 
+            <h2
               className="text-2xl font-bold flex items-center gap-2"
               style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
             >
@@ -494,292 +501,292 @@ function App() {
           </div>
           <div className="overflow-hidden" style={{ maxHeight: 'calc(90vh - 100px)' }}>
             {selectedCharacter ? (
-            <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Avatar Header */}
-              <div className="flex items-center gap-4 pb-4 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
-                <Avatar className="w-20 h-20 border-4 shadow-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
-                  {(selectedCharacterPhoto || (selectedCharacter && characterPhotos[selectedCharacter.citizenid])) ? (
-                    <AvatarImage 
-                      src={selectedCharacterPhoto || (selectedCharacter ? characterPhotos[selectedCharacter.citizenid] : '')} 
-                      alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
-                      onError={(e) => {
-                        console.error('[mri_Qmultichar] Erro ao carregar imagem do personagem selecionado:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''], e)
+              <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Avatar Header */}
+                <div className="flex items-center gap-4 pb-4 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
+                  <Avatar className="w-20 h-20 border-4 shadow-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
+                    {(selectedCharacterPhoto || (selectedCharacter && characterPhotos[selectedCharacter.citizenid])) ? (
+                      <AvatarImage
+                        src={selectedCharacterPhoto || (selectedCharacter ? characterPhotos[selectedCharacter.citizenid] : '')}
+                        alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                        onError={(e) => {
+                          console.error('[mri_Qmultichar] Erro ao carregar imagem do personagem selecionado:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''], e)
+                        }}
+                        onLoad={() => {
+                          console.log('[mri_Qmultichar] Imagem do personagem selecionado carregada:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''])
+                        }}
+                        className="object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback className="text-2xl font-bold text-white">
+                      {selectedCharacter.charinfo.firstname[0]}{selectedCharacter.charinfo.lastname[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3
+                      className="text-xl font-bold mb-1 bg-gradient-to-r bg-clip-text text-transparent"
+                      style={{
+                        backgroundImage: `linear-gradient(to right, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
                       }}
-                      onLoad={() => {
-                        console.log('[mri_Qmultichar] Imagem do personagem selecionado carregada:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''])
+                    >
+                      {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
+                    </h3>
+                    <Badge
+                      variant="outline"
+                      className="mt-1"
+                      style={{
+                        borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                        color: theme?.colors.text.secondary || '#CBD5E1',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
                       }}
-                      className="object-cover"
-                    />
-                  ) : null}
-                  <AvatarFallback className="text-2xl font-bold text-white">
-                    {selectedCharacter.charinfo.firstname[0]}{selectedCharacter.charinfo.lastname[0]}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 
-                    className="text-xl font-bold mb-1 bg-gradient-to-r bg-clip-text text-transparent"
+                    >
+                      <Shield className="w-3 h-3 mr-1" />
+                      {selectedCharacter.citizenid}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Job & Grade */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div
+                    className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
                     style={{
-                      backgroundImage: `linear-gradient(to right, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
-                    }}
-                  >
-                    {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
-                  </h3>
-                  <Badge 
-                    variant="outline"
-                    className="mt-1"
-                    style={{
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                      color: theme?.colors.text.secondary || '#CBD5E1',
                       backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
                     }}
                   >
-                    <Shield className="w-3 h-3 mr-1" />
-                    {selectedCharacter.citizenid}
-                  </Badge>
-                </div>
-                </div>
-                
-              {/* Job & Grade */}
-                <div className="grid grid-cols-2 gap-3">
-                <div 
-                  className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  }}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
-                    style={{
-                      background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
-                    }}
-                  />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Briefcase className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                        {locales.characters?.job || 'Job'}
-                      </span>
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                      style={{
+                        background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Briefcase className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                        <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                          {locales.characters?.job || 'Job'}
+                        </span>
+                      </div>
+                      <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                        {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                      </p>
                     </div>
-                    <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
-                    </p>
                   </div>
-                </div>
-                <div 
-                  className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  }}
-                >
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                  <div
+                    className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
                     style={{
-                      background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
                     }}
-                  />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Crown className="w-4 h-4" style={{ color: '#FBBF24' }} />
-                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                        {locales.characters?.grade || 'Grade'}
-                      </span>
+                  >
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                      style={{
+                        background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown className="w-4 h-4" style={{ color: '#FBBF24' }} />
+                        <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                          {locales.characters?.grade || 'Grade'}
+                        </span>
+                      </div>
+                      <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                        {typeof selectedCharacter.job?.grade === 'object'
+                          ? selectedCharacter.job.grade.name
+                          : selectedCharacter.job?.grade || '0'}
+                      </p>
                     </div>
-                    <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      {typeof selectedCharacter.job?.grade === 'object' 
-                        ? selectedCharacter.job.grade.name 
-                        : selectedCharacter.job?.grade || '0'}
-                    </p>
-                  </div>
                   </div>
                 </div>
 
-              {/* Money Cards */}
+                {/* Money Cards */}
                 <div className="grid grid-cols-2 gap-3">
-                <div 
-                  className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
-                    borderColor: 'rgba(34, 197, 94, 0.3)',
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Wallet className="w-4 h-4 text-green-400" />
-                    <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">{locales.characters?.cash || 'Cash'}</span>
+                  <div
+                    className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
+                      borderColor: 'rgba(34, 197, 94, 0.3)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Wallet className="w-4 h-4 text-green-400" />
+                      <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">{locales.characters?.cash || 'Cash'}</span>
+                    </div>
+                    <p className="font-bold text-xl text-green-300">
+                      ${formatNumber(selectedCharacter.money?.cash || 0)}
+                    </p>
                   </div>
-                  <p className="font-bold text-xl text-green-300">
-                    ${formatNumber(selectedCharacter.money?.cash || 0)}
-                  </p>
-                </div>
-                <div 
-                  className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
-                    borderColor: 'rgba(59, 130, 246, 0.3)',
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Building2 className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">{locales.characters?.bank || 'Bank'}</span>
-                  </div>
-                  <p className="font-bold text-xl text-blue-300">
-                    ${formatNumber(selectedCharacter.money?.bank || 0)}
-                  </p>
+                  <div
+                    className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
+                      borderColor: 'rgba(59, 130, 246, 0.3)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">{locales.characters?.bank || 'Bank'}</span>
+                    </div>
+                    <p className="font-bold text-xl text-blue-300">
+                      ${formatNumber(selectedCharacter.money?.bank || 0)}
+                    </p>
                   </div>
                 </div>
 
-              {/* Additional Info */}
+                {/* Additional Info */}
                 <div className="grid grid-cols-2 gap-3">
-                <div 
-                  className="p-3 rounded-lg border"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  }}
-                >
-                  <span className="text-xs uppercase tracking-wider opacity-70 block mb-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    {locales.characters?.gender || 'Gender'}
-                  </span>
-                  <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                    {selectedCharacter.charinfo.gender === 0 ? (locales.characters?.male || 'Male') : (locales.characters?.female || 'Female')}
-                  </p>
-                  </div>
-                <div 
-                  className="p-3 rounded-lg border"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  }}
-                >
-                  <div className="flex items-center gap-1 mb-1">
-                    <Calendar className="w-3 h-3 opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-                    <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                      {locales.characters?.birthdate || 'Birthdate'}
+                  <div
+                    className="p-3 rounded-lg border"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                    }}
+                  >
+                    <span className="text-xs uppercase tracking-wider opacity-70 block mb-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                      {locales.characters?.gender || 'Gender'}
                     </span>
+                    <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                      {selectedCharacter.charinfo.gender === 0 ? (locales.characters?.male || 'Male') : (locales.characters?.female || 'Female')}
+                    </p>
                   </div>
-                  <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                    {selectedCharacter.charinfo.birthdate || 'N/A'}
-                  </p>
+                  <div
+                    className="p-3 rounded-lg border"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                    }}
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <Calendar className="w-3 h-3 opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
+                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                        {locales.characters?.birthdate || 'Birthdate'}
+                      </span>
+                    </div>
+                    <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                      {selectedCharacter.charinfo.birthdate || 'N/A'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Separador */}
-              <div 
-                className="my-6 h-px"
-                style={{
-                  background: `linear-gradient(to right, transparent, ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}, transparent)`,
-                }}
-              />
-              
-              {/* Action Buttons */}
-              <div className="pt-2 space-y-3">
-                <button
-                  onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
-                  className={cn(
-                    "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
-                    "hover:scale-[1.02] flex items-center justify-center gap-2.5",
-                    "relative overflow-hidden group border",
-                    "active:scale-[0.98]"
-                  )}
-                  style={{ 
-                    background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`,
-                    borderColor: `${theme?.colors.button.primary || '#3B82F6'}80`,
-                    color: '#FFFFFF',
-                    boxShadow: `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
-                    e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.primary || '#3B82F6'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1) translateY(0)'
-                    e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`
-                  }}
-                >
-                  {/* Efeito de brilho sutil */}
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(circle at center, ${theme?.colors.button.primary || '#3B82F6'} 0%, transparent 70%)`,
-                    }}
-                  />
-                  <Play className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                  <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.choose_character || 'Choose Character'}</span>
-                </button>
-                <button
-                  onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
-                  className={cn(
-                    "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
-                    "hover:scale-[1.02] flex items-center justify-center gap-2.5",
-                    "relative overflow-hidden group border",
-                    "active:scale-[0.98]"
-                  )}
-                  style={{ 
-                    background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`,
-                    borderColor: `${theme?.colors.button.danger || '#EF4444'}80`,
-                    color: '#FFFFFF',
-                    boxShadow: `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
-                    e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.danger || '#EF4444'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1) translateY(0)'
-                    e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`
-                  }}
-                >
-                  {/* Efeito de brilho sutil */}
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(circle at center, ${theme?.colors.button.danger || '#EF4444'} 0%, transparent 70%)`,
-                    }}
-                  />
-                  <Trash2 className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                  <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.delete || 'Delete Character'}</span>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 text-center animate-in fade-in duration-500">
-              <div 
-                className="rounded-xl p-12 border relative overflow-hidden group"
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                }}
-              >
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+
+                {/* Separador */}
+                <div
+                  className="my-6 h-px"
                   style={{
-                    background: `radial-gradient(circle, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, transparent 70%)`,
+                    background: `linear-gradient(to right, transparent, ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}, transparent)`,
                   }}
                 />
-                <div className="relative z-10">
-                  <div 
-                    className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+
+                {/* Action Buttons */}
+                <div className="pt-2 space-y-3">
+                  <button
+                    onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
+                    className={cn(
+                      "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
+                      "hover:scale-[1.02] flex items-center justify-center gap-2.5",
+                      "relative overflow-hidden group border",
+                      "active:scale-[0.98]"
+                    )}
                     style={{
-                      backgroundColor: `${theme?.colors.accent?.primary || '#3B82F6'}20`,
-                      border: `2px solid ${theme?.colors.accent?.primary || '#3B82F6'}40`,
+                      background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`,
+                      borderColor: `${theme?.colors.button.primary || '#3B82F6'}80`,
+                      color: '#FFFFFF',
+                      boxShadow: `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
+                      e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.primary || '#3B82F6'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                      e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`
                     }}
                   >
-                    <User className="w-10 h-10" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-                  </div>
-                  <p className="text-lg font-bold mb-2" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                    Select a character
-                  </p>
-                  <p className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    or create a new one
-                  </p>
+                    {/* Efeito de brilho sutil */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+                      style={{
+                        background: `radial-gradient(circle at center, ${theme?.colors.button.primary || '#3B82F6'} 0%, transparent 70%)`,
+                      }}
+                    />
+                    <Play className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
+                    <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.choose_character || 'Choose Character'}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
+                    className={cn(
+                      "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
+                      "hover:scale-[1.02] flex items-center justify-center gap-2.5",
+                      "relative overflow-hidden group border",
+                      "active:scale-[0.98]"
+                    )}
+                    style={{
+                      background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`,
+                      borderColor: `${theme?.colors.button.danger || '#EF4444'}80`,
+                      color: '#FFFFFF',
+                      boxShadow: `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
+                      e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.danger || '#EF4444'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1) translateY(0)'
+                      e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`
+                    }}
+                  >
+                    {/* Efeito de brilho sutil */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+                      style={{
+                        background: `radial-gradient(circle at center, ${theme?.colors.button.danger || '#EF4444'} 0%, transparent 70%)`,
+                      }}
+                    />
+                    <Trash2 className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
+                    <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.delete || 'Delete Character'}</span>
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-6 text-center animate-in fade-in duration-500">
+                <div
+                  className="rounded-xl p-12 border relative overflow-hidden group"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
+                    style={{
+                      background: `radial-gradient(circle, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, transparent 70%)`,
+                    }}
+                  />
+                  <div className="relative z-10">
+                    <div
+                      className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+                      style={{
+                        backgroundColor: `${theme?.colors.accent?.primary || '#3B82F6'}20`,
+                        border: `2px solid ${theme?.colors.accent?.primary || '#3B82F6'}40`,
+                      }}
+                    >
+                      <User className="w-10 h-10" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                    </div>
+                    <p className="text-lg font-bold mb-2" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                      Select a character
+                    </p>
+                    <p className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                      or create a new one
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

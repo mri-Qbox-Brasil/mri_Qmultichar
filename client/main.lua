@@ -20,6 +20,9 @@ local isInCharacterCreation = false
 local lastDeleteTime = 0
 local DELETE_COOLDOWN = 3000 -- 3 segundos de cooldown após deletar (aumentado para garantir sincronização)
 
+-- Flag para saber se a NUI está carregada e pronta (recebida via post message)
+local isNuiReady = false
+
 -- Sistema de Mugshot Nativo - Armazenar headshots ativos para limpeza posterior
 local activeHeadshots = {}
 
@@ -370,20 +373,24 @@ local function GetMugshot(ped)
         Wait(100)
     end
 
-    -- Usar MugShotBase64 se disponível (retorna base64 que funciona no navegador)
+    -- Tentar usar MugShotBase64 para gerar imagem real (se o resource estiver ativo)
     if GetResourceState('MugShotBase64') == 'started' then
-        local success, base64 = pcall(function()
-            return exports['MugShotBase64']:GetMugShotBase64(ped, false)
-        end)
-        if success and base64 then
-            -- Garantir que a string base64 tenha o prefixo correto
-            if not string.find(base64, "^data:image") then
-                base64 = "data:image/png;base64," .. base64
+        -- Verificar se o ped existe e está visível antes de pedir o mugshot
+        if DoesEntityExist(ped) and IsEntityVisible(ped) then
+            -- Pequeno delay para garantir que o ped está totalmente "assentado" no mundo
+            Wait(100)
+            
+            local base64 = exports['MugShotBase64']:GetMugShotBase64(ped, false)
+            if base64 and base64 ~= "" then
+                -- Garantir que a string base64 tenha o prefixo correto
+                if not string.find(base64, "^data:image") then
+                    base64 = "data:image/png;base64," .. base64
+                end
+                lib.print.info('[mri_Qmultichar] Headshot gerado com sucesso usando MugShotBase64')
+                return base64, nil
+            else
+                lib.print.warn('[mri_Qmultichar] MugShotBase64 falhou ou não retornou dados')
             end
-            lib.print.info('[mri_Qmultichar] Headshot gerado com sucesso usando MugShotBase64')
-            return base64, nil
-        else
-            lib.print.warn('[mri_Qmultichar] MugShotBase64 falhou ou não retornou dados')
         end
     else
         lib.print.warn('[mri_Qmultichar] MugShotBase64 não está disponível, usando método nativo')
@@ -437,27 +444,16 @@ local function CleanupHeadshots()
     activeHeadshots = {}
 end
 
--- Função para criar ped temporário e obter headshot (similar ao renzu)
+-- Função para criar ped temporário e obter headshot (sincronizado com preview ped)
 local function getCharacterHeadshot(citizenId)
-    -- Obter dados do personagem do servidor
-    local result = lib.callback.await('mri_Qmultichar:server:getCharacterPhotoData', false, citizenId)
-    if not result or not result.success or not result.data then
-        lib.print.error(string.format('[mri_Qmultichar] Falha ao obter dados do personagem: %s', citizenId))
+    -- Obter dados do personagem via qbx_core (mesma fonte do preview 3D)
+    local clothing, model = lib.callback.await('qbx_core:server:getPreviewPedData', false, citizenId)
+    if not model or not clothing then
+        lib.print.error(string.format('[mri_Qmultichar] Falha ao obter dados de preview do qbx_core para: %s', citizenId))
         return nil
     end
     
-    local data = result.data
     local tempPed = nil
-    
-    -- Determinar modelo baseado no gênero
-    local model = data.model
-    if not model then
-        if data.gender == 1 then
-            model = `mp_f_freemode_01`
-        else
-            model = `mp_m_freemode_01`
-        end
-    end
     
     -- Carregar modelo
     lib.requestModel(model, 10000)
@@ -484,42 +480,36 @@ local function getCharacterHeadshot(citizenId)
     SetBlockingOfNonTemporaryEvents(tempPed, true)
     
     -- Aplicar aparência do personagem
-    if data.clothing then
-        if type(data.clothing) == 'string' then
-            data.clothing = json.decode(data.clothing)
+    local appearanceData = type(clothing) == 'string' and json.decode(clothing) or clothing
+    
+    -- Aguardar um pouco antes de aplicar aparência
+    Wait(200)
+    
+    local appearanceApplied = false
+    if exports['illenium-appearance'] then
+        local success = pcall(function()
+            exports['illenium-appearance']:setPedAppearance(tempPed, appearanceData)
+            appearanceApplied = true
+        end)
+        if not success then
+            lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com illenium-appearance')
         end
-        
-        -- Aguardar um pouco antes de aplicar aparência
-        Wait(200)
-        
-        local appearanceApplied = false
-        if exports['illenium-appearance'] then
-            local success = pcall(function()
-                exports['illenium-appearance']:setPedAppearance(tempPed, data.clothing)
-                appearanceApplied = true
-            end)
-            if not success then
-                lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com illenium-appearance')
-            end
-        elseif exports['fivem-appearance'] then
-            local success = pcall(function()
-                exports['fivem-appearance']:setPedAppearance(tempPed, data.clothing)
-                appearanceApplied = true
-            end)
-            if not success then
-                lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com fivem-appearance')
-            end
+    elseif exports['fivem-appearance'] then
+        local success = pcall(function()
+            exports['fivem-appearance']:setPedAppearance(tempPed, appearanceData)
+            appearanceApplied = true
+        end)
+        if not success then
+            lib.print.error('[mri_Qmultichar] Falha ao aplicar aparência com fivem-appearance')
         end
-        
-        if appearanceApplied then
-            lib.print.info('[mri_Qmultichar] Aparência aplicada com sucesso')
-        end
-    else
-        lib.print.warn('[mri_Qmultichar] Nenhuma aparência fornecida para o personagem')
+    end
+    
+    if appearanceApplied then
+        lib.print.info('[mri_Qmultichar] Aparência aplicada com sucesso para headshot')
     end
     
     -- Aguardar aparência ser aplicada e ped ser renderizado
-    Wait(1000) -- Aumentar tempo de espera
+    Wait(1000) 
     
     -- Forçar renderização do ped
     SetEntityAlpha(tempPed, 255, false)
@@ -1098,6 +1088,22 @@ RegisterNUICallback('close', function(_, cb)
     cb({ success = true })
 end)
 
+-- Callback para sinalizar que a NUI carregou e está pronta para receber dados
+RegisterNUICallback('nuiStarted', function(_, cb)
+    local wasNotReady = not isNuiReady
+    isNuiReady = true
+    lib.print.info('[mri_Qmultichar] NUI sinalizou que está pronta (Handshake OK)')
+    
+    -- Se a NUI ficou pronta DEPOIS que tentamos abrir (fallback), mandar os dados novamente
+    if wasNotReady and isNuiOpen then
+        lib.print.info('[mri_Qmultichar] NUI pronta após fallback, reenviando dados de abertura...')
+        isNuiOpen = false -- Resetar temporariamente para permitir o novo openMultichar
+        openMultichar()
+    end
+    
+    cb({ success = true })
+end)
+
 -- Evento quando jogador faz logout
 RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
     if GetInvokingResource() then return end
@@ -1187,13 +1193,30 @@ CreateThread(function()
             
             Wait(1000)
             lib.print.info('[mri_Qmultichar] Abrindo NUI...')
+            
+            -- AGUARDAR NUI ESTAR PRONTA (Handshake) antes de abrir de fato
+            -- Isso evita que ela tente abrir antes do React estar montado
+            -- Aumentado para 30 segundos para conexões/PCs lentos na primeira carga
+            local timeout = 300 
+            while not isNuiReady and timeout > 0 do
+                Wait(100)
+                timeout = timeout - 1
+                if timeout % 50 == 0 then
+                    lib.print.info('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
+                end
+            end
+            
+            if not isNuiReady then
+                lib.print.warn('[mri_Qmultichar] NUI demorou demais para sinalizar pronta, tentando abrir mesmo assim...')
+            end
+            
             openMultichar()
             
             -- Garantir que a NUI abra mesmo se houver delay
             CreateThread(function()
                 Wait(2000)
                 if not isNuiOpen then
-                    lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando novamente...')
+                    lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando abrir novamente...')
                     openMultichar()
                 end
             end)

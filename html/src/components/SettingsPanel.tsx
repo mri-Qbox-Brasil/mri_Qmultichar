@@ -32,9 +32,9 @@ interface SettingsPanelProps {
   allowThemeChange?: boolean
 }
 
-export function SettingsPanel({ 
-  theme, 
-  availableThemes, 
+export function SettingsPanel({
+  theme,
+  availableThemes,
   onClose,
   onThemeChange,
   allowThemeChange = true
@@ -76,7 +76,7 @@ export function SettingsPanel({
     fetch(`https://${GetParentResourceName()}/updateSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         theme: themeName,
         streamerMode
       }),
@@ -88,7 +88,7 @@ export function SettingsPanel({
     fetch(`https://${GetParentResourceName()}/updateSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         theme: selectedTheme,
         streamerMode: enabled
       }),
@@ -107,7 +107,7 @@ export function SettingsPanel({
           zIndex: 99998,
         }}
       />
-      <div 
+      <div
         className={cn(
           "fixed bottom-20 right-6 w-80 rounded-2xl shadow-2xl",
           "animate-in slide-in-from-bottom-4 fade-in duration-300"
@@ -120,168 +120,168 @@ export function SettingsPanel({
           zIndex: 99999,
         }}
       >
-      <div 
-        className="p-6 border-b relative overflow-hidden"
-        style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
-      >
-        <div 
-          className="absolute inset-0 opacity-10"
-          style={{
-            background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
-          }}
-        />
-        <div className="relative z-10 flex items-center justify-between">
-          <h2 
-            className="text-xl font-bold flex items-center gap-2"
-            style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
-          >
-            <Settings className="w-5 h-5" />
-            Configurações
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-white/10 transition-colors"
-            style={{ color: theme?.colors.text.muted || '#94A3B8' }}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-        {/* Modo Streamer */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            {streamerMode ? (
-              <Music2 className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-            ) : (
-              <Music className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-            )}
-            <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-              Modo Streamer
-            </h3>
-          </div>
-          <div 
-            className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+        <div
+          className="p-6 border-b relative overflow-hidden"
+          style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+        >
+          <div
+            className="absolute inset-0 opacity-10"
             style={{
-              backgroundColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}15` : 'rgba(255, 255, 255, 0.05)',
-              borderColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}60` : theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+              background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
             }}
-            onClick={() => handleStreamerMode(!streamerMode)}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="block font-medium mb-1" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                  {streamerMode ? 'Música Desativada' : 'Música Ativada'}
-                </span>
-                <span className="text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                  {streamerMode ? 'A música será desativada para não aparecer no stream' : 'A música tocará normalmente'}
-                </span>
-              </div>
-              <div 
-                className={cn(
-                  "w-12 h-6 rounded-full relative transition-all",
-                  streamerMode ? "bg-blue-500" : "bg-gray-600"
-                )}
-              >
-                <div 
-                  className={cn(
-                    "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-lg",
-                    streamerMode ? "left-6" : "left-0.5"
-                  )}
-                />
-              </div>
-            </div>
+          />
+          <div className="relative z-10 flex items-center justify-between">
+            <h2
+              className="text-xl font-bold flex items-center gap-2"
+              style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
+            >
+              <Settings className="w-5 h-5" />
+              Configurações
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+              style={{ color: theme?.colors.text.muted || '#94A3B8' }}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* Temas */}
-        {allowThemeChange && (
+        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+          {/* Modo Streamer */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Palette className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+              {streamerMode ? (
+                <Music2 className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+              ) : (
+                <Music className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+              )}
               <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                Temas
+                Modo Streamer
               </h3>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(availableThemes).map(([themeName, themeData]) => (
-                <button
-                  key={themeName}
-                  onClick={() => handleThemeChange(themeName)}
+            <div
+              className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
+              style={{
+                backgroundColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}15` : 'rgba(255, 255, 255, 0.05)',
+                borderColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}60` : theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+              }}
+              onClick={() => handleStreamerMode(!streamerMode)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="block font-medium mb-1" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                    {streamerMode ? 'Ativado' : 'Desativado'}
+                  </span>
+                  <span className="text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                    {streamerMode ? 'A música será desativada para não aparecer no stream' : 'A música tocará normalmente'}
+                  </span>
+                </div>
+                <div
                   className={cn(
-                    "p-4 rounded-lg border transition-all hover:scale-105 text-left relative overflow-hidden",
-                    selectedTheme === themeName && "ring-2"
+                    "w-12 h-6 rounded-full relative transition-all",
+                    streamerMode ? "bg-blue-500" : "bg-gray-600"
                   )}
-                  style={{
-                    backgroundColor: selectedTheme === themeName 
-                      ? `${themeData.colors.accent?.primary || '#3B82F6'}20` 
-                      : themeData.colors.card || 'rgba(255, 255, 255, 0.05)',
-                    borderColor: selectedTheme === themeName
-                      ? themeData.colors.accent?.primary || '#3B82F6'
-                      : themeData.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    boxShadow: selectedTheme === themeName
-                      ? `0 0 0 2px ${themeData.colors.accent?.primary || '#3B82F6'}40`
-                      : 'none',
-                  }}
                 >
-                  {/* Preview das cores do tema */}
-                  <div className="flex gap-1 mb-2">
-                    <div 
-                      className="flex-1 h-3 rounded"
-                      style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
-                    />
-                    <div 
-                      className="flex-1 h-3 rounded"
-                      style={{ backgroundColor: themeData.colors.accent?.secondary || '#8B5CF6' }}
-                    />
-                    <div 
-                      className="flex-1 h-3 rounded"
-                      style={{ backgroundColor: themeData.colors.border || 'rgba(51, 65, 85, 0.5)' }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span 
-                      className="text-sm font-semibold capitalize"
-                      style={{ color: themeData.colors.text?.primary || '#F8FAFC' }}
-                    >
-                      {themeData.name || themeName}
-                    </span>
-                    {selectedTheme === themeName && (
-                      <div 
-                        className="w-5 h-5 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
-                      >
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
+                  <div
+                    className={cn(
+                      "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-lg",
+                      streamerMode ? "left-6" : "left-0.5"
                     )}
-                  </div>
-                </button>
-              ))}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        )}
 
-        {!allowThemeChange && (
-          <div 
-            className="p-4 rounded-lg border"
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <EyeOff className="w-4 h-4" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-              <span className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                A mudança de tema foi desativada pelo servidor
-              </span>
+          {/* Temas */}
+          {allowThemeChange && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
+                  Temas
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(availableThemes).map(([themeName, themeData]) => (
+                  <button
+                    key={themeName}
+                    onClick={() => handleThemeChange(themeName)}
+                    className={cn(
+                      "p-4 rounded-lg border transition-all hover:scale-105 text-left relative overflow-hidden",
+                      selectedTheme === themeName && "ring-2"
+                    )}
+                    style={{
+                      backgroundColor: selectedTheme === themeName
+                        ? `${themeData.colors.accent?.primary || '#3B82F6'}20`
+                        : themeData.colors.card || 'rgba(255, 255, 255, 0.05)',
+                      borderColor: selectedTheme === themeName
+                        ? themeData.colors.accent?.primary || '#3B82F6'
+                        : themeData.colors.border || 'rgba(51, 65, 85, 0.5)',
+                      boxShadow: selectedTheme === themeName
+                        ? `0 0 0 2px ${themeData.colors.accent?.primary || '#3B82F6'}40`
+                        : 'none',
+                    }}
+                  >
+                    {/* Preview das cores do tema */}
+                    <div className="flex gap-1 mb-2">
+                      <div
+                        className="flex-1 h-3 rounded"
+                        style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
+                      />
+                      <div
+                        className="flex-1 h-3 rounded"
+                        style={{ backgroundColor: themeData.colors.accent?.secondary || '#8B5CF6' }}
+                      />
+                      <div
+                        className="flex-1 h-3 rounded"
+                        style={{ backgroundColor: themeData.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-sm font-semibold capitalize"
+                        style={{ color: themeData.colors.text?.primary || '#F8FAFC' }}
+                      >
+                        {themeData.name || themeName}
+                      </span>
+                      {selectedTheme === themeName && (
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
+                        >
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {!allowThemeChange && (
+            <div
+              className="p-4 rounded-lg border"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <EyeOff className="w-4 h-4" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
+                <span className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
+                  A mudança de tema foi desativada pelo servidor
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   )
 }
