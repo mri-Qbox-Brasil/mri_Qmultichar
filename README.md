@@ -15,19 +15,8 @@ Multichar externo para Qbox Framework com NUI moderna baseada em shadcn/ui, Reac
 
 1. Coloque a pasta `mri_Qmultichar` na sua pasta `resources`
 
-2. **IMPORTANTE**: Entre na pasta `html` para instalar as dependências:
-   ```bash
-   cd html
-   npm install
-   ```
 
-3. Compile o frontend:
-   ```bash
-   npm run build
-   ```
-   Isso criará a pasta `dist/` com os arquivos compilados.
-
-4. Configure o `qbx_core` para usar multichar externo:
+2. Configure o `qbx_core` para usar multichar externo:
    ```lua
    -- Em qbx_core/config/client.lua
    characters = {
@@ -35,7 +24,7 @@ Multichar externo para Qbox Framework com NUI moderna baseada em shadcn/ui, Reac
    }
    ```
 
-5. Adicione ao seu `server.cfg`:
+3. Adicione ao seu `server.cfg`:
    ```
    ensure mri_Qmultichar
    ```
