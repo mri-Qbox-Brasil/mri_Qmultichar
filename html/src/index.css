@@ -2,77 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
+:root {
+  --background: 240 10% 4% !important;
+  --foreground: 0 0% 98% !important;
+  --card: 240 10% 4% !important;
+  --card-foreground: 0 0% 98% !important;
+  --popover: 240 10% 4% !important;
+  --popover-foreground: 0 0% 98% !important;
+  --primary: 160 100% 45% !important;
+  --primary-foreground: 160 100% 10% !important;
+  --secondary: 240 5% 15% !important;
+  --secondary-foreground: 0 0% 98% !important;
+  --muted: 240 5% 15% !important;
+  --muted-foreground: 240 5% 65% !important;
+  --accent: 160 100% 45% !important;
+  --accent-foreground: 160 100% 10% !important;
+  --destructive: 0 84% 60% !important;
+  --destructive-foreground: 0 0% 98% !important;
+  --border: 240 5% 15% !important;
+  --input: 240 5% 15% !important;
+  --ring: 160 100% 45% !important;
+  --radius: 1.5rem !important;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-}
-
+/* RESET E ESTABILIZAÇÃO DE BUFFER (TRUQUE DO 1%) */
 * {
   margin: 0;
   padding: 0;
@@ -80,214 +33,62 @@
 }
 
 html, body, #root {
+  background-color: rgba(0, 0, 0, 0.01) !important; /* Força o buffer de cor */
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: transparent !important;
-  margin: 0;
-  padding: 0;
 }
 
-/* Garantir que a área do preview seja completamente transparente */
-.preview-area {
-  background: transparent !important;
-  pointer-events: none !important;
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-/* Garantir que elementos filhos não bloqueiem a visão */
-.preview-area * {
-  pointer-events: none !important;
+.mri-app-shell {
   background: transparent !important;
 }
 
-/* Custom scrollbar */
-.overflow-y-auto::-webkit-scrollbar {
-  width: 6px;
+/* BLINDAGEM DE COR DOS CARDS E ACELERAÇÃO DE HARDWARE */
+[class*="MriCard"], 
+[class*="MriCardHeader"], 
+[class*="MriCardContent"], 
+.bg-black, 
+.bg-card, 
+.bg-background,
+.mri-panel-chrome {
+  background-color: #0f1115 !important;
+  background: #0f1115 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid hsl(var(--border) / 0.5) !important;
+  transform: translateZ(0) !important; /* Força renderização via GPU */
 }
 
-.overflow-y-auto::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+/* FORÇAR VISIBILIDADE DO SCROLLAREA */
+[data-radix-scroll-area-viewport], .mri-scroll-area {
+  background: transparent !important;
+  opacity: 1 !important;
+  transform: translateZ(0) !important;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb {
+/* SCROLLBARS */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  border-radius: 10px;
 }
 
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Animações e transições */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInFromBottom {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
-}
-
-/* Transições suaves */
+/* DESATIVAR TRANSIÇÕES LENTAS */
 * {
-  transition-property: background-color, border-color, color, fill, stroke, transform, box-shadow;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
+  transition-duration: 0.01s !important;
 }
 
-/* Smooth scroll */
-.overflow-y-auto {
-  scroll-behavior: smooth;
+/* FORÇAR CENTRALIZAÇÃO DE TODOS OS MODAIS E DIÁLOGOS */
+[role="dialog"], .mri-modal {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) translateZ(0) !important;
+  margin: 0 !important;
 }
-
-/* Animations from tailwindcss-animate */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slide-in-from-left {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-in-from-right {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-in-from-bottom {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes zoom-in-95 {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-.fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-
-.slide-in-from-left-4 {
-  animation: slide-in-from-left 0.3s ease-out;
-  transform: translateX(-1rem);
-}
-
-.slide-in-from-right-4 {
-  animation: slide-in-from-right 0.3s ease-out;
-  transform: translateX(1rem);
-}
-
-.slide-in-from-bottom-4 {
-  animation: slide-in-from-bottom 0.3s ease-out;
-  transform: translateY(1rem);
-}
-
-.zoom-in-95 {
-  animation: zoom-in-95 0.2s ease-out;
-}
-
-/* Garantir que o container principal não bloqueie */
-#root > div {
-  background: transparent !important;
-}
-

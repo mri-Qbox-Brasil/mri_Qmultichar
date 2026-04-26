@@ -1,41 +1,89 @@
-import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Button } from './ui/button'
-import { Input } from './ui/input'
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
+import {
+  MriButton,
+  MriCard,
+  MriCardContent,
+  MriCardHeader,
+  MriInput,
+  MriModal,
+  MriSectionHeader,
+} from '@mriqbox/ui-kit'
+import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Globe, ShieldPlus, User, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { nationalities } from '../data/nationalities'
+import type { UiTheme } from '../lib/mriTheme'
 
 declare function GetParentResourceName(): string
 
-interface Theme {
-  name: string;
-  colors: {
-    background: string;
-    card: string;
-    border: string;
-    text: {
-      primary: string;
-      secondary: string;
-      muted: string;
-    };
-    accent: {
-      primary: string;
-      secondary: string;
-      success: string;
-      danger: string;
-    };
-  };
-}
-
 interface CharacterCreationProps {
   slot: number
-  theme: Theme | null
+  theme: UiTheme | null
   onCancel: () => void
   onSuccess: () => void
   locales?: any
 }
 
-export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = {} }: CharacterCreationProps) {
+type PickerModal = 'nationality' | 'gender' | 'birthdate' | null
+
+interface CenteredModalProps {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  className?: string
+}
+
+interface PickerButtonProps {
+  value: string
+  placeholder: string
+  icon: ReactNode
+  onClick: () => void
+}
+
+function CenteredModal({ title, onClose, children, className }: CenteredModalProps) {
+  return (
+    <MriModal
+      onClose={onClose}
+      hideBlur
+      className={cn(
+        'w-[min(92vw,32rem)] max-w-[32rem] overflow-hidden rounded-[1.75rem] border border-border/80 bg-card p-0 shadow-2xl',
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
+        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+        <MriButton variant="ghost" size="icon" className="h-10 w-10 rounded-2xl" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </MriButton>
+      </div>
+      <div className="p-5">{children}</div>
+    </MriModal>
+  )
+}
+
+function PickerButton({ value, placeholder, icon, onClick }: PickerButtonProps) {
+  const hasValue = value.trim().length > 0
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-12 w-full items-center justify-between rounded-2xl border border-border/70 bg-background/45 px-4 text-left transition hover:border-primary/40 hover:bg-background/60"
+    >
+      <span className={hasValue ? 'text-sm font-medium text-foreground' : 'text-sm text-muted-foreground'}>
+        {hasValue ? value : placeholder}
+      </span>
+      <span className="text-muted-foreground">{icon}</span>
+    </button>
+  )
+}
+
+export function CharacterCreation({
+  slot,
+  theme: _theme,
+  onCancel,
+  onSuccess,
+  locales = {},
+}: CharacterCreationProps) {
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -44,12 +92,10 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
     birthdate: '',
   })
   const [loading, setLoading] = useState(false)
-  const [showCalendar, setShowCalendar] = useState(false)
-  const [showNationalitySelect, setShowNationalitySelect] = useState(false)
-  const [showGenderSelect, setShowGenderSelect] = useState(false)
-  const calendarRef = useRef<HTMLDivElement>(null)
+  const [activeModal, setActiveModal] = useState<PickerModal>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [nationalitySearch, setNationalitySearch] = useState('')
 
-  // Calendário visual
   const minYear = 1900
   const maxYear = 2006
   const minDate = new Date(minYear, 0, 1)
@@ -61,42 +107,66 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
 
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
   ]
 
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-  const getDaysInMonth = (month: number, year: number) => {
-    return new Date(year, month, 0).getDate()
-  }
+  const genderOptions = useMemo(
+    () => [
+      { label: locales.character_creation?.male || 'Masculino', value: '0' },
+      { label: locales.character_creation?.female || 'Feminino', value: '1' },
+    ],
+    [locales.character_creation?.female, locales.character_creation?.male],
+  )
 
-  const getFirstDayOfMonth = (month: number, year: number) => {
-    return new Date(year, month - 1, 1).getDay()
-  }
+  const selectedGenderLabel = useMemo(
+    () => genderOptions.find((option) => option.value === formData.gender)?.label || genderOptions[0].label,
+    [formData.gender, genderOptions],
+  )
+
+  const filteredNationalities = useMemo(() => {
+    const query = nationalitySearch.trim().toLowerCase()
+    if (!query) return nationalities
+    return nationalities.filter((nationality) => nationality.toLowerCase().includes(query))
+  }, [nationalitySearch])
+
+  const getDaysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate()
+  const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month - 1, 1).getDay()
 
   const isDateDisabled = (day: number, month: number, year: number) => {
     const date = new Date(year, month - 1, day)
     return date < minDate || date > maxDate
   }
 
+  const openError = (message: string) => {
+    setErrorMessage(message)
+  }
+
+  const closeModal = () => {
+    setActiveModal(null)
+    setNationalitySearch('')
+  }
+
   const handleDateClick = (day: number) => {
     if (isDateDisabled(day, currentMonth, currentYear)) return
-    
+
     const date = new Date(currentYear, currentMonth - 1, day)
     setSelectedDate(date)
+
     const formattedDate = `${String(day).padStart(2, '0')}/${String(currentMonth).padStart(2, '0')}/${currentYear}`
-    setFormData({ ...formData, birthdate: formattedDate })
-    setShowCalendar(false)
+    setFormData((prev) => ({ ...prev, birthdate: formattedDate }))
+    setActiveModal(null)
   }
 
   const handlePrevMonth = () => {
     if (currentMonth === 1) {
       if (currentYear > minYear) {
         setCurrentMonth(12)
-        setCurrentYear(currentYear - 1)
+        setCurrentYear((prev) => prev - 1)
       }
     } else {
-      setCurrentMonth(currentMonth - 1)
+      setCurrentMonth((prev) => prev - 1)
     }
   }
 
@@ -104,39 +174,21 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
     if (currentMonth === 12) {
       if (currentYear < maxYear) {
         setCurrentMonth(1)
-        setCurrentYear(currentYear + 1)
+        setCurrentYear((prev) => prev + 1)
       }
     } else {
-      setCurrentMonth(currentMonth + 1)
+      setCurrentMonth((prev) => prev + 1)
     }
   }
 
-  // Fechar calendário e selects ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-        setShowCalendar(false)
-      }
-      // Fechar selects ao clicar fora
-      const target = event.target as HTMLElement
-      if (!target.closest('.relative')) {
-        setShowNationalitySelect(false)
-        setShowGenderSelect(false)
-      }
-    }
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
 
-    if (showCalendar || showNationalitySelect || showGenderSelect) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showCalendar, showNationalitySelect, showGenderSelect])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
     if (!formData.birthdate) {
-      alert('Por favor, selecione uma data de nascimento')
+      openError(locales.character_creation?.select_birthdate || 'Por favor, selecione uma data de nascimento')
       return
     }
+
     setLoading(true)
 
     fetch(`https://${GetParentResourceName()}/createCharacter`, {
@@ -149,7 +201,7 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
           firstname: formData.firstname,
           lastname: formData.lastname,
           nationality: formData.nationality,
-          gender: parseInt(formData.gender),
+          gender: Number.parseInt(formData.gender, 10),
           birthdate: formData.birthdate,
           cid: slot,
         },
@@ -160,12 +212,12 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
         if (data.success) {
           onSuccess()
         } else {
-          alert('Erro ao criar personagem: ' + (data.message || 'Erro desconhecido'))
+          openError(`${locales.character_creation?.create_error || 'Erro ao criar personagem:'} ${data.message || 'Erro desconhecido'}`)
         }
       })
       .catch((err) => {
         console.error('Erro ao criar personagem:', err)
-        alert('Erro ao criar personagem')
+        openError(locales.character_creation?.generic_error || 'Erro ao criar personagem')
       })
       .finally(() => {
         setLoading(false)
@@ -173,428 +225,294 @@ export function CharacterCreation({ slot, theme, onCancel, onSuccess, locales = 
   }
 
   return (
-    <div className="max-w-2xl mx-auto w-full px-4">
-      <Card 
-        style={{
-          backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-          borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
-        }}
-      >
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onCancel}
-              style={{
-                color: theme?.colors.text.primary || '#F8FAFC'
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <CardTitle style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-              Criar Personagem - Slot {slot}
-            </CardTitle>
-            <div className="w-10" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
-              >
-                Primeiro Nome
-              </label>
-              <Input
-                type="text"
-                required
-                value={formData.firstname}
-                onChange={(e) =>
-                  setFormData({ ...formData, firstname: e.target.value })
-                }
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  color: theme?.colors.text.primary || '#F8FAFC'
-                }}
-                placeholder="João"
-              />
-            </div>
-
-            <div>
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
-              >
-                Último Nome
-              </label>
-              <Input
-                type="text"
-                required
-                value={formData.lastname}
-                onChange={(e) =>
-                  setFormData({ ...formData, lastname: e.target.value })
-                }
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  color: theme?.colors.text.primary || '#F8FAFC'
-                }}
-                placeholder="Silva"
-              />
-            </div>
-
-            <div className="relative">
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
-              >
-                Nacionalidade
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  required
-                  readOnly
-                  value={formData.nationality}
-                  onClick={() => setShowNationalitySelect(!showNationalitySelect)}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    color: theme?.colors.text.primary || '#F8FAFC',
-                    cursor: 'pointer'
-                  }}
-                  placeholder="Selecione uma nacionalidade"
-                />
-                {showNationalitySelect && (
-                  <div 
-                    className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-md border shadow-lg"
-                    style={{
-                      backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
-                    }}
-                  >
-                    {nationalities.map((nationality) => (
-                      <div
-                        key={nationality}
-                        onClick={() => {
-                          setFormData({ ...formData, nationality })
-                          setShowNationalitySelect(false)
-                        }}
-                        className="px-4 py-2 cursor-pointer hover:bg-white/10"
-                        style={{
-                          color: theme?.colors.text.primary || '#F8FAFC',
-                          backgroundColor: formData.nationality === nationality ? theme?.colors.accent.primary + '33' : 'transparent'
-                        }}
-                      >
-                        {nationality}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="relative">
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
-              >
-                Gênero
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  required
-                  readOnly
-                  value={formData.gender === '0' ? 'Masculino' : 'Feminino'}
-                  onClick={() => setShowGenderSelect(!showGenderSelect)}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    color: theme?.colors.text.primary || '#F8FAFC',
-                    cursor: 'pointer'
-                  }}
-                  placeholder="Selecione o gênero"
-                />
-                {showGenderSelect && (
-                  <div 
-                    className="absolute z-50 w-full mt-1 rounded-md border shadow-lg"
-                    style={{
-                      backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
-                    }}
-                  >
-                    <div
-                      onClick={() => {
-                        setFormData({ ...formData, gender: '0' })
-                        setShowGenderSelect(false)
-                      }}
-                      className="px-4 py-2 cursor-pointer hover:bg-white/10"
-                      style={{
-                        color: theme?.colors.text.primary || '#F8FAFC',
-                        backgroundColor: formData.gender === '0' ? theme?.colors.accent.primary + '33' : 'transparent'
-                      }}
-                    >
-                      Masculino
-                    </div>
-                    <div
-                      onClick={() => {
-                        setFormData({ ...formData, gender: '1' })
-                        setShowGenderSelect(false)
-                      }}
-                      className="px-4 py-2 cursor-pointer hover:bg-white/10"
-                      style={{
-                        color: theme?.colors.text.primary || '#F8FAFC',
-                        backgroundColor: formData.gender === '1' ? theme?.colors.accent.primary + '33' : 'transparent'
-                      }}
-                    >
-                      {locales.character_creation?.female || 'Feminino'}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="relative">
-              <label 
-                className="block text-sm font-medium mb-2"
-                style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}
-              >
-                Data de Nascimento
-              </label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  required
-                  readOnly
-                  value={formData.birthdate}
-                  onClick={() => setShowCalendar(!showCalendar)}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    color: theme?.colors.text.primary || '#F8FAFC',
-                    cursor: 'pointer'
-                  }}
-                  placeholder="DD/MM/YYYY"
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-                {showCalendar && (
-                  <div 
-                    ref={calendarRef}
-                    className="absolute z-50 mt-1 p-2 rounded-md border shadow-lg"
-                    style={{
-                      backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                      width: '240px',
-                      top: '100%',
-                      marginTop: '4px'
-                    }}
-                  >
-                    {/* Header do calendário */}
-                    <div className="flex items-center justify-between mb-2">
-                      <button
-                        type="button"
-                        onClick={handlePrevMonth}
-                        disabled={currentMonth === 1 && currentYear === minYear}
-                        style={{
-                          color: theme?.colors.text.primary || '#F8FAFC',
-                          opacity: (currentMonth === 1 && currentYear === minYear) ? 0.3 : 1,
-                          cursor: (currentMonth === 1 && currentYear === minYear) ? 'not-allowed' : 'pointer',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          padding: '4px'
-                        }}
-                        className="hover:bg-white/10 rounded"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={currentMonth}
-                          onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
-                          style={{
-                            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                            borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                            color: theme?.colors.text.primary || '#F8FAFC',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid',
-                            fontSize: '12px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {months.map((month, index) => (
-                            <option 
-                              key={index + 1} 
-                              value={index + 1}
-                              style={{
-                                backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                                color: theme?.colors.text.primary || '#F8FAFC'
-                              }}
-                            >
-                              {month}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={currentYear}
-                          onChange={(e) => setCurrentYear(parseInt(e.target.value))}
-                          style={{
-                            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                            borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                            color: theme?.colors.text.primary || '#F8FAFC',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            border: '1px solid',
-                            fontSize: '12px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i).reverse().map(year => (
-                            <option 
-                              key={year} 
-                              value={year}
-                              style={{
-                                backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-                                color: theme?.colors.text.primary || '#F8FAFC'
-                              }}
-                            >
-                              {year}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleNextMonth}
-                        disabled={currentMonth === 12 && currentYear === maxYear}
-                        style={{
-                          color: theme?.colors.text.primary || '#F8FAFC',
-                          opacity: (currentMonth === 12 && currentYear === maxYear) ? 0.3 : 1,
-                          cursor: (currentMonth === 12 && currentYear === maxYear) ? 'not-allowed' : 'pointer',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          padding: '4px'
-                        }}
-                        className="hover:bg-white/10 rounded"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Dias da semana */}
-                    <div className="grid grid-cols-7 gap-0.5 mb-1">
-                      {weekDays.map(day => (
-                        <div
-                          key={day}
-                          className="text-center text-xs font-medium py-1"
-                          style={{ color: theme?.colors.text.muted || '#94A3B8' }}
-                        >
-                          {day}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Grade de dias */}
-                    <div className="grid grid-cols-7 gap-0.5">
-                      {Array.from({ length: getFirstDayOfMonth(currentMonth, currentYear) }, (_, i) => (
-                        <div key={`empty-${i}`} style={{ aspectRatio: '1' }} />
-                      ))}
-                      {Array.from({ length: getDaysInMonth(currentMonth, currentYear) }, (_, i) => {
-                        const day = i + 1
-                        const isDisabled = isDateDisabled(day, currentMonth, currentYear)
-                        const isSelected = selectedDate && 
-                          selectedDate.getDate() === day &&
-                          selectedDate.getMonth() + 1 === currentMonth &&
-                          selectedDate.getFullYear() === currentYear
-                        
-                        const textColor = isSelected 
-                          ? '#FFFFFF'
-                          : isDisabled
-                          ? (theme?.colors.text.muted || '#94A3B8')
-                          : (theme?.colors.text.primary || '#F8FAFC')
-                        
-                        const bgColor = isSelected 
-                          ? (theme?.colors.accent.primary || '#3B82F6')
-                          : isDisabled
-                          ? 'rgba(255, 255, 255, 0.02)'
-                          : 'rgba(255, 255, 255, 0.05)'
-                        
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => handleDateClick(day)}
-                            disabled={isDisabled}
-                            style={{
-                              aspectRatio: '1',
-                              borderRadius: '4px',
-                              border: `1px solid ${isSelected ? (theme?.colors.accent.primary || '#3B82F6') : (theme?.colors.border || 'rgba(51, 65, 85, 0.5)')}`,
-                              backgroundColor: bgColor,
-                              color: textColor,
-                              cursor: isDisabled ? 'not-allowed' : 'pointer',
-                              transition: 'all 0.2s',
-                              opacity: isDisabled ? 0.4 : 1,
-                              fontSize: '12px',
-                              fontWeight: isSelected ? '600' : '400',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isDisabled && !isSelected) {
-                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isDisabled && !isSelected) {
-                                e.currentTarget.style.backgroundColor = bgColor
-                              }
-                            }}
-                          >
-                            {day}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
+    <>
+      <div className="w-full max-w-3xl px-4">
+        <MriCard className="rounded-[2rem] border border-border/80 bg-card/95 shadow-2xl shadow-black/30">
+          <MriCardHeader className="space-y-4 border-b border-border/70 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <MriButton
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 rounded-2xl"
                 onClick={onCancel}
-                disabled={loading}
-                style={{
-                  borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  color: theme?.colors.text.primary || '#F8FAFC',
-                  backgroundColor: 'transparent'
-                }}
-                className="flex-1"
               >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                style={{
-                  backgroundColor: theme?.colors.accent.success || '#22C55E',
-                  color: '#FFFFFF'
-                }}
-                className="flex-1"
-              >
-                {loading ? 'Criando...' : 'Criar Personagem'}
-              </Button>
+                <ArrowLeft className="h-5 w-5" />
+              </MriButton>
+
+              <div className="flex-1 text-center">
+                <MriSectionHeader
+                  icon={ShieldPlus}
+                  title={locales.character_creation?.title || `Criação de Personagem`}
+                  className="!mb-0 justify-center"
+                />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {locales.character_creation?.description || 'Preencha os dados iniciais para criar sua identidade.'}
+                </p>
+              </div>
+
+              <div className="flex h-11 min-w-[2.75rem] items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary">
+                {slot}
+              </div>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </MriCardHeader>
+
+          <MriCardContent className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {locales.character_creation?.first_name || 'Nome'}
+                  </label>
+                  <MriInput
+                    required
+                    value={formData.firstname}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, firstname: event.target.value }))}
+                    placeholder={locales.character_creation?.first_name_placeholder || 'João'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {locales.character_creation?.last_name || 'Sobrenome'}
+                  </label>
+                  <MriInput
+                    required
+                    value={formData.lastname}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, lastname: event.target.value }))}
+                    placeholder={locales.character_creation?.last_name_placeholder || 'Silva'}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {locales.character_creation?.nationality || 'Nacionalidade'}
+                  </label>
+                  <PickerButton
+                    value={formData.nationality}
+                    placeholder={locales.character_creation?.nationality_placeholder || 'Nacionalidade'}
+                    icon={<Globe className="h-4 w-4" />}
+                    onClick={() => setActiveModal('nationality')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    {locales.character_creation?.gender || 'Gênero'}
+                  </label>
+                  <PickerButton
+                    value={selectedGenderLabel}
+                    placeholder={locales.character_creation?.gender || 'Gênero'}
+                    icon={<User className="h-4 w-4" />}
+                    onClick={() => setActiveModal('gender')}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  {locales.character_creation?.birthdate || 'Data de Nascimento'}
+                </label>
+                <PickerButton
+                  value={formData.birthdate}
+                  placeholder={locales.character_creation?.birthdate_placeholder || 'DD/MM/YYYY'}
+                  icon={<Calendar className="h-4 w-4" />}
+                  onClick={() => setActiveModal('birthdate')}
+                />
+              </div>
+
+              <div className="grid gap-3 pt-2 md:grid-cols-2">
+                <MriButton
+                  type="button"
+                  variant="outline"
+                  className="h-12 rounded-2xl"
+                  disabled={loading}
+                  onClick={onCancel}
+                >
+                  {locales.buttons?.cancel || 'Cancelar'}
+                </MriButton>
+
+                <MriButton
+                  type="submit"
+                  className="h-12 rounded-2xl"
+                  disabled={loading}
+                  isLoading={loading}
+                >
+                  {loading
+                    ? (locales.character_creation?.creating || 'Criando...')
+                    : (locales.character_creation?.create || 'Criar')}
+                </MriButton>
+              </div>
+            </form>
+          </MriCardContent>
+        </MriCard>
+      </div>
+
+      {activeModal === 'gender' && (
+        <CenteredModal title={locales.character_creation?.gender || 'Gênero'} onClose={closeModal} className="w-[min(92vw,22rem)] max-w-[22rem]">
+          <div className="space-y-3">
+            {genderOptions.map((option) => (
+              <MriButton
+                key={option.value}
+                variant={formData.gender === option.value ? 'default' : 'secondary'}
+                className="h-12 w-full rounded-2xl justify-start px-4"
+                onClick={() => {
+                  setFormData((prev) => ({ ...prev, gender: option.value }))
+                  closeModal()
+                }}
+              >
+                {option.label}
+              </MriButton>
+            ))}
+          </div>
+        </CenteredModal>
+      )}
+
+      {activeModal === 'nationality' && (
+        <CenteredModal title={locales.character_creation?.nationality || 'Nacionalidade'} onClose={closeModal} className="w-[min(92vw,34rem)] max-w-[34rem]">
+          <div className="space-y-4">
+            <MriInput
+              value={nationalitySearch}
+              onChange={(event) => setNationalitySearch(event.target.value)}
+              placeholder={locales.character_creation?.nationality_search || 'Buscar nacionalidade'}
+            />
+
+            <div className="max-h-[18rem] space-y-2 overflow-y-auto pr-1">
+              {filteredNationalities.length > 0 ? (
+                filteredNationalities.map((nationality) => (
+                  <MriButton
+                    key={nationality}
+                    variant={formData.nationality === nationality ? 'default' : 'secondary'}
+                    className="h-11 w-full justify-start rounded-2xl px-4"
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, nationality }))
+                      closeModal()
+                    }}
+                  >
+                    {nationality}
+                  </MriButton>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-border/70 bg-background/45 px-4 py-6 text-center text-sm text-muted-foreground">
+                  {locales.character_creation?.nationality_empty || 'Nenhuma nacionalidade encontrada'}
+                </div>
+              )}
+            </div>
+          </div>
+        </CenteredModal>
+      )}
+
+      {activeModal === 'birthdate' && (
+        <CenteredModal title={locales.character_creation?.birthdate || 'Data de Nascimento'} onClose={closeModal} className="w-[min(92vw,24rem)] max-w-[24rem]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <MriButton
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-2xl"
+                onClick={handlePrevMonth}
+                disabled={currentMonth === 1 && currentYear === minYear}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </MriButton>
+
+              <div className="grid flex-1 grid-cols-2 gap-2">
+                <select
+                  className="h-10 rounded-2xl border border-border/70 bg-background/50 px-3 text-sm text-foreground outline-none transition focus:border-primary/50"
+                  value={currentMonth}
+                  onChange={(event) => setCurrentMonth(Number.parseInt(event.target.value, 10))}
+                >
+                  {months.map((month, index) => (
+                    <option key={month} value={index + 1}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="h-10 rounded-2xl border border-border/70 bg-background/50 px-3 text-sm text-foreground outline-none transition focus:border-primary/50"
+                  value={currentYear}
+                  onChange={(event) => setCurrentYear(Number.parseInt(event.target.value, 10))}
+                >
+                  {Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index).reverse().map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <MriButton
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-2xl"
+                onClick={handleNextMonth}
+                disabled={currentMonth === 12 && currentYear === maxYear}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </MriButton>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {weekDays.map((day) => (
+                <div
+                  key={day}
+                  className="flex h-8 items-center justify-center text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: getFirstDayOfMonth(currentMonth, currentYear) }, (_, index) => (
+                <div key={`empty-${index}`} className="aspect-square" />
+              ))}
+
+              {Array.from({ length: getDaysInMonth(currentMonth, currentYear) }, (_, index) => {
+                const day = index + 1
+                const isDisabled = isDateDisabled(day, currentMonth, currentYear)
+                const isSelected = !!selectedDate
+                  && selectedDate.getDate() === day
+                  && selectedDate.getMonth() + 1 === currentMonth
+                  && selectedDate.getFullYear() === currentYear
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    disabled={isDisabled}
+                    onClick={() => handleDateClick(day)}
+                    className={[
+                      'aspect-square rounded-2xl border text-sm font-medium transition-all',
+                      isSelected
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border/60 bg-background/45 text-foreground hover:border-primary/40 hover:bg-primary/10',
+                      isDisabled ? 'cursor-not-allowed opacity-35 hover:bg-background/45 hover:border-border/60' : '',
+                    ].join(' ')}
+                  >
+                    {day}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </CenteredModal>
+      )}
+
+      {errorMessage && (
+        <CenteredModal title={locales.character_creation?.warning_title || 'Aviso'} onClose={() => setErrorMessage(null)} className="w-[min(92vw,28rem)] max-w-[28rem]">
+          <div className="space-y-4">
+            <p className="text-sm leading-6 text-muted-foreground">{errorMessage}</p>
+            <MriButton className="h-11 w-full rounded-2xl" onClick={() => setErrorMessage(null)}>
+              OK
+            </MriButton>
+          </div>
+        </CenteredModal>
+      )}
+    </>
   )
 }

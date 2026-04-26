@@ -1,32 +1,22 @@
-import { useState, useEffect } from 'react'
-import { Settings, Music, Music2, Palette, EyeOff, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  MriBadge,
+  MriButton,
+  MriCard,
+  MriCardContent,
+  MriCardHeader,
+  MriSectionHeader,
+  MriSelect,
+} from '@mriqbox/ui-kit'
+import { EyeOff, Music, Music2, Palette, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { UiTheme } from '@/lib/mriTheme'
 
 declare function GetParentResourceName(): string
 
-interface Theme {
-  name: string
-  colors: {
-    background: string
-    card: string
-    border: string
-    text: {
-      primary: string
-      secondary: string
-      muted: string
-    }
-    accent: {
-      primary: string
-      secondary: string
-      success: string
-      danger: string
-    }
-  }
-}
-
 interface SettingsPanelProps {
-  theme: Theme | null
-  availableThemes: { [key: string]: Theme }
+  theme: UiTheme | null
+  availableThemes: { [key: string]: UiTheme }
   onClose: () => void
   onThemeChange?: (themeName: string) => void
   allowThemeChange?: boolean
@@ -37,12 +27,19 @@ export function SettingsPanel({
   availableThemes,
   onClose,
   onThemeChange,
-  allowThemeChange = true
+  allowThemeChange = true,
 }: SettingsPanelProps) {
   const [streamerMode, setStreamerMode] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState(theme?.name || 'dark')
 
-  // Carregar configurações ao montar
+  const themeOptions = useMemo(
+    () => Object.entries(availableThemes).map(([themeName, themeData]) => ({
+      label: themeData.name || themeName,
+      value: themeName,
+    })),
+    [availableThemes],
+  )
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -50,11 +47,14 @@ export function SettingsPanel({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         })
+
         const data = await response.json()
+
         if (data.success) {
           if (data.settings.streamerMode !== undefined) {
             setStreamerMode(data.settings.streamerMode)
           }
+
           if (data.settings.theme) {
             setSelectedTheme(data.settings.theme)
           }
@@ -63,226 +63,181 @@ export function SettingsPanel({
         console.error('Erro ao carregar configurações:', error)
       }
     }
+
     loadSettings()
   }, [])
 
-  const handleThemeChange = (themeName: string) => {
-    if (!allowThemeChange) return
-    setSelectedTheme(themeName)
-    if (onThemeChange) {
-      onThemeChange(themeName)
+  useEffect(() => {
+    const matchingTheme = Object.entries(availableThemes).find(([, themeData]) => themeData.name === theme?.name)
+    if (matchingTheme) {
+      setSelectedTheme(matchingTheme[0])
     }
-    // Enviar para o servidor
+  }, [availableThemes, theme?.name])
+
+  const pushSettings = (nextTheme: string, nextStreamerMode: boolean) => {
     fetch(`https://${GetParentResourceName()}/updateSettings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        theme: themeName,
-        streamerMode
+        theme: nextTheme,
+        streamerMode: nextStreamerMode,
       }),
     }).catch(console.error)
+  }
+
+  const handleThemeChange = (themeName: string) => {
+    if (!allowThemeChange) return
+
+    setSelectedTheme(themeName)
+
+    if (onThemeChange) {
+      onThemeChange(themeName)
+    }
+
+    pushSettings(themeName, streamerMode)
   }
 
   const handleStreamerMode = (enabled: boolean) => {
     setStreamerMode(enabled)
-    fetch(`https://${GetParentResourceName()}/updateSettings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        theme: selectedTheme,
-        streamerMode: enabled
-      }),
-    }).catch(console.error)
+    pushSettings(selectedTheme, enabled)
   }
 
   return (
     <>
-      {/* Overlay de fundo */}
       <div
+        className="fixed inset-0 z-[99998] bg-black/35"
+        style={{ pointerEvents: 'auto' }}
         onClick={onClose}
-        className="fixed inset-0"
-        style={{
-          backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          pointerEvents: 'auto',
-          zIndex: 99998,
-        }}
       />
-      <div
-        className={cn(
-          "fixed bottom-20 right-6 w-80 rounded-2xl shadow-2xl",
-          "animate-in slide-in-from-bottom-4 fade-in duration-300"
-        )}
-        style={{
-          backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-          border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
-          boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3)`,
-          pointerEvents: 'auto',
-          zIndex: 99999,
-        }}
-      >
-        <div
-          className="p-6 border-b relative overflow-hidden"
-          style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" style={{ pointerEvents: 'none' }}>
+        <MriCard
+          className={cn(
+            'mri-panel-chrome w-full max-w-[22rem] rounded-[2rem]',
+            'animate-in zoom-in-95 fade-in duration-300',
+          )}
+          style={{ pointerEvents: 'auto' }}
         >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
-            }}
-          />
-          <div className="relative z-10 flex items-center justify-between">
-            <h2
-              className="text-xl font-bold flex items-center gap-2"
-              style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
-            >
-              <Settings className="w-5 h-5" />
-              Configurações
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
-              style={{ color: theme?.colors.text.muted || '#94A3B8' }}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+          <MriCardHeader className="mri-panel-header space-y-4 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <MriSectionHeader icon={Settings} title="Configurações" className="!mb-0" />
+                <p className="text-sm text-muted-foreground">
+                  Ajuste o visual e a experiência de usuario.
+                </p>
+              </div>
 
-        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-          {/* Modo Streamer */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              {streamerMode ? (
-                <Music2 className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-              ) : (
-                <Music className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-              )}
-              <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                Modo Streamer
-              </h3>
+              <MriButton
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-2xl"
+                onClick={onClose}
+              >
+                <X className="h-4 w-4" />
+              </MriButton>
             </div>
-            <div
-              className="p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]"
-              style={{
-                backgroundColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}15` : 'rgba(255, 255, 255, 0.05)',
-                borderColor: streamerMode ? `${theme?.colors.accent?.primary || '#3B82F6'}60` : theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-              }}
-              onClick={() => handleStreamerMode(!streamerMode)}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="block font-medium mb-1" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                    {streamerMode ? 'Ativado' : 'Desativado'}
-                  </span>
-                  <span className="text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    {streamerMode ? 'A música será desativada para não aparecer no stream' : 'A música tocará normalmente'}
-                  </span>
+          </MriCardHeader>
+
+          <MriCardContent className="space-y-5 p-5">
+            <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {streamerMode ? <Music2 className="h-4 w-4 text-primary" /> : <Music className="h-4 w-4 text-primary" />}
+                  <span className="font-medium text-foreground">Modo Streamer</span>
                 </div>
-                <div
-                  className={cn(
-                    "w-12 h-6 rounded-full relative transition-all",
-                    streamerMode ? "bg-blue-500" : "bg-gray-600"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all shadow-lg",
-                      streamerMode ? "left-6" : "left-0.5"
-                    )}
+
+                <MriBadge variant={streamerMode ? 'default' : 'secondary'} className="rounded-full px-3 py-1 text-xs">
+                  {streamerMode ? 'Ativado' : 'Desativado'}
+                </MriBadge>
+              </div>
+
+              <p className="mb-4 text-sm leading-6 text-muted-foreground">
+                {streamerMode
+                  ? 'A música da tela foi desativada para não aparecer na transmissão.'
+                  : 'A música continuará tocando normalmente enquanto a NUI estiver aberta.'}
+              </p>
+
+              <MriButton
+                variant={streamerMode ? 'secondary' : 'default'}
+                className="h-11 w-full rounded-2xl"
+                onClick={() => handleStreamerMode(!streamerMode)}
+              >
+                {streamerMode ? 'Desligar modo streamer' : 'Ligar modo streamer'}
+              </MriButton>
+            </div>
+
+            {allowThemeChange ? (
+              <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-foreground">Tema da interface</span>
+                </div>
+
+                <div className="space-y-4">
+                  <MriSelect
+                    portal={false}
+                    value={selectedTheme}
+                    options={themeOptions}
+                    onChange={handleThemeChange}
+                    placeholder="Selecione um tema"
+                    searchPlaceholder="Buscar tema"
+                    emptyMessage="Nenhum tema encontrado"
                   />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(availableThemes).map(([themeName, themeData]) => (
+                      <button
+                        key={themeName}
+                        type="button"
+                        onClick={() => handleThemeChange(themeName)}
+                        className={cn(
+                          'rounded-[1.25rem] border p-3 text-left transition-all duration-200',
+                          'hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/15',
+                          selectedTheme === themeName
+                            ? 'border-primary/50 bg-primary/10'
+                            : 'border-border/70 bg-background/35 hover:border-primary/30',
+                        )}
+                      >
+                        <div className="mb-3 flex gap-1.5">
+                          <span className="h-2.5 flex-1 rounded-full" style={{ backgroundColor: themeData.colors.accent.primary }} />
+                          <span className="h-2.5 flex-1 rounded-full" style={{ backgroundColor: themeData.colors.accent.secondary }} />
+                          <span className="h-2.5 flex-1 rounded-full" style={{ backgroundColor: themeData.colors.border }} />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-medium text-foreground">
+                            {themeData.name || themeName}
+                          </span>
+
+                          {selectedTheme === themeName && (
+                            <MriBadge variant="default" className="rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+                              Ativo
+                            </MriBadge>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Temas */}
-          {allowThemeChange && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Palette className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-                <h3 className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                  Temas
-                </h3>
+            ) : (
+              <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl bg-background/60 text-muted-foreground">
+                    <EyeOff className="h-4 w-4" />
+                  </span>
+                  <div className="space-y-1">
+                    <p className="font-medium text-foreground">Mudança de tema indisponível</p>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      O servidor desativou a troca manual de tema para esta sessão.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(availableThemes).map(([themeName, themeData]) => (
-                  <button
-                    key={themeName}
-                    onClick={() => handleThemeChange(themeName)}
-                    className={cn(
-                      "p-4 rounded-lg border transition-all hover:scale-105 text-left relative overflow-hidden",
-                      selectedTheme === themeName && "ring-2"
-                    )}
-                    style={{
-                      backgroundColor: selectedTheme === themeName
-                        ? `${themeData.colors.accent?.primary || '#3B82F6'}20`
-                        : themeData.colors.card || 'rgba(255, 255, 255, 0.05)',
-                      borderColor: selectedTheme === themeName
-                        ? themeData.colors.accent?.primary || '#3B82F6'
-                        : themeData.colors.border || 'rgba(51, 65, 85, 0.5)',
-                      boxShadow: selectedTheme === themeName
-                        ? `0 0 0 2px ${themeData.colors.accent?.primary || '#3B82F6'}40`
-                        : 'none',
-                    }}
-                  >
-                    {/* Preview das cores do tema */}
-                    <div className="flex gap-1 mb-2">
-                      <div
-                        className="flex-1 h-3 rounded"
-                        style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
-                      />
-                      <div
-                        className="flex-1 h-3 rounded"
-                        style={{ backgroundColor: themeData.colors.accent?.secondary || '#8B5CF6' }}
-                      />
-                      <div
-                        className="flex-1 h-3 rounded"
-                        style={{ backgroundColor: themeData.colors.border || 'rgba(51, 65, 85, 0.5)' }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span
-                        className="text-sm font-semibold capitalize"
-                        style={{ color: themeData.colors.text?.primary || '#F8FAFC' }}
-                      >
-                        {themeData.name || themeName}
-                      </span>
-                      {selectedTheme === themeName && (
-                        <div
-                          className="w-5 h-5 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: themeData.colors.accent?.primary || '#3B82F6' }}
-                        >
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!allowThemeChange && (
-            <div
-              className="p-4 rounded-lg border"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <EyeOff className="w-4 h-4" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-                <span className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                  A mudança de tema foi desativada pelo servidor
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </MriCardContent>
+        </MriCard>
       </div>
     </>
   )
 }
-

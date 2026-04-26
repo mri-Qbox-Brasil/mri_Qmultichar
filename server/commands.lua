@@ -160,3 +160,16 @@ lib.addCommand('myslots', {
     exports.qbx_core:Notify(source, locale('commands.myslots.result', { slots = slots }), 'info')
 end)
 
+lib.addCommand('logout', {
+    help = 'Desconecta do personagem atual apenas se voce tiver 2 ou mais personagens.',
+}, function(source)
+    local canLogout, characterCount = exports.mri_Qmultichar:CanPlayerLogout(source)
+
+    if not canLogout then
+        exports.qbx_core:Notify(source, string.format('Voce precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
+        return
+    end
+
+    exports.qbx_core:Logout(source)
+end)
+

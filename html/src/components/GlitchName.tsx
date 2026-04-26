@@ -14,13 +14,14 @@ interface GlitchNameProps {
   }
 }
 
-const SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?~`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
 export function GlitchName({ name, theme }: GlitchNameProps) {
   const [displayText, setDisplayText] = useState<string>('')
   const [isAnimating, setIsAnimating] = useState(false)
   const animationRef = useRef<number>()
+
 
   useEffect(() => {
     if (!name) {
@@ -34,43 +35,29 @@ export function GlitchName({ name, theme }: GlitchNameProps) {
 
     const targetLength = name.length
     let currentIndex = 0
-    const revealSpeed = 3 // Revelar um caractere a cada X frames
+    const revealSpeed = 2 
     let frame = 0
-    const maxFrames = targetLength * revealSpeed + 30 // Frames extras para animação final
+    const maxFrames = targetLength * revealSpeed + 10
 
     const animate = () => {
       if (frame < maxFrames) {
-        // Gerar texto com símbolos se misturando
         let randomText = ''
         for (let i = 0; i < targetLength; i++) {
           if (i < currentIndex) {
-            // Caracteres já revelados mostram o nome correto
-            randomText += name[i]
-          } else if (i === currentIndex && frame % revealSpeed === 0) {
-            // No momento de revelar, mostrar o caractere correto
             randomText += name[i]
           } else {
-            // Caracteres não revelados mostram símbolos/letras aleatórias
-            // Misturar símbolos e letras para efeito mais interessante
-            if (Math.random() > 0.5) {
-              randomText += SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
-            } else {
-              randomText += CHARS[Math.floor(Math.random() * CHARS.length)]
-            }
+            randomText += CHARS[Math.floor(Math.random() * CHARS.length)]
           }
         }
         setDisplayText(randomText)
-
         frame++
 
-        // Revelar próximo caractere
         if (frame % revealSpeed === 0 && currentIndex < targetLength) {
           currentIndex++
         }
 
         animationRef.current = requestAnimationFrame(animate)
       } else {
-        // Mostrar o nome final
         setDisplayText(name)
         setIsAnimating(false)
       }

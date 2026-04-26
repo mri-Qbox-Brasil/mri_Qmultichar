@@ -12,6 +12,16 @@
         padding: 0;
         overflow: hidden;
       }
+      /* FORÇAR VISIBILIDADE ABSOLUTA */
+      #root, .mri-app-shell, div, section, [class*="Mri"] {
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      .bg-black, [class*="MriCard"], .bg-card, .bg-background {
+        background-color: rgb(15, 17, 21) !important;
+        background: rgb(15, 17, 21) !important;
+      }
+      * { animation: none !important; transition: none !important; }
     </style>
   </head>
   <body style="background: transparent;">

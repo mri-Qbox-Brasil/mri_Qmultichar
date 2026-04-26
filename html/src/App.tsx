@@ -1,15 +1,35 @@
-import { useState, useEffect } from 'react'
-import { CharacterList } from './components/CharacterList'
+import { type ComponentType, useEffect, useRef, useState } from 'react'
+import {
+  MriBadge,
+  MriButton,
+  MriCardContent,
+  MriCardHeader,
+  MriSectionHeader,
+  MriScrollArea,
+} from '@mriqbox/ui-kit'
+import {
+  Briefcase,
+  Building2,
+  Calendar,
+  Crown,
+  Play,
+  Settings,
+  Shield,
+  Trash2,
+  User,
+  Wallet,
+  X,
+} from 'lucide-react'
 import { CharacterCreation } from './components/CharacterCreation'
+import { CharacterList } from './components/CharacterList'
 import { DeleteConfirmDialog } from './components/DeleteConfirmDialog'
 import { GlitchName } from './components/GlitchName'
 import { MusicPlayer } from './components/MusicPlayer'
-import { formatNumber } from './utils/formatNumber'
-import { Avatar, AvatarImage, AvatarFallback } from './components/ui/avatar'
-import { Badge } from './components/ui/badge'
-import { Briefcase, Wallet, Building2, Calendar, User, Trash2, Play, Shield, Crown, Settings, X } from 'lucide-react'
 import { SettingsPanel } from './components/SettingsPanel'
-import { cn } from './lib/utils'
+import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar'
+
+import { getMriThemeVars, type UiTheme } from './lib/mriTheme'
+import { formatNumber } from './utils/formatNumber'
 
 declare function GetParentResourceName(): string
 
@@ -39,33 +59,11 @@ export interface Character {
   }
   cid?: number
   photo?: string
+  logoutBlocked?: boolean
+  logoutBlockedReason?: string
 }
 
-interface Theme {
-  name: string
-  colors: {
-    background: string
-    card: string
-    border: string
-    text: {
-      primary: string
-      secondary: string
-      muted: string
-    }
-    accent: {
-      primary: string
-      secondary: string
-      success: string
-      danger: string
-    }
-    button: {
-      primary: string
-      primaryHover: string
-      danger: string
-      dangerHover: string
-    }
-  }
-}
+type Theme = UiTheme
 
 interface MusicConfig {
   enabled: boolean
@@ -73,6 +71,34 @@ interface MusicConfig {
   volume: number
   loop: boolean
   autoplay: boolean
+}
+
+interface InfoTileProps {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  value: string
+}
+
+function InfoTile({ icon: Icon, label, value }: InfoTileProps) {
+  return (
+    <div
+      className="rounded-2xl border p-3"
+      style={{ 
+        background: '#0f1115', 
+        backgroundColor: '#0f1115',
+        opacity: 1,
+        transform: 'translateZ(0)'
+      }}
+    >
+      <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-black">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <span>{label}</span>
+      </div>
+      <p className="truncate text-sm font-semibold text-foreground sm:text-base">{value}</p>
+    </div>
+  )
 }
 
 function App() {
@@ -93,82 +119,111 @@ function App() {
   const [streamerMode, setStreamerMode] = useState(false)
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
   const [locales, setLocales] = useState<any>({})
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const availableThemesRef = useRef(availableThemes)
+  const musicRef = useRef(music)
+  const selectedCharacterRef = useRef(selectedCharacter)
+
+  const getPreferredCharacter = (nextCharacters: Character[]) =>
+    nextCharacters.find((character) => !character.logoutBlocked) ?? nextCharacters[0] ?? null
+
+  const requestPreviewForCharacter = (character: Character | null) => {
+    if (!character) {
+      return
+    }
+
+    const jobName = character.job?.name || (character.job?.label ? character.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed')
+
+    fetch(`https://${GetParentResourceName()}/getPreviewData`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        citizenid: character.citizenid,
+        job: jobName,
+      }),
+    }).catch(console.error)
+  }
+
+  const applyCharacters = (nextCharacters: Character[]) => {
+    setCharacters(nextCharacters)
+
+    const preferredCharacter = getPreferredCharacter(nextCharacters)
+    setSelectedCharacter(preferredCharacter)
+    setSelectedCharacterPhoto(preferredCharacter ? characterPhotos[preferredCharacter.citizenid] || null : null)
+
+    requestPreviewForCharacter(preferredCharacter)
+  }
 
   useEffect(() => {
-    // Sinalizar que a NUI está carregada e pronta
+    availableThemesRef.current = availableThemes
+  }, [availableThemes])
+
+  useEffect(() => {
+    musicRef.current = music
+  }, [music])
+
+  useEffect(() => {
+    selectedCharacterRef.current = selectedCharacter
+  }, [selectedCharacter])
+
+  useEffect(() => {
+    console.log('[mri_Qmultichar] Enviando handshake nuiStarted...')
     fetch(`https://${GetParentResourceName()}/nuiStarted`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
-    }).catch(console.error);
+    }).catch(console.error)
 
     const handleMessage = (event: MessageEvent) => {
       const data = event.data
 
       if (data && data.action === 'open') {
-        // Aplicar dados iniciais recebidos para evitar flicker
-        if (data.locales) setLocales(data.locales);
-        if (data.availableThemes) setAvailableThemes(data.availableThemes);
-        if (data.theme) setTheme(data.theme);
-        if (data.music) setMusic(data.music);
-        if (data.allowThemeChange !== undefined) setAllowThemeChange(data.allowThemeChange);
-        if (data.streamerMode !== undefined) setStreamerMode(data.streamerMode);
+        if (data.locales) setLocales(data.locales)
+        if (data.availableThemes) setAvailableThemes(data.availableThemes)
+        if (data.theme) setTheme(data.theme)
+        if (data.music) setMusic(data.music)
+        if (data.allowThemeChange !== undefined) setAllowThemeChange(data.allowThemeChange)
+        if (data.streamerMode !== undefined) setStreamerMode(data.streamerMode)
 
         if (data.characters) {
-          setCharacters(data.characters);
-          setMaxSlots(data.amount || 3);
-          if (data.characters.length > 0) {
-            setSelectedCharacter(data.characters[0]);
-            // Atualizar preview do primeiro personagem
-            const firstChar = data.characters[0];
-            const jobName = firstChar.job?.name || (firstChar.job?.label ? firstChar.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed');
-            fetch(`https://${GetParentResourceName()}/getPreviewData`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                citizenid: firstChar.citizenid,
-                job: jobName
-              }),
-            }).catch(console.error);
-          }
+          applyCharacters(data.characters)
+          setMaxSlots(data.amount || 3)
+          setStatusMessage(null)
         } else {
-          loadCharacters();
+          loadCharacters()
         }
 
-        setIsOpen(true);
+        setIsOpen(true)
       } else if (data && data.action === 'close') {
         setIsOpen(false)
         setSelectedCharacter(null)
+        setStatusMessage(null)
         setShowCreation(false)
         setShowSettings(false)
       } else if (data && data.action === 'refreshCharacters') {
-        // Pequeno delay para garantir que o servidor processou a deleção
         setTimeout(() => {
           loadCharacters()
         }, 300)
       } else if (data && data.action === 'setStreamerMode') {
-        // Desativar música se modo streamer
         setStreamerMode(data.enabled)
-        if (data.enabled && music) {
-          setMusic({ ...music, enabled: false })
-        } else if (!data.enabled && music) {
-          setMusic({ ...music, enabled: true })
+
+        if (data.enabled && musicRef.current) {
+          setMusic({ ...musicRef.current, enabled: false })
+        } else if (!data.enabled && musicRef.current) {
+          setMusic({ ...musicRef.current, enabled: true })
         }
       } else if (data && data.action === 'updateTheme') {
-        // Atualizar tema
-        if (availableThemes[data.theme]) {
-          setTheme(availableThemes[data.theme])
+        if (availableThemesRef.current[data.theme]) {
+          setTheme(availableThemesRef.current[data.theme])
         }
       } else if (data && data.action === 'characterPhotoReady') {
-        // Foto do personagem pronta
         if (data.photo) {
-          console.log('[mri_Qmultichar] Foto recebida via characterPhotoReady:', data.citizenid, data.photo)
-          setCharacterPhotos(prev => ({
+          setCharacterPhotos((prev) => ({
             ...prev,
-            [data.citizenid]: data.photo
+            [data.citizenid]: data.photo,
           }))
-          // Se for o personagem selecionado, atualizar também selectedCharacterPhoto
-          if (selectedCharacter && selectedCharacter.citizenid === data.citizenid) {
+
+          if (selectedCharacterRef.current && selectedCharacterRef.current.citizenid === data.citizenid) {
             setSelectedCharacterPhoto(data.photo)
           }
         }
@@ -176,7 +231,6 @@ function App() {
     }
 
     window.addEventListener('message', handleMessage)
-
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
@@ -192,44 +246,35 @@ function App() {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`)
         }
+
         return res.json()
       })
       .then((data) => {
         if (data && data.success) {
-          setCharacters(data.characters || [])
+          applyCharacters(data.characters || [])
           setMaxSlots(data.amount || 3)
+          setStatusMessage(null)
+
           if (data.theme) {
             setTheme(data.theme)
           }
+
           if (data.music) {
             setMusic(data.music)
           }
+
           if (data.allowThemeChange !== undefined) {
             setAllowThemeChange(data.allowThemeChange)
           }
+
           if (data.availableThemes) {
             setAvailableThemes(data.availableThemes)
           }
-          if (data.availableThemes) {
-            setAvailableThemes(data.availableThemes)
-          }
+
           if (data.locales) {
             setLocales(data.locales)
           }
-          // Selecionar primeiro personagem se existir
-          if (data.characters && data.characters.length > 0) {
-            setSelectedCharacter(data.characters[0])
-            // Atualizar preview
-            const jobName = data.characters[0].job?.name || (data.characters[0].job?.label ? data.characters[0].job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed')
-            fetch(`https://${GetParentResourceName()}/getPreviewData`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                citizenid: data.characters[0].citizenid,
-                job: jobName
-              }),
-            }).catch(console.error)
-          }
+
         } else {
           console.error('[mri_Qmultichar] Erro ao carregar personagens:', data)
           setCharacters([])
@@ -244,6 +289,14 @@ function App() {
   }
 
   const handleLoadCharacter = (citizenid: string) => {
+    const character = characters.find((candidate) => candidate.citizenid === citizenid)
+    if (character?.logoutBlocked) {
+      setStatusMessage(character.logoutBlockedReason || 'Este personagem nao pode ser usado agora.')
+      return
+    }
+
+    setStatusMessage(null)
+
     fetch(`https://${GetParentResourceName()}/loadCharacter`, {
       method: 'POST',
       headers: {
@@ -255,13 +308,18 @@ function App() {
       .then((data) => {
         if (data.success) {
           setIsOpen(false)
+        } else {
+          setStatusMessage(data.message || 'Nao foi possivel carregar este personagem.')
         }
       })
-      .catch((err) => console.error('Erro ao carregar personagem:', err))
+      .catch((err) => {
+        console.error('Erro ao carregar personagem:', err)
+        setStatusMessage('Erro ao carregar personagem.')
+      })
   }
 
   const handleDeleteCharacter = (citizenid: string) => {
-    const character = characters.find(c => c.citizenid === citizenid)
+    const character = characters.find((candidate) => candidate.citizenid === citizenid)
     setCharacterToDelete(character || null)
     setShowDeleteDialog(true)
   }
@@ -279,13 +337,12 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Aguardar mais tempo para garantir que o servidor processou completamente a deleção
           setTimeout(() => {
             loadCharacters()
             setSelectedCharacter(null)
             setShowDeleteDialog(false)
             setCharacterToDelete(null)
-          }, 1500) // Aumentado para 1.5 segundos para garantir sincronização completa
+          }, 1500)
         }
       })
       .catch((err) => console.error('Erro ao deletar personagem:', err))
@@ -295,26 +352,27 @@ function App() {
     setCreatingSlot(slot)
     setShowCreation(true)
     setSelectedCharacter(null)
+    setStatusMessage(null)
   }
 
   const handleCharacterCreated = () => {
     setShowCreation(false)
     setCreatingSlot(null)
-    loadCharacters()
+    setStatusMessage(null)
   }
 
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character)
     setShowCreation(false)
+    setStatusMessage(character.logoutBlocked ? character.logoutBlockedReason || 'Este personagem esta bloqueado apos logout.' : null)
 
-    // Carregar foto do personagem
     fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ citizenid: character.citizenid }),
     })
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (data.success && data.photo) {
           setSelectedCharacterPhoto(data.photo)
         } else {
@@ -323,8 +381,8 @@ function App() {
       })
       .catch(() => setSelectedCharacterPhoto(null))
 
-    // Enviar evento para atualizar preview
     const jobName = character.job?.name || (character.job?.label ? character.job.label.toLowerCase().replace(/\s+/g, '') : 'unemployed')
+
     fetch(`https://${GetParentResourceName()}/getPreviewData`, {
       method: 'POST',
       headers: {
@@ -332,7 +390,7 @@ function App() {
       },
       body: JSON.stringify({
         citizenid: character.citizenid,
-        job: jobName
+        job: jobName,
       }),
     }).catch((err) => console.error('Erro ao obter preview:', err))
   }
@@ -341,20 +399,33 @@ function App() {
     return null
   }
 
+  const selectedPhoto = selectedCharacter ? selectedCharacterPhoto || characterPhotos[selectedCharacter.citizenid] : null
+  const isSelectedCharacterBlocked = selectedCharacter?.logoutBlocked === true
+  const selectedGrade = selectedCharacter
+    ? typeof selectedCharacter.job?.grade === 'object'
+      ? selectedCharacter.job.grade.name
+      : String(selectedCharacter.job?.grade || '0')
+    : '0'
+  const rightPanelHeight = 'calc(88vh - 5.75rem)'
+
   if (showCreation) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <CharacterCreation
-          slot={creatingSlot || 1}
-          theme={theme}
-          onCancel={() => {
-            setShowCreation(false)
-            setCreatingSlot(null)
-          }}
-          onSuccess={handleCharacterCreated}
-        />
-        {/* Player de música fixo na parte inferior */}
-        <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10001, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
+      <div className="mri-app-shell" style={getMriThemeVars(theme)}>
+        <div className="fixed inset-0 z-10 flex items-center justify-center p-4" style={{ pointerEvents: 'none' }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <CharacterCreation
+            slot={creatingSlot || 1}
+            theme={theme}
+            locales={locales}
+              onCancel={() => {
+                setShowCreation(false)
+                setCreatingSlot(null)
+              }}
+              onSuccess={handleCharacterCreated}
+            />
+          </div>
+        </div>
+        <div className="fixed bottom-0 left-0 right-0 z-[10001] flex justify-center px-4 pb-5">
           <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
         </div>
       </div>
@@ -362,464 +433,297 @@ function App() {
   }
 
   return (
-    <div className="fixed inset-0" style={{ background: 'transparent', pointerEvents: 'none' }}>
-      <div className="h-full flex items-center justify-center gap-6" style={{ pointerEvents: 'none', background: 'transparent', padding: '2rem' }}>
-        {/* Left Panel - My Characters */}
+    <div className="mri-app-shell" style={getMriThemeVars(theme)}>
+      <div className="relative flex h-full items-start justify-between gap-6 px-12 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
         <div
-          className={cn(
-            "w-96 rounded-2xl overflow-hidden flex flex-col",
-            "animate-in slide-in-from-left-4 fade-in duration-500"
-          )}
-          style={{
-            pointerEvents: 'auto',
-            maxHeight: '90vh',
-            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-            border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px ${theme?.colors.accent?.primary || '#3B82F6'}10`,
-          }}
+          className="flex h-fit w-[25rem] max-w-[25rem] flex-col overflow-visible"
+          style={{ pointerEvents: 'auto' }}
         >
-          <div
-            className="p-6 border-b relative overflow-hidden flex-shrink-0"
-            style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+          <MriCardHeader
+            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
+            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
           >
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, ${theme?.colors.accent?.secondary || '#8B5CF6'} 100%)`,
-              }}
-            />
-            <div className="relative z-10">
-              <h2
-                className="text-2xl font-bold mb-2 flex items-center gap-2"
-                style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
-              >
-                <User className="w-6 h-6" />
-                {locales.characters?.title || 'My Characters'}
-              </h2>
-              <div className="flex items-center gap-3 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className="px-3 py-1"
-                  style={{
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    color: theme?.colors.text.secondary || '#CBD5E1',
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  }}
-                >
-                  {characters.length} / {maxSlots} slots
-                </Badge>
-                {characters.length === 0 && (
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                    <div
-                      className="w-1.5 h-1.5 rounded-full animate-pulse"
-                      style={{ backgroundColor: theme?.colors.accent?.primary || '#3B82F6' }}
-                    />
-                    <span>{locales.characters?.no_characters || 'Nenhum personagem criado'}</span>
-                  </div>
-                )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <MriSectionHeader
+                  icon={User}
+                  title={locales.characters?.title || 'My Characters'}
+                  className="!mb-0"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {locales.characters?.subtitle || 'Selecione um slot existente ou crie um novo personagem.'}
+                </p>
               </div>
+              <MriBadge variant="secondary" className="min-w-[4.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold">
+                {characters.length} / {maxSlots}
+              </MriBadge>
             </div>
-          </div>
-          <div className="overflow-y-auto flex-1 min-h-0" style={{ scrollbarWidth: 'thin' }}>
-            <CharacterList
-              characters={characters}
-              maxSlots={maxSlots}
-              selectedCharacter={selectedCharacter}
-              onSelect={handleCharacterSelect}
-              onCreate={handleCreateCharacter}
-              theme={theme}
-              characterPhotos={characterPhotos}
-            />
-          </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {characters.length === 0 && (
+                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
+                  {locales.characters?.no_characters || 'Nenhum personagem criado'}
+                </MriBadge>
+              )}
+            </div>
+          </MriCardHeader>
+
+          <MriCardContent className="flex-1 overflow-hidden p-0">
+            <MriScrollArea className="h-full">
+              <CharacterList
+                characters={characters}
+                maxSlots={maxSlots}
+                selectedCharacter={selectedCharacter}
+                onSelect={handleCharacterSelect}
+                onCreate={handleCreateCharacter}
+                theme={theme}
+                characterPhotos={characterPhotos}
+              />
+            </MriScrollArea>
+          </MriCardContent>
         </div>
 
-        {/* Center - Character Preview - ÁREA COMPLETAMENTE TRANSPARENTE PARA MOSTRAR O JOGO */}
         <div
-          className="flex-1 preview-area"
-          style={{
-            background: 'transparent !important',
-            pointerEvents: 'none',
-            position: 'relative',
-            minHeight: '600px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-          }}
+          className="preview-area relative flex min-h-[600px] flex-1 flex-col items-center justify-start"
+          style={{ background: 'transparent', pointerEvents: 'none' }}
         >
-          {/* Efeito de nome com glitch acima do preview */}
           {selectedCharacter && (
-            <div style={{
-              position: 'absolute',
-              top: '20px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 1000,
-              width: '100%',
-              pointerEvents: 'none',
-            }}>
+            <div
+              className="absolute left-1/2 top-5 z-[1000] flex w-full max-w-[32rem] -translate-x-1/2 flex-col items-center gap-3 px-6"
+              style={{ pointerEvents: 'none' }}
+            >
+              <MriBadge
+                variant="outline"
+                className="rounded-full border-primary/30 bg-black px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
+                style={{ opacity: 1 }}
+              >
+                Preview Ativo
+              </MriBadge>
               <GlitchName
                 name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
                 theme={theme || undefined}
               />
             </div>
           )}
-
-          {/* Esta área é completamente transparente - o jogo renderiza o preview do personagem aqui */}
         </div>
 
-        {/* Right Panel - Character Info */}
         <div
-          className={cn(
-            "w-96 rounded-2xl shadow-2xl",
-            "animate-in slide-in-from-right-4 fade-in duration-500"
-          )}
-          style={{
-            pointerEvents: 'auto',
-            maxHeight: '90vh',
-            backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-            border: `1px solid ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}`,
-            boxShadow: `0 20px 60px rgba(0, 0, 0, 0.3)`,
-          }}
+          className="flex h-fit w-[26rem] max-w-[26rem] flex-col overflow-visible"
+          style={{ pointerEvents: 'auto' }}
         >
-          <div
-            className="p-6 border-b relative overflow-hidden flex-shrink-0"
-            style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}
+          <MriCardHeader
+            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
+            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
           >
-            <h2
-              className="text-2xl font-bold flex items-center gap-2"
-              style={{ color: theme?.colors.text.primary || '#F8FAFC' }}
-            >
-              <User className="w-6 h-6" />
-              {locales.characters?.character_info || 'Character Info'}
-            </h2>
-            {selectedCharacter && (
-              <p className="text-sm mt-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                Detalhes do personagem selecionado
-              </p>
-            )}
-          </div>
-          <div className="overflow-hidden" style={{ maxHeight: 'calc(90vh - 100px)' }}>
-            {selectedCharacter ? (
-              <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* Avatar Header */}
-                <div className="flex items-center gap-4 pb-4 border-b" style={{ borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)' }}>
-                  <Avatar className="w-20 h-20 border-4 shadow-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500">
-                    {(selectedCharacterPhoto || (selectedCharacter && characterPhotos[selectedCharacter.citizenid])) ? (
-                      <AvatarImage
-                        src={selectedCharacterPhoto || (selectedCharacter ? characterPhotos[selectedCharacter.citizenid] : '')}
-                        alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
-                        onError={(e) => {
-                          console.error('[mri_Qmultichar] Erro ao carregar imagem do personagem selecionado:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''], e)
-                        }}
-                        onLoad={() => {
-                          console.log('[mri_Qmultichar] Imagem do personagem selecionado carregada:', selectedCharacterPhoto || characterPhotos[selectedCharacter?.citizenid || ''])
-                        }}
-                        className="object-cover"
-                      />
-                    ) : null}
-                    <AvatarFallback className="text-2xl font-bold text-white">
-                      {selectedCharacter.charinfo.firstname[0]}{selectedCharacter.charinfo.lastname[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3
-                      className="text-xl font-bold mb-1 bg-gradient-to-r bg-clip-text text-transparent"
-                      style={{
-                        backgroundImage: `linear-gradient(to right, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
-                      }}
-                    >
-                      {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
-                    </h3>
-                    <Badge
-                      variant="outline"
-                      className="mt-1"
-                      style={{
-                        borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                        color: theme?.colors.text.secondary || '#CBD5E1',
-                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      }}
-                    >
-                      <Shield className="w-3 h-3 mr-1" />
-                      {selectedCharacter.citizenid}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Job & Grade */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    }}
-                  >
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
-                      style={{
-                        background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
-                      }}
-                    />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Briefcase className="w-4 h-4" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
-                        <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                          {locales.characters?.job || 'Job'}
-                        </span>
-                      </div>
-                      <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                        {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="relative p-4 rounded-xl border transition-all hover:scale-105 group overflow-hidden"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    }}
-                  >
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
-                      style={{
-                        background: `linear-gradient(135deg, ${theme?.colors.accent?.primary || '#3B82F6'}, ${theme?.colors.accent?.secondary || '#8B5CF6'})`,
-                      }}
-                    />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Crown className="w-4 h-4" style={{ color: '#FBBF24' }} />
-                        <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                          {locales.characters?.grade || 'Grade'}
-                        </span>
-                      </div>
-                      <p className="font-bold text-lg" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                        {typeof selectedCharacter.job?.grade === 'object'
-                          ? selectedCharacter.job.grade.name
-                          : selectedCharacter.job?.grade || '0'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Money Cards */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%)',
-                      borderColor: 'rgba(34, 197, 94, 0.3)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="w-4 h-4 text-green-400" />
-                      <span className="text-xs uppercase tracking-wider opacity-70 text-green-300">{locales.characters?.cash || 'Cash'}</span>
-                    </div>
-                    <p className="font-bold text-xl text-green-300">
-                      ${formatNumber(selectedCharacter.money?.cash || 0)}
-                    </p>
-                  </div>
-                  <div
-                    className="relative p-4 rounded-xl border overflow-hidden group transition-all hover:scale-105"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%)',
-                      borderColor: 'rgba(59, 130, 246, 0.3)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Building2 className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs uppercase tracking-wider opacity-70 text-blue-300">{locales.characters?.bank || 'Bank'}</span>
-                    </div>
-                    <p className="font-bold text-xl text-blue-300">
-                      ${formatNumber(selectedCharacter.money?.bank || 0)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Additional Info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div
-                    className="p-3 rounded-lg border"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    }}
-                  >
-                    <span className="text-xs uppercase tracking-wider opacity-70 block mb-1" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                      {locales.characters?.gender || 'Gender'}
-                    </span>
-                    <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      {selectedCharacter.charinfo.gender === 0 ? (locales.characters?.male || 'Male') : (locales.characters?.female || 'Female')}
-                    </p>
-                  </div>
-                  <div
-                    className="p-3 rounded-lg border"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                    }}
-                  >
-                    <div className="flex items-center gap-1 mb-1">
-                      <Calendar className="w-3 h-3 opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }} />
-                      <span className="text-xs uppercase tracking-wider opacity-70" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                        {locales.characters?.birthdate || 'Birthdate'}
-                      </span>
-                    </div>
-                    <p className="font-semibold" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      {selectedCharacter.charinfo.birthdate || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Separador */}
-                <div
-                  className="my-6 h-px"
-                  style={{
-                    background: `linear-gradient(to right, transparent, ${theme?.colors.border || 'rgba(51, 65, 85, 0.5)'}, transparent)`,
-                  }}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <MriSectionHeader
+                  icon={User}
+                  title={locales.characters?.character_info || 'Character Info'}
+                  className="!mb-0"
                 />
-
-                {/* Action Buttons */}
-                <div className="pt-2 space-y-3">
-                  <button
-                    onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
-                    className={cn(
-                      "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
-                      "hover:scale-[1.02] flex items-center justify-center gap-2.5",
-                      "relative overflow-hidden group border",
-                      "active:scale-[0.98]"
-                    )}
-                    style={{
-                      background: `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`,
-                      borderColor: `${theme?.colors.button.primary || '#3B82F6'}80`,
-                      color: '#FFFFFF',
-                      boxShadow: `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
-                      e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.primary || '#3B82F6'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
-                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}, ${theme?.colors.button.primaryHover || '#2563EB'})`
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1) translateY(0)'
-                      e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.primary || '#3B82F6'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
-                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.primary || '#3B82F6'}E6, ${theme?.colors.button.primaryHover || '#2563EB'}E6)`
-                    }}
-                  >
-                    {/* Efeito de brilho sutil */}
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-                      style={{
-                        background: `radial-gradient(circle at center, ${theme?.colors.button.primary || '#3B82F6'} 0%, transparent 70%)`,
-                      }}
-                    />
-                    <Play className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                    <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.choose_character || 'Choose Character'}</span>
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
-                    className={cn(
-                      "w-full font-medium py-3.5 px-6 rounded-2xl transition-all duration-500 ease-out",
-                      "hover:scale-[1.02] flex items-center justify-center gap-2.5",
-                      "relative overflow-hidden group border",
-                      "active:scale-[0.98]"
-                    )}
-                    style={{
-                      background: `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`,
-                      borderColor: `${theme?.colors.button.danger || '#EF4444'}80`,
-                      color: '#FFFFFF',
-                      boxShadow: `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.02) translateY(-2px)'
-                      e.currentTarget.style.boxShadow = `0 8px 32px ${theme?.colors.button.danger || '#EF4444'}40, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
-                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}, ${theme?.colors.button.dangerHover || '#DC2626'})`
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1) translateY(0)'
-                      e.currentTarget.style.boxShadow = `0 4px 20px ${theme?.colors.button.danger || '#EF4444'}25, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
-                      e.currentTarget.style.background = `linear-gradient(135deg, ${theme?.colors.button.danger || '#EF4444'}E6, ${theme?.colors.button.dangerHover || '#DC2626'}E6)`
-                    }}
-                  >
-                    {/* Efeito de brilho sutil */}
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500"
-                      style={{
-                        background: `radial-gradient(circle at center, ${theme?.colors.button.danger || '#EF4444'} 0%, transparent 70%)`,
-                      }}
-                    />
-                    <Trash2 className="w-4.5 h-4.5 relative z-10" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2))' }} />
-                    <span className="relative z-10 text-sm tracking-wide">{locales.buttons?.delete || 'Delete Character'}</span>
-                  </button>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedCharacter
+                    ? (locales.characters?.selected_details || 'Detalhes completos do personagem selecionado.')
+                    : (locales.characters?.select_prompt || 'Escolha um slot para visualizar os detalhes.')}
+                </p>
               </div>
-            ) : (
-              <div className="p-6 text-center animate-in fade-in duration-500">
-                <div
-                  className="rounded-xl p-12 border relative overflow-hidden group"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-                  }}
-                >
+
+              {selectedCharacter && (
+                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
+                  Slot {selectedCharacter.cid || '?'}
+                </MriBadge>
+              )}
+            </div>
+          </MriCardHeader>
+
+          <MriCardContent className="flex-1 overflow-hidden p-0">
+            {selectedCharacter ? (
+              <MriScrollArea className="h-full" style={{ height: rightPanelHeight }}>
+                <div className="space-y-4 p-5">
                   <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity"
-                    style={{
-                      background: `radial-gradient(circle, ${theme?.colors.accent?.primary || '#3B82F6'} 0%, transparent 70%)`,
+                    className="rounded-[1.5rem] border border-border/80 p-4"
+                    style={{ 
+                      background: '#0f1115', 
+                      backgroundColor: '#0f1115', 
+                      opacity: 1,
+                      transform: 'translateZ(0)'
                     }}
-                  />
-                  <div className="relative z-10">
-                    <div
-                      className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
-                      style={{
-                        backgroundColor: `${theme?.colors.accent?.primary || '#3B82F6'}20`,
-                        border: `2px solid ${theme?.colors.accent?.primary || '#3B82F6'}40`,
-                      }}
-                    >
-                      <User className="w-10 h-10" style={{ color: theme?.colors.accent?.primary || '#3B82F6' }} />
+                  >
+                    <div className="flex items-start gap-4">
+                      <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-black">
+                        {selectedPhoto ? (
+                          <AvatarImage
+                            src={selectedPhoto}
+                            alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                            className="object-cover"
+                          />
+                        ) : null}
+                        <AvatarFallback className="rounded-[1.35rem] bg-[#0f1115]/95 text-2xl font-bold text-foreground">
+                          {selectedCharacter.charinfo.firstname[0]}
+                          {selectedCharacter.charinfo.lastname[0]}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div>
+                          <h3 className="truncate text-2xl font-semibold text-foreground">
+                            {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
+                          </h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                            <Shield className="mr-1 h-3.5 w-3.5" />
+                            {selectedCharacter.citizenid}
+                          </MriBadge>
+                          <MriBadge variant="secondary" className="rounded-full px-3 py-1 text-xs font-medium">
+                            <Crown className="mr-1 h-3.5 w-3.5" />
+                            {selectedGrade}
+                          </MriBadge>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-lg font-bold mb-2" style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-                      Select a character
-                    </p>
-                    <p className="text-sm" style={{ color: theme?.colors.text.muted || '#94A3B8' }}>
-                      or create a new one
-                    </p>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <InfoTile
+                      icon={Wallet}
+                      label={locales.characters?.cash || 'Cash'}
+                      value={`$${formatNumber(selectedCharacter.money?.cash || 0)}`}
+                    />
+                    <InfoTile
+                      icon={Building2}
+                      label={locales.characters?.bank || 'Bank'}
+                      value={`$${formatNumber(selectedCharacter.money?.bank || 0)}`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <InfoTile
+                      icon={Briefcase}
+                      label={locales.characters?.job || 'Job'}
+                      value={selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                    />
+                    <InfoTile
+                      icon={Crown}
+                      label={locales.characters?.grade || 'Grade'}
+                      value={selectedGrade}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <InfoTile
+                      icon={User}
+                      label={locales.characters?.gender || 'Gender'}
+                      value={selectedCharacter.charinfo.gender === 0
+                        ? (locales.characters?.male || 'Male')
+                        : (locales.characters?.female || 'Female')}
+                    />
+                    <InfoTile
+                      icon={Calendar}
+                      label={locales.characters?.birthdate || 'Birthdate'}
+                      value={selectedCharacter.charinfo.birthdate || 'N/A'}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <InfoTile
+                      icon={User}
+                      label={locales.characters?.nationality || 'Nationality'}
+                      value={selectedCharacter.charinfo.nationality || 'N/A'}
+                    />
+                    <InfoTile
+                      icon={Shield}
+                      label={locales.characters?.gang || 'Gang'}
+                      value={selectedCharacter.gang?.label || 'N/A'}
+                    />
+                  </div>
+
+                  <div
+                    className="rounded-[1.5rem] border border-border/80 p-3.5"
+                    style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+                  >
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                        {locales.buttons?.actions || 'Actions'}
+                      </span>
+                      <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs">
+                        {selectedCharacter.cid ? `Slot ${selectedCharacter.cid}` : 'Ready'}
+                      </MriBadge>
+                    </div>
+
+                    <div className="space-y-3">
+                      {statusMessage && (
+                        <div className="rounded-2xl border border-red-500/30 bg-[#14080a]/95 px-3 py-2 text-sm text-red-100">
+                          {statusMessage}
+                        </div>
+                      )}
+
+                      <MriButton
+                        className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
+                        disabled={isSelectedCharacterBlocked}
+                        onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
+                      >
+                        <Play className="mr-2 h-4 w-4" />
+                        {isSelectedCharacterBlocked
+                          ? 'Indisponivel apos logout'
+                          : (locales.buttons?.choose_character || 'Choose Character')}
+                      </MriButton>
+
+                      <MriButton
+                        variant="destructive"
+                        className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
+                        onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {locales.buttons?.delete || 'Delete Character'}
+                      </MriButton>
+                    </div>
+                  </div>
+                </div>
+              </MriScrollArea>
+            ) : (
+              <div className="flex h-full items-center justify-center p-6">
+                <div
+                  className="w-full rounded-[1.9rem] border border-dashed border-border/80 p-10 text-center"
+                  style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+                >
+                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-primary/25 bg-primary/10 text-primary">
+                    <User className="h-9 w-9" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground">
+                    {locales.characters?.select_character || 'Select a character'}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {locales.characters?.select_or_create || 'Escolha um slot na lista ou crie um novo personagem.'}
+                  </p>
                 </div>
               </div>
             )}
-          </div>
+          </MriCardContent>
         </div>
       </div>
 
-      {/* Player de música fixo na parte inferior */}
-      <div style={{ pointerEvents: 'auto', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 10000, display: 'flex', justifyContent: 'center', paddingBottom: '20px' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-[10000] flex justify-center px-4 pb-5" style={{ pointerEvents: 'auto' }}>
         <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
       </div>
 
-      {/* Botão de Configurações */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
+      <MriButton
+        size="icon"
+        className="fixed bottom-24 right-6 z-[99999] h-14 w-14 rounded-full shadow-2xl shadow-black/30"
+        style={{ pointerEvents: 'auto' }}
+        onClick={(event) => {
+          event.stopPropagation()
           setShowSettings(!showSettings)
         }}
-        className={cn(
-          "fixed bottom-20 right-6 w-14 h-14 rounded-full shadow-xl",
-          "flex items-center justify-center transition-all duration-300",
-          "hover:scale-110 hover:shadow-2xl"
-        )}
-        style={{
-          backgroundColor: theme?.colors.accent?.primary || '#3B82F6',
-          color: '#FFFFFF',
-          boxShadow: `0 8px 32px ${theme?.colors.accent?.primary || '#3B82F6'}40`,
-          pointerEvents: 'auto',
-          zIndex: 99999,
-        }}
       >
-        {showSettings ? <X className="w-6 h-6" /> : <Settings className="w-6 h-6" />}
-      </button>
+        {showSettings ? <X className="h-5 w-5" /> : <Settings className="h-5 w-5" />}
+      </MriButton>
 
-      {/* Painel de Configurações */}
       {showSettings && (
         <SettingsPanel
           theme={theme}
@@ -834,7 +738,6 @@ function App() {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         open={showDeleteDialog}
         onClose={() => {

@@ -81,8 +81,8 @@ Config.Themes = {
     },
 
     -- Tema Green (sutil)
-    green = {
-        name = 'Green',
+    mri = {
+        name = 'MRI ',
         colors = {
             background = 'rgba(5, 46, 22, 0.95)', -- green-950
             card = 'rgba(20, 83, 45, 0.9)', -- green-900
@@ -162,8 +162,8 @@ Config.Themes = {
     },
 
     -- Tema MRI (Refinado conforme a imagem)
-    mri = {
-        name = 'MRI',
+    green = {
+        name = 'Green',
         colors = {
             background = 'rgba(9, 9, 11, 0.98)', -- Quase preto (Zinc-950)
             card = 'rgba(18, 18, 22, 0.95)', -- Dark Zinc/Slate

@@ -1,90 +1,53 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
-import { Button } from './ui/button'
+import { MriActionModal, MriBadge } from '@mriqbox/ui-kit'
 import { AlertTriangle } from 'lucide-react'
-
-interface Theme {
-  name: string;
-  colors: {
-    background: string;
-    card: string;
-    border: string;
-    text: {
-      primary: string;
-      secondary: string;
-      muted: string;
-    };
-    accent: {
-      primary: string;
-      secondary: string;
-      success: string;
-      danger: string;
-    };
-  };
-}
+import type { UiTheme } from '../lib/mriTheme'
 
 interface DeleteConfirmDialogProps {
   open: boolean
   onClose: () => void
   onConfirm: () => void
   characterName?: string
-  theme: Theme | null
+  theme: UiTheme | null
   locales?: any
 }
 
-export function DeleteConfirmDialog({ open, onClose, onConfirm, characterName, theme, locales = {} }: DeleteConfirmDialogProps) {
+export function DeleteConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  characterName,
+  locales = {},
+}: DeleteConfirmDialogProps) {
+  if (!open) {
+    return null
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent 
-        style={{ 
-          backgroundColor: theme?.colors.card || 'rgba(15, 23, 42, 0.95)',
-          borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
-        }}
-      >
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <AlertTriangle 
-              className="w-6 h-6" 
-              style={{ color: theme?.colors.accent.danger || '#EF4444' }} 
-            />
-            <DialogTitle style={{ color: theme?.colors.text.primary || '#F8FAFC' }}>
-              Confirmar Exclusão
-            </DialogTitle>
-          </div>
-          <DialogDescription style={{ color: theme?.colors.text.secondary || '#CBD5E1' }}>
-            {locales.characters?.confirm_delete || 'Tem certeza que deseja deletar este personagem?'} {' '}
-            <span style={{ color: theme?.colors.text.primary || '#F8FAFC', fontWeight: 'bold' }}>
-              {characterName || ''}
-            </span>
-            {' '}
-            {locales.characters?.delete_warning || 'Esta ação não pode ser desfeita!'}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            style={{
-              borderColor: theme?.colors.border || 'rgba(51, 65, 85, 0.5)',
-              color: theme?.colors.text.primary || '#F8FAFC',
-              backgroundColor: 'transparent'
-            }}
-          >
-            {locales.buttons?.cancel || 'Cancelar'}
-          </Button>
-          <Button
-            type="button"
-            onClick={onConfirm}
-            style={{
-              backgroundColor: theme?.colors.accent.danger || '#EF4444',
-              color: '#FFFFFF'
-            }}
-          >
-            {locales.buttons?.delete || 'Deletar'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <MriActionModal
+      title={locales.characters?.confirm_delete_title || 'Confirmar Exclusão'}
+      icon={AlertTriangle}
+      variant="destructive"
+      confirmLabel={locales.buttons?.delete || 'Deletar'}
+      cancelLabel={locales.buttons?.cancel || 'Cancelar'}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      maxWidth="30rem"
+    >
+      <div className="space-y-4">
+        <p className="text-sm leading-6 text-muted-foreground">
+          {locales.characters?.confirm_delete || 'Tem certeza que deseja deletar este personagem?'}
+        </p>
+
+        {characterName && (
+          <MriBadge variant="outline" className="rounded-full px-4 py-2 text-sm font-medium">
+            {characterName}
+          </MriBadge>
+        )}
+
+        <p className="text-sm leading-6 text-destructive">
+          {locales.characters?.delete_warning || 'Esta ação não pode ser desfeita!'}
+        </p>
+      </div>
+    </MriActionModal>
   )
 }
-

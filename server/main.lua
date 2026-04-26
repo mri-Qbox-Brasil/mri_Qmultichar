@@ -13,6 +13,20 @@ CreateThread(function()
     ]])
 end)
 
+-- Garantir tabela properties para compatibilidade com qbx_spawn
+CreateThread(function()
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `properties` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT,
+            `property_name` VARCHAR(255) NOT NULL,
+            `coords` TEXT NOT NULL,
+            `owner` VARCHAR(255) DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `owner` (`owner`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ]])
+end)
+
 -- Criar tabela de configurações de player se não existir
 CreateThread(function()
     MySQL.query([[
@@ -130,10 +144,85 @@ local function savePlayerSettingsToDB(license, license2, settings)
     end
 end
 
+local logoutLocks = {}
+
+local function getPlayerLicenses(source)
+    return GetPlayerIdentifierByType(source, 'license'), GetPlayerIdentifierByType(source, 'license2')
+end
+
+local function getOwnedCharacterCount(license, license2)
+    if not license and not license2 then
+        return 0
+    end
+
+    local count = MySQL.scalar.await('SELECT COUNT(DISTINCT citizenid) FROM players WHERE license = ? OR license = ?', {
+        license,
+        license2,
+    })
+
+    return tonumber(count) or 0
+end
+
+local function canPlayerLogout(source)
+    local license, license2 = getPlayerLicenses(source)
+    local characterCount = getOwnedCharacterCount(license, license2)
+
+    return characterCount >= 2, characterCount
+end
+
+local function getLogoutLock(source)
+    return logoutLocks[source]
+end
+
+local function clearLogoutLock(source)
+    logoutLocks[source] = nil
+end
+
+local function isCharacterOwnedBySource(source, citizenId)
+    if not citizenId then
+        return false
+    end
+
+    local license, license2 = getPlayerLicenses(source)
+    local result = MySQL.single.await('SELECT citizenid FROM players WHERE citizenid = ? AND (license = ? OR license = ?) LIMIT 1', {
+        citizenId,
+        license,
+        license2,
+    })
+
+    return result ~= nil
+end
+
+AddEventHandler('QBCore:Server:OnPlayerUnload', function(source)
+    local player = exports.qbx_core:GetPlayer(source)
+    if not player or not player.PlayerData or not player.PlayerData.citizenid then
+        return
+    end
+
+    local canLogout, characterCount = canPlayerLogout(source)
+    logoutLocks[source] = {
+        blockedCitizenId = player.PlayerData.citizenid,
+        characterCount = characterCount,
+        canLogout = canLogout,
+        createdAt = os.time(),
+    }
+
+    lib.print.info(string.format(
+        '[mri_Qmultichar] Logout lock registrado para source %s, citizenid %s, total de personagens: %s',
+        source,
+        player.PlayerData.citizenid,
+        characterCount
+    ))
+end)
+
+AddEventHandler('playerDropped', function()
+    clearLogoutLock(source)
+end)
+
 -- Callback para obter personagens
 lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
-    local license2 = GetPlayerIdentifierByType(source, 'license2')
-    local license = GetPlayerIdentifierByType(source, 'license')
+    local license, license2 = getPlayerLicenses(source)
+    local logoutLock = getLogoutLock(source)
     
     -- Obter slots do jogador
     local slots = getPlayerSlots(license, license2)
@@ -169,16 +258,19 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
                     gang = gang,
                     position = json.decode(result[i].position),
                     metadata = json.decode(result[i].metadata),
-                    cid = result[i].cid
+                    cid = result[i].cid,
+                    logoutBlocked = logoutLock and logoutLock.blockedCitizenId == citizenid or false,
+                    logoutBlockedReason = logoutLock and logoutLock.blockedCitizenId == citizenid
+                        and 'Este personagem acabou de ser usado no logout e não pode ser selecionado agora.'
+                        or nil,
                 }
             end
         end
     end
     
     -- Obter tema atual do player (do banco ou padrão)
-    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
-    local license2 = GetPlayerIdentifierByType(source, 'license2')
-    local playerSettings = getPlayerSettingsFromDB(license, license2)
+    local settingsLicense = license2 or license
+    local playerSettings = getPlayerSettingsFromDB(settingsLicense, license2)
     local themeName = playerSettings.theme or Config.Theme or 'dark'
     local themeData = Config.Themes[themeName] or Config.Themes.dark
     
@@ -434,6 +526,57 @@ lib.callback.register('mri_Qmultichar:server:getPlayerSettings', function(source
     return getPlayerSettingsFromDB(license, license2)
 end)
 
+lib.callback.register('mri_Qmultichar:server:getLogoutState', function(source)
+    local logoutLock = getLogoutLock(source)
+    if not logoutLock then
+        return nil
+    end
+
+    return {
+        blockedCitizenId = logoutLock.blockedCitizenId,
+        characterCount = logoutLock.characterCount,
+        canLogout = logoutLock.canLogout,
+    }
+end)
+
+lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', function(source, citizenId)
+    if not citizenId then
+        return {
+            allowed = false,
+            message = 'Personagem inválido.',
+        }
+    end
+
+    if not isCharacterOwnedBySource(source, citizenId) then
+        lib.print.warn(string.format(
+            '[mri_Qmultichar] Tentativa de seleção inválida. Source: %s, CitizenID: %s',
+            source,
+            citizenId
+        ))
+
+        return {
+            allowed = false,
+            message = 'Você não pode selecionar este personagem.',
+        }
+    end
+
+    local logoutLock = getLogoutLock(source)
+    if logoutLock and logoutLock.blockedCitizenId == citizenId then
+        return {
+            allowed = false,
+            message = 'Você não pode entrar novamente no personagem que acabou de usar no logout. Escolha outro personagem.',
+        }
+    end
+
+    return {
+        allowed = true,
+    }
+end)
+
+RegisterNetEvent('mri_Qmultichar:server:clearLogoutLock', function()
+    clearLogoutLock(source)
+end)
+
 -- Callback para obter dados do personagem para gerar headshot
 lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(source, citizenId)
     if not citizenId then
@@ -507,4 +650,5 @@ exports('setPlayerSlots', setPlayerSlots)
 exports('SetCharacterSlots', setPlayerSlots) -- Alias solicitado
 exports('AddDeleteTable', AddDeleteTable)
 exports('DeleteCharacterData', DeleteCharacterData)
+exports('CanPlayerLogout', canPlayerLogout)
 

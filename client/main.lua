@@ -15,6 +15,7 @@ local isCreatingCharacter = false
 
 -- Variável para rastrear se está criando personagem (para voltar ao bucket padrão após illenium)
 local isInCharacterCreation = false
+local isIlleniumCustomizationActive = false
 
 -- Variável para rastrear quando um personagem foi deletado (prevenir criação imediata)
 local lastDeleteTime = 0
@@ -50,6 +51,64 @@ local function getQbxConfig()
     }
 end
 
+local function isResourceStarted(resourceName)
+    local resourceState = GetResourceState(resourceName)
+    return resourceState == 'started' or resourceState == 'starting'
+end
+
+local function isCharacterCreationFlowActive()
+    return isCreatingCharacter or isInCharacterCreation
+end
+
+local function finishCharacterCreation(reason, waitTime)
+    local shouldReset = isCharacterCreationFlowActive() or isIlleniumCustomizationActive
+
+    isIlleniumCustomizationActive = false
+
+    if not shouldReset then
+        return
+    end
+
+    if waitTime and waitTime > 0 then
+        Wait(waitTime)
+    end
+
+    lib.print.info(string.format('[mri_Qmultichar] [CRIAÇÃO] Finalizando criação (%s)...', reason or 'sem motivo'))
+    TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+    isInCharacterCreation = false
+    isCreatingCharacter = false
+    lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Criação finalizada, flags resetadas')
+end
+
+local function useStartingApartment()
+    local qbxConfig = getQbxConfig()
+    return qbxConfig and qbxConfig.characters and qbxConfig.characters.startingApartment == true
+end
+
+local function hasQbxApartmentSelector()
+    return isResourceStarted('qbx_properties') or isResourceStarted('qbx_apartments')
+end
+
+local function chooseConfiguredSpawn(citizenId)
+    if isResourceStarted('mri_Qspawn') then
+        exports['mri_Qspawn']:chooseSpawn()
+        return true
+    end
+
+    if hasQbxApartmentSelector() and useStartingApartment() then
+        TriggerEvent('apartments:client:setupSpawnUI', citizenId)
+        return true
+    end
+
+    if isResourceStarted('qbx_spawn') then
+        TriggerEvent('qb-spawn:client:setupSpawns', citizenId)
+        TriggerEvent('qb-spawn:client:openUI', true)
+        return true
+    end
+
+    return false
+end
+
 -- Função para obter localização de criação de personagem (illenium)
 -- Usa a config do mri_Qmultichar primeiro, depois tenta do qbx_core como fallback
 local function getIlleniumLocation()
@@ -66,6 +125,130 @@ local function getIlleniumLocation()
     
     -- Fallback final se não conseguir obter de nenhum lugar
     return vector4(-66.28, -822.13, 285.61 - 1, 70.82)
+end
+
+local function getIlleniumCharacterConfig()
+    return {
+        ped = false,
+        headBlend = true,
+        faceFeatures = true,
+        headOverlays = true,
+        components = true,
+        componentConfig = {
+            masks = true,
+            upperBody = true,
+            lowerBody = true,
+            bags = true,
+            shoes = true,
+            scarfAndChains = true,
+            bodyArmor = true,
+            shirts = true,
+            decals = true,
+            jackets = true,
+        },
+        props = true,
+        propConfig = {
+            hats = true,
+            glasses = true,
+            ear = true,
+            watches = true,
+            bracelets = true,
+        },
+        tattoos = true,
+        enableExit = false,
+        hasTracker = false,
+        automaticFade = true,
+    }
+end
+
+local function isNuiFocusedSafe()
+    local ok, focused = pcall(function()
+        return IsNuiFocused()
+    end)
+
+    return ok and focused == true
+end
+
+local function prepareFreemodePedForCreation(gender)
+    local model = tonumber(gender) == 1 and `mp_f_freemode_01` or `mp_m_freemode_01`
+
+    lib.requestModel(model, 60000)
+    SetPlayerModel(cache.playerId, model)
+    SetModelAsNoLongerNeeded(model)
+
+    Wait(150)
+
+    local ped = PlayerPedId()
+    SetEntityVisible(ped, true, false)
+    ClearPedTasksImmediately(ped)
+    ClearPedDecorations(ped)
+    SetPedDefaultComponentVariation(ped)
+
+    if model == `mp_m_freemode_01` then
+        SetPedHeadBlendData(ped, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, false)
+    else
+        SetPedHeadBlendData(ped, 45, 21, 0, 20, 15, 0, 0.3, 0.1, 0.0, false)
+    end
+
+    for componentId = 0, 11 do
+        SetPedComponentVariation(ped, componentId, 0, 0, 2)
+    end
+
+    for _, propId in ipairs({ 0, 1, 2, 6, 7 }) do
+        ClearPedProp(ped, propId)
+    end
+
+    SetPedComponentVariation(ped, 2, 0, 0, 2)
+    SetPedHairColor(ped, 0, 0)
+    return ped
+end
+
+local function openIlleniumCharacterCreator(gender)
+    if not isResourceStarted('illenium-appearance') then
+        lib.print.error('[mri_Qmultichar] [CRIAÇÃO] illenium-appearance não está iniciado')
+        return false
+    end
+
+    local illeniumLocation = getIlleniumLocation()
+    local ped = prepareFreemodePedForCreation(gender)
+
+    RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
+    SetEntityCoords(ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
+    SetEntityHeading(ped, illeniumLocation.w)
+    SetEntityVisible(ped, true, false)
+
+    isIlleniumCustomizationActive = true
+
+    local ok, err = pcall(function()
+        exports['illenium-appearance']:startPlayerCustomization(function(appearance)
+            isIlleniumCustomizationActive = false
+
+            if appearance then
+                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Aparência salva pelo illenium-appearance')
+                TriggerServerEvent('illenium-appearance:server:saveAppearance', appearance)
+                finishCharacterCreation('appearance_saved', 500)
+            else
+                lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Customização do illenium foi fechada sem salvar')
+                finishCharacterCreation('appearance_closed', 500)
+            end
+        end, getIlleniumCharacterConfig())
+    end)
+
+    if not ok then
+        isIlleniumCustomizationActive = false
+        lib.print.error(string.format('[mri_Qmultichar] [CRIAÇÃO] Falha ao abrir startPlayerCustomization: %s', err))
+        return false
+    end
+
+    Wait(200)
+
+    if not isNuiFocusedSafe() then
+        isIlleniumCustomizationActive = false
+        lib.print.warn('[mri_Qmultichar] [CRIACAO] Illenium nao assumiu o foco da NUI, usando fallback...')
+        return false
+    end
+
+    return true
 end
 
 -- Carregar configurações do player ao abrir NUI
@@ -589,8 +772,78 @@ end)
 -- Variável para prevenir múltiplos carregamentos simultâneos
 local isLoadingCharacter = false
 
+local function beginCharacterLoad(citizenId, options)
+    options = options or {}
+
+    if not citizenId then
+        return false, 'CitizenID nÃ£o fornecido'
+    end
+
+    if isLoadingCharacter then
+        return false, 'Carregamento de personagem jÃ¡ em andamento'
+    end
+
+    if isSpawning then
+        return false, 'Spawn jÃ¡ em andamento'
+    end
+
+    if not options.skipValidation then
+        local validation = lib.callback.await('mri_Qmultichar:server:validateCharacterSelection', false, citizenId)
+        if not validation or not validation.allowed then
+            return false, validation and validation.message or 'VocÃª nÃ£o pode selecionar este personagem.'
+        end
+    end
+
+    isLoadingCharacter = true
+
+    CreateThread(function()
+        if isSpawning then
+            isLoadingCharacter = false
+            return
+        end
+
+        if not isResourceStarted('mri_Qspawn') then
+            DoScreenFadeOut(10)
+        end
+
+        local success = pcall(function()
+            lib.callback.await('qbx_core:server:loadCharacter', false, citizenId)
+        end)
+
+        if success then
+            isSpawning = true
+
+            TriggerServerEvent('mri_Qmultichar:server:clearLogoutLock')
+            exports.mri_Qmultichar:destroyPreviewCam()
+            closeMultichar()
+
+            Citizen.Wait(200)
+
+            if chooseConfiguredSpawn(citizenId) then
+                isSpawning = false
+            else
+                spawnLastLocation()
+            end
+        end
+
+        isLoadingCharacter = false
+    end)
+
+    return true
+end
+
 -- Callback para carregar personagem
 RegisterNUICallback('loadCharacter', function(data, cb)
+    local success, message = beginCharacterLoad(data.citizenid)
+    cb({
+        success = success,
+        message = message,
+    })
+
+    if true then
+        return
+    end
+
     local citizenId = data.citizenid
     if not citizenId then
         cb({ success = false, message = 'CitizenID não fornecido' })
@@ -615,7 +868,7 @@ RegisterNUICallback('loadCharacter', function(data, cb)
             return
         end
         
-        if not GetResourceState('mri_Qspawn'):find('start') then 
+        if not isResourceStarted('mri_Qspawn') then 
             DoScreenFadeOut(10) 
         end
         
@@ -632,15 +885,7 @@ RegisterNUICallback('loadCharacter', function(data, cb)
             -- Aguardar um pouco antes de fazer spawn
             Citizen.Wait(200)
             
-            if GetResourceState('mri_Qspawn'):find('start') then
-                exports['mri_Qspawn']:chooseSpawn()
-                isSpawning = false
-            elseif GetResourceState('qbx_apartments'):find('start') and getQbxConfig().characters.startingApartment then
-                TriggerEvent('apartments:client:setupSpawnUI', citizenId)
-                isSpawning = false
-            elseif GetResourceState('qbx_spawn'):find('start') then
-                TriggerEvent('qb-spawn:client:setupSpawns', citizenId)
-                TriggerEvent('qb-spawn:client:openUI', true)
+            if chooseConfiguredSpawn(citizenId) then
                 isSpawning = false
             else
                 spawnLastLocation()
@@ -707,6 +952,7 @@ RegisterNUICallback('createCharacter', function(data, cb)
         end)
 
         if success and newData then
+            TriggerServerEvent('mri_Qmultichar:server:clearLogoutLock')
             lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Iniciando criação de personagem...')
             
             -- Prevenir múltiplos spawns simultâneos
@@ -818,45 +1064,24 @@ RegisterNUICallback('createCharacter', function(data, cb)
                     -- Timeout de segurança: se passou muito tempo, desativar
                     if GetGameTimer() - startTime > maxWaitTime then
                         lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Timeout na thread de monitoramento, desativando...')
-                        isInCharacterCreation = false
-                        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                        finishCharacterCreation('monitor_timeout')
                         break
                     end
                     
-                    -- Verificar se o illenium ainda está aberto (se não estiver, desativar)
-                    if not exports['illenium-appearance'] or not exports['illenium-appearance'].isOpen then
-                        -- Verificar também eventos alternativos
-                        local isIlleniumOpen = false
-                        pcall(function()
-                            if exports['illenium-appearance'].isOpen then
-                                isIlleniumOpen = true
-                            end
-                        end)
-                        
-                        if not isIlleniumOpen then
-                            -- Aguardar um pouco antes de desativar (pode estar salvando)
-                            Wait(2000)
-                            -- Verificar novamente
-                            pcall(function()
-                                if exports['illenium-appearance'].isOpen then
-                                    isIlleniumOpen = true
-                                end
-                            end)
-                            
-                            if not isIlleniumOpen then
-                                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado, desativando monitoramento...')
-                                isInCharacterCreation = false
-                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-                                break
-                            end
+                    if not isIlleniumCustomizationActive then
+                        Wait(2000)
+
+                        if not isIlleniumCustomizationActive then
+                            lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium não está mais ativo, desativando monitoramento...')
+                            finishCharacterCreation('monitor_detected_closed')
+                            break
                         end
                     end
                     
                     -- Verificar se o personagem foi realmente carregado (se sim, desativar monitoramento)
-                    if LocalPlayer.state.isLoggedIn then
+                    if LocalPlayer.state.isLoggedIn and not isIlleniumCustomizationActive then
                         lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado (isLoggedIn = true), desativando monitoramento...')
-                        isInCharacterCreation = false
-                        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                        finishCharacterCreation('monitor_player_loaded')
                         break
                     end
                     
@@ -866,14 +1091,7 @@ RegisterNUICallback('createCharacter', function(data, cb)
                     -- Se o jogador se afastou da localização do illenium, reposicionar
                     -- Mas apenas se o illenium ainda estiver aberto
                     if distance > 5.0 then
-                        local isOpen = false
-                        pcall(function()
-                            if exports['illenium-appearance'] and exports['illenium-appearance'].isOpen then
-                                isOpen = true
-                            end
-                        end)
-                        
-                        if isOpen then
+                        if isIlleniumCustomizationActive then
                             lib.print.warn(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
                             RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
                             while not HasCollisionLoadedAroundEntity(cache.ped) do 
@@ -890,14 +1108,12 @@ RegisterNUICallback('createCharacter', function(data, cb)
                             Wait(3000) -- Aguardar 3 segundos para dar tempo do personagem ser carregado
                             if LocalPlayer.state.isLoggedIn then
                                 lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado após fechar illenium, desativando...')
-                                isInCharacterCreation = false
-                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                                finishCharacterCreation('monitor_closed_after_loaded')
                                 break
                             else
                                 -- Se ainda não foi carregado, desativar mesmo assim (illenium fechado)
                                 lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado durante monitoramento, desativando...')
-                                isInCharacterCreation = false
-                                TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+                                finishCharacterCreation('monitor_closed_without_load')
                                 break
                             end
                         end
@@ -915,18 +1131,12 @@ RegisterNUICallback('createCharacter', function(data, cb)
             -- Aguardar um pouco mais para garantir que tudo está pronto
             Citizen.Wait(500)
             
-            -- Abrir illenium usando eventos (método padrão)
-            if GetResourceState('qbx_spawn') == 'missing' then
-                lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando qb-clothes...')
+            -- Abrir illenium diretamente pelo export nativo para evitar depender
+            -- do fluxo indireto do qbx_core/qb-clothes no momento da criação.
+            if not openIlleniumCharacterCreator(charData.gender) then
+                lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Fallback para qb-clothes:client:CreateFirstCharacter')
+                isIlleniumCustomizationActive = true
                 TriggerEvent('qb-clothes:client:CreateFirstCharacter')
-            else
-                if qbxConfig and qbxConfig.characters and qbxConfig.characters.startingApartment then
-                    lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando apartments spawn...')
-                    TriggerEvent('apartments:client:setupSpawnUI', newData)
-                else
-                    lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Usando qb-clothes...')
-                    TriggerEvent('qb-clothes:client:CreateFirstCharacter')
-                end
             end
             
             lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Illenium aberto, aguardando...')
@@ -953,10 +1163,8 @@ RegisterNetEvent('illenium-appearance:client:characterSaved', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento characterSaved recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
-        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
-        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-        isInCharacterCreation = false
-        lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
+        isIlleniumCustomizationActive = false
+        finishCharacterCreation('event_character_saved', 2000)
     else
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
     end
@@ -967,10 +1175,8 @@ RegisterNetEvent('qb-clothes:client:characterSaved', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes characterSaved recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
-        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
-        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-        isInCharacterCreation = false
-        lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
+        isIlleniumCustomizationActive = false
+        finishCharacterCreation('event_qb_character_saved', 2000)
     else
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
     end
@@ -981,10 +1187,8 @@ RegisterNetEvent('illenium-appearance:client:close', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento close recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
-        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
-        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-        isInCharacterCreation = false
-        lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
+        isIlleniumCustomizationActive = false
+        finishCharacterCreation('event_illenium_close', 2000)
     end
 end)
 
@@ -992,10 +1196,8 @@ RegisterNetEvent('qb-clothes:client:close', function()
     lib.print.info('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes close recebido')
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
-        Citizen.Wait(2000) -- Aguardar mais tempo para garantir que o personagem foi salvo
-        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-        isInCharacterCreation = false
-        lib.print.info('[mri_Qmultichar] [ILLENIUM] Criação finalizada, isInCharacterCreation = false')
+        isIlleniumCustomizationActive = false
+        finishCharacterCreation('event_qb_close', 2000)
     end
 end)
 
@@ -1003,10 +1205,8 @@ end)
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [LOADED] Personagem carregado, finalizando criação...')
-        Citizen.Wait(1000) -- Aguardar um pouco para garantir que tudo foi processado
-        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-        isInCharacterCreation = false
-        lib.print.info('[mri_Qmultichar] [LOADED] Criação finalizada, isInCharacterCreation = false')
+        isIlleniumCustomizationActive = false
+        finishCharacterCreation('event_player_loaded', 1000)
     end
 end)
 
@@ -1055,9 +1255,11 @@ end)
 
 -- Callback para obter preview do personagem
 RegisterNUICallback('getPreviewData', function(data, cb)
-    -- NÃO fazer preview se estiver criando personagem
-    if isInCharacterCreation then
-        lib.print.warn('[mri_Qmultichar] [PREVIEW] getPreviewData chamado durante criação de personagem, ignorando...')
+    -- NÃO fazer preview em nenhuma etapa da criação de personagem.
+    -- O front-end recebe sucesso do createCharacter antes do fluxo terminar, então
+    -- precisamos bloquear previews já no início para não reposicionar o ped.
+    if isCharacterCreationFlowActive() then
+        lib.print.warn('[mri_Qmultichar] [PREVIEW] getPreviewData chamado durante fluxo de criação, ignorando...')
         cb({ success = false })
         return
     end
@@ -1110,9 +1312,36 @@ RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
     -- Resetar flag de criação ao fazer logout
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [LOGOUT] Resetando flag isInCharacterCreation ao fazer logout')
+        isIlleniumCustomizationActive = false
         isInCharacterCreation = false
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
     end
+
+    local logoutState = lib.callback.await('mri_Qmultichar:server:getLogoutState', false)
+    if logoutState and logoutState.blockedCitizenId and logoutState.canLogout == false then
+        lib.notify({
+            title = 'Logout bloqueado',
+            description = 'Voce precisa ter 2 ou mais personagens para usar logout.',
+            type = 'error'
+        })
+
+        local success, message = beginCharacterLoad(logoutState.blockedCitizenId, { skipValidation = true })
+        if not success then
+            lib.notify({
+                title = 'Falha ao restaurar personagem',
+                description = message or 'Nao foi possivel retornar ao personagem anterior.',
+                type = 'error'
+            })
+
+            openMultichar()
+            pcall(function()
+                exports.mri_Qmultichar:setupPreviewCam()
+            end)
+        end
+
+        return
+    end
+
     openMultichar()
     pcall(function()
         exports.mri_Qmultichar:setupPreviewCam()
@@ -1124,6 +1353,7 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     -- Resetar flag de criação ao descarregar personagem
     if isInCharacterCreation then
         lib.print.info('[mri_Qmultichar] [UNLOAD] Resetando flag isInCharacterCreation ao descarregar personagem')
+        isIlleniumCustomizationActive = false
         isInCharacterCreation = false
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
     end
@@ -1180,7 +1410,7 @@ CreateThread(function()
                 Wait(0)
             end
             
-            Wait(1500)
+            Wait(250) -- Reduzido de 1500
             ShutdownLoadingScreen()
             ShutdownLoadingScreenNui()
             
@@ -1191,17 +1421,17 @@ CreateThread(function()
                 exports.mri_Qmultichar:setupPreviewCam()
             end)
             
-            Wait(1000)
+            Wait(100) -- Reduzido de 1000
             lib.print.info('[mri_Qmultichar] Abrindo NUI...')
             
             -- AGUARDAR NUI ESTAR PRONTA (Handshake) antes de abrir de fato
             -- Isso evita que ela tente abrir antes do React estar montado
             -- Aumentado para 30 segundos para conexões/PCs lentos na primeira carga
-            local timeout = 300 
+            local timeout = 50 -- Reduzido para 5 segundos
             while not isNuiReady and timeout > 0 do
                 Wait(100)
                 timeout = timeout - 1
-                if timeout % 50 == 0 then
+                if timeout % 10 == 0 then
                     lib.print.info('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
                 end
             end
@@ -1243,5 +1473,5 @@ end)
 exports('openMultichar', openMultichar)
 exports('closeMultichar', closeMultichar)
 exports('isInCharacterCreation', function()
-    return isInCharacterCreation
+    return isCharacterCreationFlowActive()
 end)

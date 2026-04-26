@@ -1,4 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { MriBadge, MriButton, MriCard } from '@mriqbox/ui-kit'
+import { Pause, Play, Volume2 } from 'lucide-react'
+import type { UiTheme } from '../lib/mriTheme'
 
 declare function GetParentResourceName(): string
 
@@ -19,19 +22,7 @@ interface MusicConfig {
 
 interface MusicPlayerProps {
   music?: MusicConfig
-  theme?: {
-    colors: {
-      text: {
-        primary: string
-        muted: string
-      }
-      accent?: {
-        primary?: string
-      }
-      card?: string
-      border?: string
-    }
-  }
+  theme?: UiTheme
   isStreamerMode?: boolean
 }
 
@@ -40,80 +31,82 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
   const [prevStreamerMode, setPrevStreamerMode] = useState(isStreamerMode)
+  const [ytTitle, setYtTitle] = useState('')
+  const [ytThumb, setYtThumb] = useState('')
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const ytContainerIdRef = useRef<string>('yt-player-' + Math.random().toString(36).slice(2))
+  const ytContainerIdRef = useRef(`yt-player-${Math.random().toString(36).slice(2)}`)
   const ytPlayerRef = useRef<any>(null)
   const isYouTube = !!music?.url && /(youtube\.com\/watch\?v=|youtu\.be\/)/i.test(music.url)
-  
-  // Detectar mudança no streamer mode e forçar recriação do player
+
   useEffect(() => {
     if (prevStreamerMode && !isStreamerMode) {
-      // Streamer mode foi desativado - forçar recriação do player
       if (audioRef.current) {
         audioRef.current.src = ''
         audioRef.current = null
       }
+
       if (ytPlayerRef.current) {
         try {
           ytPlayerRef.current.destroy?.()
         } catch {}
+
         ytPlayerRef.current = null
       }
     }
+
     setPrevStreamerMode(isStreamerMode)
   }, [isStreamerMode, prevStreamerMode])
 
-  // Escutar mensagens para desativar/ativar música (modo streamer)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.action === 'setStreamerMode') {
         if (event.data.enabled) {
-          // Desativar música
           setIsPlaying(false)
+
           if (audioRef.current) {
             audioRef.current.pause()
             audioRef.current.src = ''
           }
+
           if (ytPlayerRef.current) {
             try {
               ytPlayerRef.current.pauseVideo?.()
               ytPlayerRef.current.stopVideo?.()
             } catch {}
           }
-        } else {
-          // Reativar música se estava tocando antes e as configurações permitem
-          if (music && music.enabled && music.url) {
-            setIsPlaying(true) // Tentar tocar
-            if (isYouTube && ytPlayerRef.current) {
-              try {
-                ytPlayerRef.current.playVideo?.()
-              } catch {}
-            } else if (audioRef.current) {
-              audioRef.current.play().catch(console.error)
-            }
+        } else if (music && music.enabled && music.url) {
+          setIsPlaying(true)
+
+          if (isYouTube && ytPlayerRef.current) {
+            try {
+              ytPlayerRef.current.playVideo?.()
+            } catch {}
+          } else if (audioRef.current) {
+            audioRef.current.play().catch(console.error)
           }
         }
       }
     }
+
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [music, isYouTube])
-  const [ytTitle, setYtTitle] = useState<string>('')
-  const [ytThumb, setYtThumb] = useState<string>('')
+  }, [isYouTube, music])
 
   useEffect(() => {
     if (!music) return
     setCurrentVolume(typeof music.volume === 'number' ? music.volume : 0.3)
     setYtTitle('')
     setYtThumb('')
-  }, [music?.url, music?.enabled])
+  }, [music?.enabled, music?.url])
 
   function getYouTubeId(url: string): string | null {
     try {
       const ytWatch = url.match(/[?&]v=([^&#]+)/)
       if (ytWatch && ytWatch[1]) return ytWatch[1]
+
       const ytShort = url.match(/youtu\.be\/([^?&#/]+)/)
       if (ytShort && ytShort[1]) return ytShort[1]
+
       return null
     } catch {
       return null
@@ -121,23 +114,23 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   }
 
   useEffect(() => {
-    // Se streamer mode estiver ativo, não tocar música
     if (isStreamerMode) {
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current.src = ''
       }
+
       if (ytPlayerRef.current) {
         try {
           ytPlayerRef.current.pauseVideo?.()
           ytPlayerRef.current.stopVideo?.()
         } catch {}
       }
+
       setIsPlaying(false)
       return
     }
-    
-    // Se não há música configurada ou desabilitada, não fazer nada
+
     if (!music || !music.enabled || !music.url) {
       return
     }
@@ -152,6 +145,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
             resolve()
             return
           }
+
           const tag = document.createElement('script')
           tag.src = 'https://www.youtube.com/iframe_api'
           const firstScriptTag = document.getElementsByTagName('script')[0]
@@ -164,6 +158,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
 
       ensureApi().then(() => {
         if (destroyed) return
+
         ytPlayerRef.current = new window.YT.Player(ytContainerIdRef.current, {
           videoId,
           playerVars: {
@@ -182,8 +177,9 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
                 if (iframe) {
                   iframe.setAttribute('allow', 'autoplay; encrypted-media')
                 }
+
                 event.target.setVolume(Math.round((music.volume ?? 0.3) * 100))
-                // Metadados (título e thumbnail)
+
                 const data = event?.target?.getVideoData?.()
                 if (data) {
                   if (data.title) setYtTitle(data.title)
@@ -195,12 +191,11 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
                 }
               } catch {}
 
-              // Autoplay (melhor esforço). Em CEF geralmente funciona se iniciar mutado.
               if (music.autoplay !== false) {
                 try {
                   event.target.mute?.()
                   event.target.playVideo?.()
-                  // tentar desmutar depois (pode falhar sem interação do usuário)
+
                   setTimeout(() => {
                     try {
                       event.target.unMute?.()
@@ -209,6 +204,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
                   }, 700)
                 } catch {}
               }
+
               setIsLoading(false)
             },
             onStateChange: (event: any) => {
@@ -233,18 +229,19 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
 
       return () => {
         destroyed = true
+
         try {
           ytPlayerRef.current?.stopVideo?.()
           ytPlayerRef.current?.destroy?.()
         } catch {}
+
         ytPlayerRef.current = null
       }
     }
 
-    // Criar elemento de áudio para URL direta/arquivo local
     const audio = new Audio()
-
     let audioUrl = music.url
+
     if (!music.url.startsWith('http://') && !music.url.startsWith('https://')) {
       try {
         const resourceName = typeof GetParentResourceName !== 'undefined' ? GetParentResourceName() : 'mri_Qmultichar'
@@ -255,29 +252,23 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
         audioUrl = `./sounds/${cleanPath}`
       }
     }
-    
+
     audio.src = audioUrl
     audio.volume = music.volume ?? 0.3
     audio.loop = music.loop || false
-    
     audioRef.current = audio
 
-    // Autoplay para áudio direto (mp3/ogg)
     if (music.autoplay !== false) {
       setIsPlaying(true)
       setIsLoading(true)
     }
 
-    const handleCanPlay = () => {
-      setIsLoading(false)
-    }
-
+    const handleCanPlay = () => setIsLoading(false)
     const handleError = () => {
       console.error('[MusicPlayer] Erro ao carregar música:', audioUrl)
       setIsLoading(false)
       setIsPlaying(false)
     }
-
     const handleEnded = () => {
       if (!music.loop) {
         setIsPlaying(false)
@@ -295,9 +286,8 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
       audio.pause()
       audio.src = ''
     }
-  }, [music, isYouTube, isStreamerMode])
-  
-  // Atualizar volume sem recriar o player
+  }, [isStreamerMode, isYouTube, music])
+
   useEffect(() => {
     if (isYouTube) {
       if (ytPlayerRef.current) {
@@ -311,8 +301,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
   }, [currentVolume, isYouTube])
 
   useEffect(() => {
-    if (isYouTube) return
-    if (!audioRef.current) return
+    if (isYouTube || !audioRef.current) return
 
     if (isPlaying) {
       audioRef.current.play().catch((err) => {
@@ -322,15 +311,14 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
     } else {
       audioRef.current.pause()
     }
-  }, [isPlaying])
+  }, [isPlaying, isYouTube])
 
   const togglePlay = () => {
-    if (!music || !music.enabled || !music.url) return
-    
-    if (isLoading) return
-    
+    if (!music || !music.enabled || !music.url || isLoading) return
+
     if (isYouTube) {
       if (!ytPlayerRef.current) return
+
       const state = ytPlayerRef.current.getPlayerState?.()
       if (state === 1) {
         ytPlayerRef.current.pauseVideo?.()
@@ -340,10 +328,10 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
           ytPlayerRef.current.setVolume?.(Math.round((currentVolume ?? music.volume ?? 0.3) * 100))
           ytPlayerRef.current.playVideo?.()
         } catch {
-          // Fallback: tocar mutado primeiro, depois desmutar
           try {
             ytPlayerRef.current.mute?.()
             ytPlayerRef.current.playVideo?.()
+
             setTimeout(() => {
               ytPlayerRef.current.unMute?.()
               ytPlayerRef.current.setVolume?.(Math.round((currentVolume ?? music.volume ?? 0.3) * 100))
@@ -357,189 +345,109 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
         audioRef.current?.load()
         return
       }
-      setIsPlaying(!isPlaying)
+
+      setIsPlaying((prev) => !prev)
     }
   }
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value)
-    setCurrentVolume(newVolume)
-    // O useEffect vai atualizar o volume automaticamente
+  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentVolume(Number.parseFloat(event.target.value))
   }
 
-  // Se streamer mode estiver ativo, não renderizar o player
-  if (isStreamerMode) {
-    return null
-  }
-  
-  // Se não há música configurada ou desabilitada, não renderizar
-  if (!music || !music.enabled || !music.url) {
+  if (isStreamerMode || !music || !music.enabled || !music.url) {
     return null
   }
 
-  const accentColor = theme?.colors.accent?.primary || theme?.colors.text.primary || '#3B82F6'
-  const textColor = theme?.colors.text.primary || '#FFFFFF'
-  const mutedColor = theme?.colors.text.muted || '#94A3B8'
-  // Converter cardColor para sólido (remover transparência se houver)
-  const cardColorRaw = theme?.colors.card || 'rgba(15, 23, 42, 0.9)'
-  let cardColor = cardColorRaw
-  if (cardColorRaw.includes('rgba')) {
-    // Extrair valores RGB e usar opacidade 1
-    const match = cardColorRaw.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-    if (match) {
-      cardColor = `rgb(${match[1]}, ${match[2]}, ${match[3]})`
-    } else {
-      cardColor = 'rgb(15, 23, 42)' // Fallback
-    }
-  }
-  const borderColor = theme?.colors.border || 'rgba(51, 65, 85, 0.5)'
+  const accentColor = theme?.colors.accent?.primary || theme?.colors.text.primary || '#00FFA3'
+  const mutedColor = theme?.colors.text.muted || '#A1A1AA'
+  const borderColor = theme?.colors.border || 'rgba(39, 39, 42, 0.6)'
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        zIndex: 10000,
-        pointerEvents: 'auto',
-        backgroundColor: cardColor,
-        border: `1px solid ${borderColor}`,
-        borderRadius: '12px',
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        minWidth: '280px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-      }}
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
+    <MriCard
+      className="flex min-w-[320px] max-w-[420px] items-center gap-4 rounded-[1.5rem] border border-border/80 px-4 py-3 shadow-2xl shadow-black/25"
+      style={{ pointerEvents: 'auto', backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
     >
-      {/* Botão Play/Pause */}
-      <button
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          togglePlay()
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-        }}
+      <MriButton
+        variant="ghost"
+        size="icon"
+        className="h-12 w-12 shrink-0 rounded-2xl border border-border/80"
+        style={{ backgroundColor: 'rgb(8, 9, 12)' }}
         disabled={isLoading}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          cursor: isLoading ? 'wait' : 'pointer',
-          padding: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: textColor,
-          transition: 'opacity 0.2s',
-          opacity: isLoading ? 0.5 : 1,
-          pointerEvents: 'auto',
-          zIndex: 10001,
-        }}
-        onMouseEnter={(e) => {
-          if (!isLoading) {
-            e.currentTarget.style.opacity = '0.7'
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '1'
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          togglePlay()
         }}
       >
         {isLoading ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" strokeDasharray="31.416" strokeDashoffset="15.708">
-              <animate attributeName="stroke-dashoffset" values="31.416;0" dur="1s" repeatCount="indefinite" />
-            </circle>
-          </svg>
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
         ) : isPlaying ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-          </svg>
+          <Pause className="h-4 w-4" />
         ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          <Play className="h-4 w-4" />
         )}
-      </button>
+      </MriButton>
 
-      {/* Info do YouTube: thumbnail + título */}
-      {isYouTube && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '220px' }}>
-          {ytThumb ? (
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex items-center gap-2">
+          <MriBadge variant={isYouTube ? 'default' : 'secondary'} className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+            {isYouTube ? 'YouTube' : 'Audio'}
+          </MriBadge>
+          <span className="truncate text-sm font-medium text-foreground" title={ytTitle || music.url}>
+            {isYouTube ? (ytTitle || 'Carregando faixa...') : 'Música de fundo'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isYouTube && ytThumb ? (
             <img
               src={ytThumb}
               alt="thumb"
-              style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', border: `1px solid ${borderColor}` }}
+              className="h-10 w-10 rounded-xl object-cover"
+              style={{ border: `1px solid ${borderColor}` }}
             />
-          ) : null}
-          <span
-            style={{
-              color: textColor,
-              fontSize: '12px',
-              maxWidth: '180px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={ytTitle || music?.url}
-          >
-            {ytTitle || 'YouTube'}
-          </span>
-        </div>
-      )}
+          ) : (
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 text-primary"
+              style={{ backgroundColor: 'rgb(8, 9, 12)' }}
+            >
+              <Volume2 className="h-4 w-4" />
+            </div>
+          )}
 
-      {/* Container do YouTube (quase invisível, mas dentro da viewport) */}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Volume2 className="h-4 w-4 shrink-0" style={{ color: mutedColor }} />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={currentVolume}
+              onChange={handleVolumeChange}
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-transparent"
+              style={{
+                background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${currentVolume * 100}%, ${borderColor} ${currentVolume * 100}%, ${borderColor} 100%)`,
+              }}
+            />
+            <span className="w-10 text-right text-xs text-muted-foreground">
+              {Math.round(currentVolume * 100)}%
+            </span>
+          </div>
+        </div>
+      </div>
+
       {isYouTube && (
         <div
-          style={{
-            width: 1,
-            height: 1,
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            overflow: 'hidden',
-            opacity: 0.01,
-            pointerEvents: 'none',
-          }}
+          className="pointer-events-none absolute bottom-0 left-0 h-px w-px overflow-hidden opacity-[0.01]"
+          aria-hidden="true"
         >
           <div id={ytContainerIdRef.current} />
         </div>
       )}
-
-      {/* Controle de Volume */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={mutedColor} strokeWidth="2">
-          <path d="M11 5L6 9H2v6h4l5 4V5z" />
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
-        </svg>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={currentVolume}
-          onChange={handleVolumeChange}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{
-            flex: 1,
-            height: '4px',
-            background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${currentVolume * 100}%, ${borderColor} ${currentVolume * 100}%, ${borderColor} 100%)`,
-            borderRadius: '2px',
-            outline: 'none',
-            cursor: 'pointer',
-            pointerEvents: 'auto',
-            zIndex: 10001,
-          }}
-        />
-        <span style={{ color: mutedColor, fontSize: '12px', minWidth: '30px', textAlign: 'right' }}>
-          {Math.round(currentVolume * 100)}%
-        </span>
-      </div>
-    </div>
+    </MriCard>
   )
 }
-

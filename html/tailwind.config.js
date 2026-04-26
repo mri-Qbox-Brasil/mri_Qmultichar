@@ -4,6 +4,7 @@ export default {
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
+    './node_modules/@mriqbox/ui-kit/dist/**/*.{js,mjs}',
   ],
   theme: {
     extend: {

@@ -4,7 +4,7 @@ Multichar externo para Qbox Framework com NUI moderna baseada em shadcn/ui, Reac
 
 ## Características
 
-- ✨ Interface moderna e responsiva com shadcn/ui
+- ✨ Interface moderna e responsiva com mri/ui kit
 - 🎨 Design elegante com gradientes e animações
 - 📦 Sistema de slots personalizáveis via comando e banco de dados
 - 🔄 Integração completa com qbx_core
