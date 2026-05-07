@@ -183,11 +183,11 @@ export function CharacterList({
                     <h3 className="truncate text-base font-semibold text-foreground">
                       {character
                         ? `${character.charinfo.firstname} ${character.charinfo.lastname}`
-                        : (locales.characters?.slot_label?.replace('%{slot}', String(slot)) || `Slot ${slot}`)}
+                        : locales.characters?.slot_label?.replace('%{slot}', String(slot))}
                     </h3>
                     {character && (
                       <p className="mt-1 truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        {locales.characters?.id_prefix || 'ID'} {character.citizenid}
+                        {locales.characters?.id_prefix} {character.citizenid}
                       </p>
                     )}
                   </div>
@@ -202,7 +202,7 @@ export function CharacterList({
                   <div className="flex flex-wrap items-center gap-2">
                     <MriBadge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
                       <Briefcase className="mr-1 h-3 w-3" />
-                      {character.job?.label || locales.characters?.unemployed || 'Unemployed'}
+                      {character.job?.label || locales.characters?.unemployed}
                     </MriBadge>
                     <MriBadge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                       <Wallet className="mr-1 h-3 w-3" />

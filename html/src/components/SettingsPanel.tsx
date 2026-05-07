@@ -75,11 +75,11 @@ export function SettingsPanel({
                 <div className="flex items-center gap-2 text-foreground">
                   <Settings className="h-5 w-5" />
                   <h2 className="text-lg font-semibold leading-none">
-                    {locales.settings?.title || 'Configurações'}
+                    {locales.settings?.title}
                   </h2>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {locales.settings?.subtitle || 'Ajuste o visual e a experiência de usuário.'}
+                  {locales.settings?.subtitle}
                 </p>
               </div>
 
@@ -100,21 +100,21 @@ export function SettingsPanel({
                 <div className="flex items-center gap-2">
                   {streamerMode ? <Music2 className="h-4 w-4 text-primary" /> : <Music className="h-4 w-4 text-primary" />}
                   <span className="font-medium text-foreground">
-                    {locales.settings?.streamer_mode_title || 'Modo Streamer'}
+                    {locales.settings?.streamer_mode_title}
                   </span>
                 </div>
 
                 <MriBadge variant={streamerMode ? 'default' : 'secondary'} className="rounded-full px-3 py-1 text-xs">
                   {streamerMode
-                    ? (locales.settings?.streamer_active || 'Ativado')
-                    : (locales.settings?.streamer_inactive || 'Desativado')}
+                    ? locales.settings?.streamer_active
+                    : locales.settings?.streamer_inactive}
                 </MriBadge>
               </div>
 
               <p className="mb-4 text-sm leading-6 text-muted-foreground">
                 {streamerMode
-                  ? (locales.settings?.streamer_on_description || 'A música da tela foi desativada para não aparecer na transmissão.')
-                  : (locales.settings?.streamer_off_description || 'Ao ativar o modo streamer a música do menu de seleção será desativada.')}
+                  ? locales.settings?.streamer_on_description
+                  : locales.settings?.streamer_off_description}
               </p>
 
               <MriButton
@@ -123,8 +123,8 @@ export function SettingsPanel({
                 onClick={() => onStreamerModeChange(!streamerMode)}
               >
                 {streamerMode
-                  ? (locales.settings?.streamer_disable || 'Desligar modo streamer')
-                  : (locales.settings?.streamer_enable || 'Ligar modo streamer')}
+                  ? locales.settings?.streamer_disable
+                  : locales.settings?.streamer_enable}
               </MriButton>
             </div>
 
@@ -133,13 +133,13 @@ export function SettingsPanel({
                 <div className="flex items-center gap-2">
                   <Palette className="h-4 w-4 text-primary" />
                   <span className="font-medium text-foreground">
-                    {locales.settings?.accent_color_title || 'Cor de destaque'}
+                    {locales.settings?.accent_color_title}
                   </span>
                 </div>
 
                 {hasOverride && (
                   <MriBadge variant="outline" className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em]">
-                    {locales.settings?.accent_color_custom || 'Personalizada'}
+                    {locales.settings?.accent_color_custom}
                   </MriBadge>
                 )}
               </div>
@@ -147,8 +147,7 @@ export function SettingsPanel({
               {allowAccentOverride ? (
                 <>
                   <p className="mb-4 text-sm leading-6 text-muted-foreground">
-                    {locales.settings?.accent_color_description
-                      || 'Escolha uma cor para os destaques da interface. Reseta para a cor padrão do servidor a qualquer momento.'}
+                    {locales.settings?.accent_color_description}
                   </p>
 
                   <div className="flex items-center gap-3">
@@ -165,8 +164,8 @@ export function SettingsPanel({
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {hasOverride
-                          ? (locales.settings?.accent_color_local || 'Override local')
-                          : (locales.settings?.accent_color_server || 'Padrão do servidor')}
+                          ? locales.settings?.accent_color_local
+                          : locales.settings?.accent_color_server}
                       </p>
                     </div>
 
@@ -176,7 +175,7 @@ export function SettingsPanel({
                         size="icon"
                         className="h-10 w-10 shrink-0 rounded-2xl"
                         onClick={resetAccentColor}
-                        title={locales.settings?.accent_color_reset || 'Resetar para o padrão do servidor'}
+                        title={locales.settings?.accent_color_reset}
                       >
                         <RotateCcw className="h-4 w-4" />
                       </MriButton>
@@ -185,7 +184,7 @@ export function SettingsPanel({
 
                   {hasOverride && serverAccentColor && (
                     <p className="mt-3 text-xs text-muted-foreground">
-                      {locales.settings?.accent_color_server_hint || 'Padrão do servidor:'}{' '}
+                      {locales.settings?.accent_color_server_hint}{' '}
                       <span className="font-mono text-foreground">{serverAccentColor.toUpperCase()}</span>
                     </p>
                   )}
@@ -197,11 +196,10 @@ export function SettingsPanel({
                   </span>
                   <div className="space-y-1">
                     <p className="font-medium text-foreground">
-                      {locales.settings?.accent_color_locked_title || 'Cor controlada pelo servidor'}
+                      {locales.settings?.accent_color_locked_title}
                     </p>
                     <p className="text-sm leading-6 text-muted-foreground">
-                      {locales.settings?.accent_color_locked_description
-                        || 'O servidor desativou a personalização da cor para esta sessão.'}
+                      {locales.settings?.accent_color_locked_description}
                     </p>
                   </div>
                 </div>
@@ -212,20 +210,19 @@ export function SettingsPanel({
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground">
-                    {locales.settings?.camera_effects_title || 'Efeitos de câmera'}
+                    {locales.settings?.camera_effects_title}
                   </span>
                 </div>
 
                 <MriBadge variant={cameraEffects ? 'default' : 'secondary'} className="rounded-full px-3 py-1 text-xs">
                   {cameraEffects
-                    ? (locales.settings?.streamer_active || 'Ativado')
-                    : (locales.settings?.streamer_inactive || 'Desativado')}
+                    ? locales.settings?.streamer_active
+                    : locales.settings?.streamer_inactive}
                 </MriBadge>
               </div>
 
               <p className="mb-4 text-sm leading-6 text-muted-foreground">
-                {locales.settings?.camera_effects_description
-                  || 'Aplica um filtro cinematográfico no preview de personagem.'}
+                {locales.settings?.camera_effects_description}
               </p>
 
               <MriButton
@@ -234,8 +231,8 @@ export function SettingsPanel({
                 onClick={() => onCameraEffectsChange(!cameraEffects)}
               >
                 {cameraEffects
-                  ? (locales.settings?.camera_effects_disable || 'Desligar efeitos')
-                  : (locales.settings?.camera_effects_enable || 'Ligar efeitos')}
+                  ? locales.settings?.camera_effects_disable
+                  : locales.settings?.camera_effects_enable}
               </MriButton>
 
               {/* Reservado: trocar tipo de efeito (cinema, noir, ...). Atualmente fixo em 'cinema'. */}
@@ -245,7 +242,7 @@ export function SettingsPanel({
                   className="mt-2 h-9 w-full rounded-2xl text-xs"
                   onClick={() => onCameraEffectTypeChange('cinema')}
                 >
-                  {locales.settings?.camera_effects_reset || 'Resetar tipo de efeito'}
+                  {locales.settings?.camera_effects_reset}
                 </MriButton>
               )}
             </div>

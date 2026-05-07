@@ -22,18 +22,18 @@ export function DeleteConfirmDialog({
 
   return (
     <MriActionModal
-      title={locales.characters?.confirm_delete_title || 'Confirmar Exclusão'}
+      title={locales.characters?.confirm_delete_title ?? ''}
       icon={AlertTriangle}
       variant="destructive"
-      confirmLabel={locales.buttons?.delete || locales.characters?.delete_character || 'Deletar'}
-      cancelLabel={locales.buttons?.cancel || 'Cancelar'}
+      confirmLabel={locales.buttons?.delete || locales.characters?.delete_character}
+      cancelLabel={locales.buttons?.cancel}
       onClose={onClose}
       onConfirm={onConfirm}
       maxWidth="30rem"
     >
       <div className="space-y-4">
         <p className="text-sm leading-6 text-muted-foreground">
-          {locales.characters?.confirm_delete || 'Tem certeza que deseja deletar este personagem?'}
+          {locales.characters?.confirm_delete}
         </p>
 
         {characterName && (
@@ -43,7 +43,7 @@ export function DeleteConfirmDialog({
         )}
 
         <p className="text-sm leading-6 text-destructive">
-          {locales.characters?.delete_warning || 'Esta ação não pode ser desfeita!'}
+          {locales.characters?.delete_warning}
         </p>
       </div>
     </MriActionModal>

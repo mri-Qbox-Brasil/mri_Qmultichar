@@ -379,12 +379,12 @@ function App() {
         if (data.success) {
           setIsOpen(false)
         } else {
-          setStatusMessage(data.message || locales.characters?.load_failed || 'Não foi possível carregar este personagem.')
+          setStatusMessage(data.message || locales.characters?.load_failed)
         }
       })
       .catch((err) => {
         console.error('Erro ao carregar personagem:', err)
-        setStatusMessage(locales.characters?.error_loading_character || 'Erro ao carregar personagem.')
+        setStatusMessage(locales.characters?.error_loading_character ?? null)
       })
   }
 
@@ -565,7 +565,7 @@ function App() {
                       {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                      {selectedCharacter.job?.label || locales.characters?.unemployed}
                     </p>
                   </div>
 
@@ -585,45 +585,45 @@ function App() {
               <div className="grid grid-cols-2 gap-2">
                 <InfoTile
                   icon={Wallet}
-                  label={locales.characters?.cash || 'Cash'}
+                  label={locales.characters?.cash}
                   value={`$${formatNumber(selectedCharacter.money?.cash || 0)}`}
                 />
                 <InfoTile
                   icon={Building2}
-                  label={locales.characters?.bank || 'Bank'}
+                  label={locales.characters?.bank}
                   value={`$${formatNumber(selectedCharacter.money?.bank || 0)}`}
                 />
                 <InfoTile
                   icon={Briefcase}
-                  label={locales.characters?.job || 'Job'}
-                  value={selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                  label={locales.characters?.job}
+                  value={selectedCharacter.job?.label || locales.characters?.unemployed}
                 />
                 <InfoTile
                   icon={Crown}
-                  label={locales.characters?.grade || 'Grade'}
+                  label={locales.characters?.grade}
                   value={selectedGrade}
                 />
                 <InfoTile
                   icon={User}
-                  label={locales.characters?.gender || 'Gender'}
+                  label={locales.characters?.gender}
                   value={selectedCharacter.charinfo.gender === 0
-                    ? (locales.characters?.male || 'Male')
-                    : (locales.characters?.female || 'Female')}
+                    ? locales.characters?.male
+                    : locales.characters?.female}
                 />
                 <InfoTile
                   icon={Calendar}
-                  label={locales.characters?.birthdate || 'Birthdate'}
-                  value={selectedCharacter.charinfo.birthdate || 'N/A'}
+                  label={locales.characters?.birthdate}
+                  value={selectedCharacter.charinfo.birthdate}
                 />
                 <InfoTile
                   icon={User}
-                  label={locales.characters?.nationality || 'Nationality'}
-                  value={selectedCharacter.charinfo.nationality || 'N/A'}
+                  label={locales.characters?.nationality}
+                  value={selectedCharacter.charinfo.nationality}
                 />
                 <InfoTile
                   icon={Shield}
-                  label={locales.characters?.gang || 'Gang'}
-                  value={selectedCharacter.gang?.label || 'N/A'}
+                  label={locales.characters?.gang}
+                  value={selectedCharacter.gang?.label}
                 />
               </div>
 
@@ -639,7 +639,7 @@ function App() {
                   onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  {locales.buttons?.choose_character || 'Choose Character'}
+                  {locales.buttons?.choose_character}
                 </MriButton>
 
                 <MriButton
@@ -648,7 +648,7 @@ function App() {
                   onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {locales.buttons?.delete || 'Delete Character'}
+                  {locales.buttons?.delete}
                 </MriButton>
               </div>
             </div>
@@ -658,10 +658,10 @@ function App() {
                 <User className="h-9 w-9" />
               </div>
               <h3 className="text-xl font-semibold text-foreground">
-                {locales.characters?.select_character || 'Select a character'}
+                {locales.characters?.select_character}
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                {locales.characters?.select_or_create || 'Escolha um slot na lista ou crie um novo personagem.'}
+                {locales.characters?.select_or_create}
               </p>
             </div>
           )}

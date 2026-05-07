@@ -41,7 +41,7 @@ export function CharacterCreation({
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
-    nationality: locales.character_creation?.default_nationality || 'Brasileiro',
+    nationality: locales.character_creation?.default_nationality ?? '',
     gender: '0',
   })
   const [birthdate, setBirthdate] = useState<Date | null>(null)
@@ -50,8 +50,8 @@ export function CharacterCreation({
 
   const genderOptions = useMemo(
     () => [
-      { label: locales.character_creation?.male || 'Masculino', value: '0' },
-      { label: locales.character_creation?.female || 'Feminino', value: '1' },
+      { label: locales.character_creation?.male ?? '', value: '0' },
+      { label: locales.character_creation?.female ?? '', value: '1' },
     ],
     [locales.character_creation?.female, locales.character_creation?.male],
   )
@@ -65,7 +65,7 @@ export function CharacterCreation({
     event.preventDefault()
 
     if (!birthdate) {
-      setErrorMessage(locales.character_creation?.select_birthdate || 'Por favor, selecione uma data de nascimento')
+      setErrorMessage(locales.character_creation?.select_birthdate ?? null)
       return
     }
 
@@ -90,12 +90,12 @@ export function CharacterCreation({
         if (data.success) {
           onSuccess()
         } else {
-          setErrorMessage(`${locales.character_creation?.create_error || 'Erro ao criar personagem:'} ${data.message || 'Erro desconhecido'}`)
+          setErrorMessage(`${locales.character_creation?.create_error ?? ''} ${data.message ?? ''}`.trim())
         }
       })
       .catch((err) => {
         console.error('Erro ao criar personagem:', err)
-        setErrorMessage(locales.character_creation?.generic_error || 'Erro ao criar personagem')
+        setErrorMessage(locales.character_creation?.generic_error ?? null)
       })
       .finally(() => {
         setLoading(false)
@@ -120,11 +120,11 @@ export function CharacterCreation({
               <div className="flex-1 text-center">
                 <MriSectionHeader
                   icon={ShieldPlus}
-                  title={locales.character_creation?.title || 'Criação de Personagem'}
+                  title={locales.character_creation?.title ?? ''}
                   className="!mb-0 justify-center"
                 />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {locales.character_creation?.description || 'Preencha os dados iniciais para criar sua identidade.'}
+                  {locales.character_creation?.description}
                 </p>
               </div>
 
@@ -139,25 +139,25 @@ export function CharacterCreation({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.first_name || 'Nome'}
+                    {locales.character_creation?.first_name}
                   </label>
                   <MriInput
                     required
                     value={formData.firstname}
                     onChange={(event) => setFormData((prev) => ({ ...prev, firstname: event.target.value }))}
-                    placeholder={locales.character_creation?.first_name_placeholder || 'João'}
+                    placeholder={locales.character_creation?.first_name_placeholder}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.last_name || 'Sobrenome'}
+                    {locales.character_creation?.last_name}
                   </label>
                   <MriInput
                     required
                     value={formData.lastname}
                     onChange={(event) => setFormData((prev) => ({ ...prev, lastname: event.target.value }))}
-                    placeholder={locales.character_creation?.last_name_placeholder || 'Silva'}
+                    placeholder={locales.character_creation?.last_name_placeholder}
                   />
                 </div>
               </div>
@@ -165,22 +165,22 @@ export function CharacterCreation({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.nationality || 'Nacionalidade'}
+                    {locales.character_creation?.nationality}
                   </label>
                   <MriSelect
                     portal={false}
                     value={formData.nationality}
                     options={nationalityOptions}
                     onChange={(value) => setFormData((prev) => ({ ...prev, nationality: value }))}
-                    placeholder={locales.character_creation?.nationality_placeholder || 'Nacionalidade'}
-                    searchPlaceholder={locales.character_creation?.nationality_search || 'Buscar nacionalidade'}
-                    emptyMessage={locales.character_creation?.nationality_empty || 'Nenhuma nacionalidade encontrada'}
+                    placeholder={locales.character_creation?.nationality_placeholder}
+                    searchPlaceholder={locales.character_creation?.nationality_search}
+                    emptyMessage={locales.character_creation?.nationality_empty}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.gender || 'Gênero'}
+                    {locales.character_creation?.gender}
                   </label>
                   <MriSelect
                     portal={false}
@@ -193,12 +193,12 @@ export function CharacterCreation({
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
-                  {locales.character_creation?.birthdate || 'Data de Nascimento'}
+                  {locales.character_creation?.birthdate}
                 </label>
                 <MriDatePicker
                   value={birthdate}
                   onChange={(date) => setBirthdate(date ?? null)}
-                  placeholder={locales.character_creation?.birthdate_placeholder || 'DD/MM/YYYY'}
+                  placeholder={locales.character_creation?.birthdate_placeholder}
                   fromDate={MIN_BIRTHDATE}
                   toDate={MAX_BIRTHDATE}
                 />
@@ -212,7 +212,7 @@ export function CharacterCreation({
                   disabled={loading}
                   onClick={onCancel}
                 >
-                  {locales.buttons?.cancel || 'Cancelar'}
+                  {locales.buttons?.cancel}
                 </MriButton>
 
                 <MriButton
@@ -222,8 +222,8 @@ export function CharacterCreation({
                   isLoading={loading}
                 >
                   {loading
-                    ? (locales.character_creation?.creating || 'Criando...')
-                    : (locales.character_creation?.create || 'Criar')}
+                    ? locales.character_creation?.creating
+                    : locales.character_creation?.create}
                 </MriButton>
               </div>
             </form>
@@ -239,7 +239,7 @@ export function CharacterCreation({
         >
           <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
             <h3 className="text-lg font-semibold text-foreground">
-              {locales.character_creation?.warning_title || 'Aviso'}
+              {locales.character_creation?.warning_title}
             </h3>
             <MriButton
               variant="ghost"
