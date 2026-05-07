@@ -157,7 +157,7 @@ export function CharacterList({
                   <Avatar
                     className={cn(
                       'h-16 w-16 rounded-[1.35rem] border border-white/10 group-hover:scale-105',
-                      isEmpty ? 'bg-[#0f1115]/95' : 'bg-black',
+                      isEmpty ? 'bg-card' : 'bg-background',
                     )}
                   >
                     {character && characterPhotos[character.citizenid] ? (
@@ -167,7 +167,7 @@ export function CharacterList({
                         className="object-cover"
                       />
                     ) : null}
-                    <AvatarFallback className="rounded-[1.15rem] bg-[#0f1115]/95 text-base font-semibold text-foreground">
+                    <AvatarFallback className="rounded-[1.15rem] bg-card text-base font-semibold text-foreground">
                       {character ? getInitials(character.charinfo.firstname, character.charinfo.lastname) : <Plus className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>

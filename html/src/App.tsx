@@ -77,17 +77,9 @@ interface InfoTileProps {
 
 function InfoTile({ icon: Icon, label, value }: InfoTileProps) {
   return (
-    <div
-      className="rounded-2xl border p-3"
-      style={{ 
-        background: '#0f1115', 
-        backgroundColor: '#0f1115',
-        opacity: 1,
-        transform: 'translateZ(0)'
-      }}
-    >
+    <div className="rounded-2xl border border-border/80 bg-card p-3">
       <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-black">
+        <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-background">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <span>{label}</span>
@@ -545,12 +537,9 @@ function App() {
           style={{ pointerEvents: 'auto' }}
         >
           {selectedCharacter ? (
-            <div
-              className="space-y-4 rounded-[1.9rem] border border-border/80 p-5"
-              style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-            >
+            <div className="space-y-4 rounded-[1.9rem] border border-border/80 bg-card p-5">
               <div className="flex items-start gap-4">
-                <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-black">
+                <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-background">
                   {selectedPhoto ? (
                     <AvatarImage
                       src={selectedPhoto}
@@ -558,7 +547,7 @@ function App() {
                       className="object-cover"
                     />
                   ) : null}
-                  <AvatarFallback className="rounded-[1.35rem] bg-[#0f1115]/95 text-2xl font-bold text-foreground">
+                  <AvatarFallback className="rounded-[1.35rem] bg-background text-2xl font-bold text-foreground">
                     {selectedCharacter.charinfo.firstname[0]}
                     {selectedCharacter.charinfo.lastname[0]}
                   </AvatarFallback>
@@ -658,10 +647,7 @@ function App() {
               </div>
             </div>
           ) : (
-            <div
-              className="w-full rounded-[1.9rem] border border-dashed border-border/80 p-10 text-center"
-              style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-            >
+            <div className="w-full rounded-[1.9rem] border border-dashed border-border/80 bg-card p-10 text-center">
               <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-primary/25 bg-primary/10 text-primary">
                 <User className="h-9 w-9" />
               </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MriBadge, MriButton, MriCard } from '@mriqbox/ui-kit'
+import { MriBadge, MriButton, MriCard, MriSpinner } from '@mriqbox/ui-kit'
 import { Pause, Play, Volume2 } from 'lucide-react'
 import type { UiTheme } from '../lib/mriTheme'
 
@@ -366,15 +366,14 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
   return (
     <MriCard
       className="flex min-w-[320px] max-w-[420px] items-center gap-4 rounded-[1.5rem] border border-border/80 px-4 py-3 shadow-2xl shadow-black/25"
-      style={{ pointerEvents: 'auto', backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+      style={{ pointerEvents: 'auto' }}
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <MriButton
         variant="ghost"
         size="icon"
-        className="h-12 w-12 shrink-0 rounded-2xl border border-border/80"
-        style={{ backgroundColor: 'rgb(8, 9, 12)' }}
+        className="h-12 w-12 shrink-0 rounded-2xl border border-border/80 bg-background"
         disabled={isLoading}
         onClick={(event) => {
           event.preventDefault()
@@ -383,7 +382,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
         }}
       >
         {isLoading ? (
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <MriSpinner size="sm" />
         ) : isPlaying ? (
           <Pause className="h-4 w-4" />
         ) : (
@@ -414,10 +413,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
               style={{ border: `1px solid ${borderColor}` }}
             />
           ) : (
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 text-primary"
-              style={{ backgroundColor: 'rgb(8, 9, 12)' }}
-            >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-primary">
               <Volume2 className="h-4 w-4" />
             </div>
           )}

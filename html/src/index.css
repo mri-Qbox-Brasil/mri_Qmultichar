@@ -3,73 +3,53 @@
 @tailwind utilities;
 
 :root {
-  --background: 240 10% 4% !important;
-  --foreground: 0 0% 98% !important;
-  --card: 240 10% 4% !important;
-  --card-foreground: 0 0% 98% !important;
-  --popover: 240 10% 4% !important;
-  --popover-foreground: 0 0% 98% !important;
-  --primary: 160 100% 45% !important;
-  --primary-foreground: 160 100% 10% !important;
-  --secondary: 240 5% 15% !important;
-  --secondary-foreground: 0 0% 98% !important;
-  --muted: 240 5% 15% !important;
-  --muted-foreground: 240 5% 65% !important;
-  --accent: 160 100% 45% !important;
-  --accent-foreground: 160 100% 10% !important;
-  --destructive: 0 84% 60% !important;
-  --destructive-foreground: 0 0% 98% !important;
-  --border: 240 5% 15% !important;
-  --input: 240 5% 15% !important;
-  --ring: 160 100% 45% !important;
-  --radius: 1.5rem !important;
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 4%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 4%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 160 100% 45%;
+  --primary-foreground: 160 100% 10%;
+  --secondary: 240 5% 15%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 5% 15%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 160 100% 45%;
+  --accent-foreground: 160 100% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5% 15%;
+  --input: 240 5% 15%;
+  --ring: 160 100% 45%;
+  --radius: 1.5rem;
 }
 
-/* RESET E ESTABILIZAÇÃO DE BUFFER (TRUQUE DO 1%) */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* Truque do 1%: força o buffer de cor do CEF a ficar opaco. */
 html, body, #root {
-  background-color: rgba(0, 0, 0, 0.01) !important; /* Força o buffer de cor */
+  background-color: rgba(0, 0, 0, 0.01) !important;
   width: 100%;
   height: 100%;
   overflow: hidden;
 }
 
 .mri-app-shell {
-  background: transparent !important;
+  background: transparent;
   height: 100vh;
 }
 
-/* BLINDAGEM DE COR DOS CARDS E ACELERAÇÃO DE HARDWARE */
-[class*="MriCard"], 
-[class*="MriCardHeader"], 
-[class*="MriCardContent"], 
-.bg-black, 
-.bg-card, 
-.bg-background,
+/* Cards do ui-kit precisam de bg sólido — o CEF não respeita o overlay translúcido. */
+[class*="MriCard"]:not([class*="MriCardContent"]):not([class*="MriCardHeader"]):not([class*="MriCardFooter"]),
 .mri-panel-chrome {
-  background-color: #0f1115 !important;
-  background: #0f1115 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid hsl(var(--border) / 0.5) !important;
-  transform: translateZ(0) !important; /* Força renderização via GPU */
+  background-color: hsl(var(--card));
 }
 
-/* FORÇAR VISIBILIDADE DO SCROLLAREA */
-[data-radix-scroll-area-viewport], .mri-scroll-area {
-  background: transparent !important;
-  opacity: 1 !important;
-  transform: translateZ(0) !important;
-}
-
-/* SCROLLBARS */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -81,15 +61,6 @@ html, body, #root {
   border-radius: 10px;
 }
 
-/* DESATIVAR TRANSIÇÕES LENTAS */
 * {
-  transition-duration: 0.01s !important;
-}
-
-/* FORÇAR CENTRALIZAÇÃO DE TODOS OS MODAIS E DIÁLOGOS */
-[role="dialog"], .mri-modal {
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) translateZ(0) !important;
-  margin: 0 !important;
+  transition-duration: 0.01s;
 }
