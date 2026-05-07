@@ -163,9 +163,14 @@ end)
 lib.addCommand('logout', {
     help = 'Desconecta do personagem atual apenas se voce tiver 2 ou mais personagens.',
 }, function(source)
-    local canLogout, characterCount = exports.mri_Qmultichar:CanPlayerLogout(source)
+    local license = GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    local characterCount = tonumber(MySQL.scalar.await(
+        'SELECT COUNT(DISTINCT citizenid) FROM players WHERE license = ? OR license = ?',
+        { license, license2 }
+    )) or 0
 
-    if not canLogout then
+    if characterCount < 2 then
         exports.qbx_core:Notify(source, string.format('Voce precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
         return
     end

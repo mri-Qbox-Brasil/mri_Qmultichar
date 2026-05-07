@@ -813,7 +813,6 @@ local function beginCharacterLoad(citizenId, options)
         if success then
             isSpawning = true
 
-            TriggerServerEvent('mri_Qmultichar:server:clearLogoutLock')
             exports.mri_Qmultichar:destroyPreviewCam()
             closeMultichar()
 
@@ -952,7 +951,6 @@ RegisterNUICallback('createCharacter', function(data, cb)
         end)
 
         if success and newData then
-            TriggerServerEvent('mri_Qmultichar:server:clearLogoutLock')
             lib.print.info('[mri_Qmultichar] [CRIAÇÃO] Iniciando criação de personagem...')
             
             -- Prevenir múltiplos spawns simultâneos
@@ -1315,31 +1313,6 @@ RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
         isIlleniumCustomizationActive = false
         isInCharacterCreation = false
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
-    end
-
-    local logoutState = lib.callback.await('mri_Qmultichar:server:getLogoutState', false)
-    if logoutState and logoutState.blockedCitizenId and logoutState.canLogout == false then
-        lib.notify({
-            title = 'Logout bloqueado',
-            description = 'Voce precisa ter 2 ou mais personagens para usar logout.',
-            type = 'error'
-        })
-
-        local success, message = beginCharacterLoad(logoutState.blockedCitizenId, { skipValidation = true })
-        if not success then
-            lib.notify({
-                title = 'Falha ao restaurar personagem',
-                description = message or 'Nao foi possivel retornar ao personagem anterior.',
-                type = 'error'
-            })
-
-            openMultichar()
-            pcall(function()
-                exports.mri_Qmultichar:setupPreviewCam()
-            end)
-        end
-
-        return
     end
 
     openMultichar()

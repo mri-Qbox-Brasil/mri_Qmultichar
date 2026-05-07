@@ -23,8 +23,6 @@ interface MockCharacter {
   job: { name: string; label: string; grade: number | { name: string } }
   gang: { label: string; grade: { name: string } }
   cid: number
-  logoutBlocked?: boolean
-  logoutBlockedReason?: string
 }
 
 const MOCK_RESOURCE = 'mri_Qmultichar'
@@ -152,8 +150,6 @@ const mockCharacters: MockCharacter[] = [
     job: { name: 'unemployed', label: 'Unemployed', grade: { name: '0' } },
     gang: { label: 'Ballas', grade: { name: 'Member' } },
     cid: 3,
-    logoutBlocked: true,
-    logoutBlockedReason: 'Aguarde 5 minutos apos o ultimo logout.',
   },
 ]
 

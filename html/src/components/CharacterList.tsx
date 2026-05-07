@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MriBadge, MriCard } from '@mriqbox/ui-kit'
-import { Briefcase, ChevronRight, Lock, Plus, Sparkles, Wallet } from 'lucide-react'
+import { Briefcase, ChevronRight, Plus, Sparkles, Wallet } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Skeleton } from './ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -123,7 +123,6 @@ export function CharacterList({
         const character = getCharacterForSlot(slot)
         const isSelected = selectedCharacter?.citizenid === character?.citizenid
         const isEmpty = !character
-        const isBlocked = character?.logoutBlocked === true
 
         return (
           <MriCard
@@ -133,7 +132,6 @@ export function CharacterList({
               isSelected
                 ? 'border-primary/45'
                 : 'border-border/80 hover:border-primary/30',
-              isBlocked && 'border-red-500/35 hover:border-red-500/45',
               isEmpty && 'border-dashed',
             )}
             style={{ opacity: 1 }}
@@ -209,12 +207,6 @@ export function CharacterList({
                       <Wallet className="mr-1 h-3 w-3" />
                       ${(character.money?.cash || 0).toLocaleString()}
                     </MriBadge>
-                    {isBlocked && (
-                      <MriBadge variant="outline" className="rounded-full border-red-500/35 px-2.5 py-1 text-[11px] font-medium text-red-100">
-                        <Lock className="mr-1 h-3 w-3" />
-                        Bloqueado
-                      </MriBadge>
-                    )}
                   </div>
                 )}
               </div>

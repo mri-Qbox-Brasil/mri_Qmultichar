@@ -144,38 +144,8 @@ local function savePlayerSettingsToDB(license, license2, settings)
     end
 end
 
-local logoutLocks = {}
-
 local function getPlayerLicenses(source)
     return GetPlayerIdentifierByType(source, 'license'), GetPlayerIdentifierByType(source, 'license2')
-end
-
-local function getOwnedCharacterCount(license, license2)
-    if not license and not license2 then
-        return 0
-    end
-
-    local count = MySQL.scalar.await('SELECT COUNT(DISTINCT citizenid) FROM players WHERE license = ? OR license = ?', {
-        license,
-        license2,
-    })
-
-    return tonumber(count) or 0
-end
-
-local function canPlayerLogout(source)
-    local license, license2 = getPlayerLicenses(source)
-    local characterCount = getOwnedCharacterCount(license, license2)
-
-    return characterCount >= 2, characterCount
-end
-
-local function getLogoutLock(source)
-    return logoutLocks[source]
-end
-
-local function clearLogoutLock(source)
-    logoutLocks[source] = nil
 end
 
 local function isCharacterOwnedBySource(source, citizenId)
@@ -193,37 +163,10 @@ local function isCharacterOwnedBySource(source, citizenId)
     return result ~= nil
 end
 
-AddEventHandler('QBCore:Server:OnPlayerUnload', function(source)
-    local player = exports.qbx_core:GetPlayer(source)
-    if not player or not player.PlayerData or not player.PlayerData.citizenid then
-        return
-    end
-
-    local canLogout, characterCount = canPlayerLogout(source)
-    logoutLocks[source] = {
-        blockedCitizenId = player.PlayerData.citizenid,
-        characterCount = characterCount,
-        canLogout = canLogout,
-        createdAt = os.time(),
-    }
-
-    lib.print.info(string.format(
-        '[mri_Qmultichar] Logout lock registrado para source %s, citizenid %s, total de personagens: %s',
-        source,
-        player.PlayerData.citizenid,
-        characterCount
-    ))
-end)
-
-AddEventHandler('playerDropped', function()
-    clearLogoutLock(source)
-end)
-
 -- Callback para obter personagens
 lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
     local license, license2 = getPlayerLicenses(source)
-    local logoutLock = getLogoutLock(source)
-    
+
     -- Obter slots do jogador
     local slots = getPlayerSlots(license, license2)
     
@@ -259,10 +202,6 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
                     position = json.decode(result[i].position),
                     metadata = json.decode(result[i].metadata),
                     cid = result[i].cid,
-                    logoutBlocked = logoutLock and logoutLock.blockedCitizenId == citizenid or false,
-                    logoutBlockedReason = logoutLock and logoutLock.blockedCitizenId == citizenid
-                        and 'Este personagem acabou de ser usado no logout e não pode ser selecionado agora.'
-                        or nil,
                 }
             end
         end
@@ -526,19 +465,6 @@ lib.callback.register('mri_Qmultichar:server:getPlayerSettings', function(source
     return getPlayerSettingsFromDB(license, license2)
 end)
 
-lib.callback.register('mri_Qmultichar:server:getLogoutState', function(source)
-    local logoutLock = getLogoutLock(source)
-    if not logoutLock then
-        return nil
-    end
-
-    return {
-        blockedCitizenId = logoutLock.blockedCitizenId,
-        characterCount = logoutLock.characterCount,
-        canLogout = logoutLock.canLogout,
-    }
-end)
-
 lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', function(source, citizenId)
     if not citizenId then
         return {
@@ -560,21 +486,9 @@ lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', functi
         }
     end
 
-    local logoutLock = getLogoutLock(source)
-    if logoutLock and logoutLock.blockedCitizenId == citizenId then
-        return {
-            allowed = false,
-            message = 'Você não pode entrar novamente no personagem que acabou de usar no logout. Escolha outro personagem.',
-        }
-    end
-
     return {
         allowed = true,
     }
-end)
-
-RegisterNetEvent('mri_Qmultichar:server:clearLogoutLock', function()
-    clearLogoutLock(source)
 end)
 
 -- Callback para obter dados do personagem para gerar headshot
@@ -650,5 +564,4 @@ exports('setPlayerSlots', setPlayerSlots)
 exports('SetCharacterSlots', setPlayerSlots) -- Alias solicitado
 exports('AddDeleteTable', AddDeleteTable)
 exports('DeleteCharacterData', DeleteCharacterData)
-exports('CanPlayerLogout', canPlayerLogout)
 

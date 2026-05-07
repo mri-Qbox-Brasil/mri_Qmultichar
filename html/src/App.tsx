@@ -57,8 +57,6 @@ export interface Character {
   }
   cid?: number
   photo?: string
-  logoutBlocked?: boolean
-  logoutBlockedReason?: string
 }
 
 type Theme = UiTheme
@@ -123,7 +121,7 @@ function App() {
   const selectedCharacterRef = useRef(selectedCharacter)
 
   const getPreferredCharacter = (nextCharacters: Character[]) =>
-    nextCharacters.find((character) => !character.logoutBlocked) ?? nextCharacters[0] ?? null
+    nextCharacters[0] ?? null
 
   const requestPreviewForCharacter = (character: Character | null) => {
     if (!character) {
@@ -287,12 +285,6 @@ function App() {
   }
 
   const handleLoadCharacter = (citizenid: string) => {
-    const character = characters.find((candidate) => candidate.citizenid === citizenid)
-    if (character?.logoutBlocked) {
-      setStatusMessage(character.logoutBlockedReason || 'Este personagem nao pode ser usado agora.')
-      return
-    }
-
     setStatusMessage(null)
 
     fetch(`https://${GetParentResourceName()}/loadCharacter`, {
@@ -362,7 +354,7 @@ function App() {
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character)
     setShowCreation(false)
-    setStatusMessage(character.logoutBlocked ? character.logoutBlockedReason || 'Este personagem esta bloqueado apos logout.' : null)
+    setStatusMessage(null)
 
     fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
       method: 'POST',
@@ -398,7 +390,6 @@ function App() {
   }
 
   const selectedPhoto = selectedCharacter ? selectedCharacterPhoto || characterPhotos[selectedCharacter.citizenid] : null
-  const isSelectedCharacterBlocked = selectedCharacter?.logoutBlocked === true
   const selectedGrade = selectedCharacter
     ? typeof selectedCharacter.job?.grade === 'object'
       ? selectedCharacter.job.grade.name
@@ -608,13 +599,10 @@ function App() {
 
                       <MriButton
                         className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
-                        disabled={isSelectedCharacterBlocked}
                         onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
                       >
                         <Play className="mr-2 h-4 w-4" />
-                        {isSelectedCharacterBlocked
-                          ? 'Indisponivel apos logout'
-                          : (locales.buttons?.choose_character || 'Choose Character')}
+                        {locales.buttons?.choose_character || 'Choose Character'}
                       </MriButton>
 
                       <MriButton
