@@ -379,7 +379,7 @@ function App() {
         if (data.success) {
           setIsOpen(false)
         } else {
-          setStatusMessage(data.message || locales.characters?.load_failed || 'Nao foi possivel carregar este personagem.')
+          setStatusMessage(data.message || locales.characters?.load_failed || 'Não foi possível carregar este personagem.')
         }
       })
       .catch((err) => {

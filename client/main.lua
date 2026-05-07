@@ -92,13 +92,13 @@ local function finishCharacterCreation(reason, waitTime)
         local data = awaitPlayerData(5000)
         local citizenId = data and data.citizenid
         if not citizenId then
-            lib.print.warn('[mri_Qmultichar] finishCharacterCreation sem citizenid disponivel apos espera; pulando captura de headshot')
+            lib.print.warn('[mri_Qmultichar] finishCharacterCreation sem citizenid disponível após espera; pulando captura de headshot')
             return
         end
 
         local ok, err = pcall(captureHeadshotForCharacter, citizenId, PlayerPedId())
         if not ok then
-            lib.print.warn(string.format('[mri_Qmultichar] Falha (pcall) ao capturar headshot apos criacao: %s', tostring(err)))
+            lib.print.warn(string.format('[mri_Qmultichar] Falha (pcall) ao capturar headshot após criação: %s', tostring(err)))
         end
     end)
 
@@ -983,7 +983,7 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
         local data = awaitPlayerData(5000)
         local citizenId = data and data.citizenid
         if not citizenId then
-            lib.print.warn('[mri_Qmultichar] OnPlayerLoaded sem citizenid disponivel; pulando verificacao de foto')
+            lib.print.warn('[mri_Qmultichar] OnPlayerLoaded sem citizenid disponível; pulando verificação de foto')
             return
         end
 

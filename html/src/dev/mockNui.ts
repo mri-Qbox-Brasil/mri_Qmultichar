@@ -1,3 +1,4 @@
+import ptBrLocales from '../../../locales/pt-br.json'
 
 interface MockCharacter {
   citizenid: string
@@ -20,101 +21,14 @@ const MOCK_RESOURCE = 'mri_Qmultichar'
 
 const mockAccentColor = '#00E699'
 
+const mockLocales = ptBrLocales
+
 const mockMusic = {
   enabled: true,
   url: '',
   volume: 50,
   loop: true,
   autoplay: false,
-}
-
-const mockLocales = {
-  characters: {
-    title: 'Personagens',
-    subtitle: 'Selecione um slot existente ou crie um novo personagem.',
-    selection_badge: 'Selecao de personagem',
-    select_character: 'Selecione um Personagem',
-    select_or_create: 'Escolha um slot na lista ou crie um novo personagem.',
-    select_prompt: 'Escolha um slot para visualizar os detalhes.',
-    selected_details: 'Detalhes completos do personagem selecionado.',
-    confirm_delete_title: 'Confirmar Exclusao',
-    confirm_delete: 'Tem certeza que deseja deletar este personagem?',
-    delete_warning: 'Esta acao nao pode ser desfeita!',
-    no_characters: 'Nenhum personagem criado',
-    error_loading_character: 'Erro ao carregar personagem.',
-    load_failed: 'Nao foi possivel carregar este personagem.',
-    character_info: 'Informacoes do Personagem',
-    id_prefix: 'ID',
-    slot_label: 'Slot %{slot}',
-    job: 'Trabalho',
-    grade: 'Grau',
-    cash: 'Dinheiro',
-    bank: 'Banco',
-    gender: 'Genero',
-    birthdate: 'Data de Nascimento',
-    nationality: 'Nacionalidade',
-    gang: 'Gangue',
-    unemployed: 'Desempregado',
-    male: 'Masculino',
-    female: 'Feminino',
-    delete_character: 'Deletar Personagem',
-  },
-  character_creation: {
-    title: 'Criacao de Personagem',
-    description: 'Preencha os dados iniciais para criar sua identidade.',
-    first_name: 'Nome',
-    first_name_placeholder: 'Joao',
-    last_name: 'Sobrenome',
-    last_name_placeholder: 'Silva',
-    nationality: 'Nacionalidade',
-    nationality_placeholder: 'Nacionalidade',
-    nationality_search: 'Buscar nacionalidade',
-    nationality_empty: 'Nenhuma nacionalidade encontrada',
-    default_nationality: 'Brasileiro',
-    gender: 'Genero',
-    male: 'Masculino',
-    female: 'Feminino',
-    birthdate: 'Data de Nascimento',
-    birthdate_placeholder: 'DD/MM/AAAA',
-    select_birthdate: 'Por favor, selecione uma data de nascimento',
-    create: 'Criar',
-    creating: 'Criando...',
-    create_error: 'Erro ao criar personagem:',
-    generic_error: 'Erro ao criar personagem',
-    warning_title: 'Aviso',
-    months: ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
-    week_days: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'],
-  },
-  settings: {
-    title: 'Configuracoes',
-    subtitle: 'Ajuste o visual e a experiencia de usuario.',
-    theme_section_title: 'Tema da interface',
-    theme_select_placeholder: 'Selecione um tema',
-    theme_search_placeholder: 'Buscar tema',
-    theme_empty: 'Nenhum tema encontrado',
-    theme_active_badge: 'Ativo',
-    theme_locked_title: 'Mudanca de tema indisponivel',
-    theme_locked_description: 'O servidor desativou a troca manual de tema para esta sessao.',
-    streamer_mode_title: 'Modo Streamer',
-    streamer_active: 'Ativado',
-    streamer_inactive: 'Desativado',
-    streamer_on_description: 'A musica da tela foi desativada para nao aparecer na transmissao.',
-    streamer_off_description: 'Ao ativar o modo streamer a musica do seu menu de selecao de personagem sera desativada',
-    streamer_enable: 'Ligar modo streamer',
-    streamer_disable: 'Desligar modo streamer',
-  },
-  buttons: {
-    actions: 'Acoes',
-    choose_character: 'Selecionar Personagem',
-    delete: 'Deletar Personagem',
-    cancel: 'Cancelar',
-  },
-  music_player: {
-    youtube_label: 'YouTube',
-    audio_label: 'Audio',
-    loading_track: 'Carregando faixa...',
-    background_music: 'Musica de fundo',
-  },
 }
 
 const mockCharacters: MockCharacter[] = [

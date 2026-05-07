@@ -162,7 +162,7 @@ lib.addCommand('logout', {
     )) or 0
 
     if characterCount < 2 then
-        exports.qbx_core:Notify(source, string.format('Voce precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
+        exports.qbx_core:Notify(source, string.format('Você precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
         return
     end
 

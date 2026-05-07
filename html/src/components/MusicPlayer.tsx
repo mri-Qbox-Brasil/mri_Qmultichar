@@ -391,7 +391,7 @@ export function MusicPlayer({ music, isStreamerMode = false, locales = {} }: Mus
           <MriBadge variant={isYouTube ? 'default' : 'secondary'} className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em]">
             {isYouTube
               ? (locales.music_player?.youtube_label || 'YouTube')
-              : (locales.music_player?.audio_label || 'Audio')}
+              : (locales.music_player?.audio_label || 'Áudio')}
           </MriBadge>
           <span className="truncate text-sm font-medium text-foreground" title={ytTitle || music.url}>
             {isYouTube
