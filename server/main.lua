@@ -4,6 +4,25 @@ local function dprint(...)
     end
 end
 
+local HEX_PATTERN = '^#%x%x%x%x%x%x$'
+
+local function isValidHex(value)
+    return type(value) == 'string' and value:match(HEX_PATTERN) ~= nil
+end
+
+local function resolveAccentColor()
+    local convar = GetConvar('mri:color', '')
+    if isValidHex(convar) then
+        return convar
+    end
+
+    if isValidHex(Config.AccentColor) then
+        return Config.AccentColor
+    end
+
+    return '#00E699'
+end
+
 CreateThread(function()
     MySQL.query([[
         CREATE TABLE IF NOT EXISTS `character_slots` (
@@ -29,25 +48,6 @@ CreateThread(function()
             KEY `owner` (`owner`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ]])
-end)
-
-CreateThread(function()
-    MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `player_settings` (
-            `id` INT(11) NOT NULL AUTO_INCREMENT,
-            `license` VARCHAR(255) NOT NULL,
-            `license2` VARCHAR(255) DEFAULT NULL,
-            `theme` VARCHAR(50) DEFAULT 'dark',
-            `camera_effects` TINYINT(1) DEFAULT 1,
-            `camera_effect_type` VARCHAR(50) DEFAULT 'cinema',
-            `streamer_mode` TINYINT(1) DEFAULT 0,
-            `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `license` (`license`),
-            KEY `license2` (`license2`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ]])
-    dprint('[mri_Qmultichar] Tabela player_settings criada/verificada')
 end)
 
 local function getPlayerSlots(license, license2)
@@ -80,58 +80,6 @@ local function setPlayerSlots(license, license2, slots)
         })
     end
     return slots
-end
-
-local function getPlayerSettingsFromDB(license, license2)
-    local result = MySQL.single.await('SELECT * FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
-
-    if result then
-        local streamerModeValue = false
-        if result.streamer_mode then
-            streamerModeValue = result.streamer_mode ~= 0
-        end
-
-        return {
-            theme = result.theme or Config.Theme or 'dark',
-            cameraEffects = result.camera_effects ~= 0,
-            cameraEffectType = result.camera_effect_type or 'cinema',
-            streamerMode = streamerModeValue,
-        }
-    end
-
-    return {
-        theme = Config.Theme or 'dark',
-        cameraEffects = Config.CameraEffects ~= false,
-        cameraEffectType = 'cinema',
-        streamerMode = Config.StreamerMode or false,
-    }
-end
-
-local function savePlayerSettingsToDB(license, license2, settings)
-    local existing = MySQL.single.await('SELECT id FROM player_settings WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 or license })
-
-    local streamerModeValue = (settings.streamerMode == true) and 1 or 0
-
-    if existing then
-        MySQL.update.await('UPDATE player_settings SET theme = ?, camera_effects = ?, camera_effect_type = ?, streamer_mode = ?, license = ?, license2 = ? WHERE id = ?', {
-            settings.theme or Config.Theme or 'dark',
-            settings.cameraEffects and 1 or 0,
-            settings.cameraEffectType or 'cinema',
-            streamerModeValue,
-            license,
-            license2 or license,
-            existing.id
-        })
-    else
-        MySQL.insert.await('INSERT INTO player_settings (license, license2, theme, camera_effects, camera_effect_type, streamer_mode) VALUES (?, ?, ?, ?, ?, ?)', {
-            license,
-            license2 or license,
-            settings.theme or Config.Theme or 'dark',
-            settings.cameraEffects and 1 or 0,
-            settings.cameraEffectType or 'cinema',
-            streamerModeValue,
-        })
-    end
 end
 
 local function getPlayerLicenses(source)
@@ -193,11 +141,6 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         end
     end
 
-    local settingsLicense = license2 or license
-    local playerSettings = getPlayerSettingsFromDB(settingsLicense, license2)
-    local themeName = playerSettings.theme or Config.Theme or 'dark'
-    local themeData = Config.Themes[themeName] or Config.Themes.dark
-
     local musicConfig = Config.Music or {
         enabled = false,
         url = '',
@@ -215,7 +158,19 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         end
     end
 
-    return characters, slots, themeData, musicConfig, Config.AllowThemeChange or true, Config.Themes or {}, locales
+    return {
+        characters = characters,
+        slots = slots,
+        accentColor = resolveAccentColor(),
+        allowAccentOverride = Config.AllowAccentOverride ~= false,
+        defaults = {
+            cameraEffects = Config.CameraEffects ~= false,
+            cameraEffectType = Config.CameraEffectType or 'cinema',
+            streamerMode = Config.StreamerMode == true,
+        },
+        music = musicConfig,
+        locales = locales,
+    }
 end)
 
 lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(_source, citizenId)
@@ -372,58 +327,6 @@ lib.callback.register('mri_Qmultichar:server:checkSlotAvailable', function(sourc
     end
 end)
 
-lib.callback.register('mri_Qmultichar:server:updateSettings', function(source, data)
-    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
-    local license2 = GetPlayerIdentifierByType(source, 'license2')
-    if not license then
-        return false
-    end
-
-    local currentSettings = getPlayerSettingsFromDB(license, license2)
-
-    if data.theme then
-        if Config.AllowThemeChange then
-            currentSettings.theme = data.theme
-            dprint(string.format('[mri_Qmultichar] Tema alterado por %s: %s', GetPlayerName(source), data.theme))
-        end
-    end
-
-    if data.cameraEffects ~= nil then
-        currentSettings.cameraEffects = data.cameraEffects
-        dprint(string.format('[mri_Qmultichar] Efeitos de câmera alterados por %s: %s', GetPlayerName(source), tostring(data.cameraEffects)))
-    end
-
-    if data.cameraEffectType then
-        currentSettings.cameraEffectType = data.cameraEffectType
-        dprint(string.format('[mri_Qmultichar] Tipo de efeito de câmera alterado por %s: %s', GetPlayerName(source), data.cameraEffectType))
-    end
-
-    if data.streamerMode ~= nil then
-        currentSettings.streamerMode = data.streamerMode
-        dprint(string.format('[mri_Qmultichar] Modo streamer alterado por %s: %s', GetPlayerName(source), tostring(data.streamerMode)))
-    end
-
-    savePlayerSettingsToDB(license, license2, currentSettings)
-
-    return true
-end)
-
-lib.callback.register('mri_Qmultichar:server:getPlayerSettings', function(source)
-    local license = GetPlayerIdentifierByType(source, 'license2') or GetPlayerIdentifierByType(source, 'license')
-    local license2 = GetPlayerIdentifierByType(source, 'license2')
-
-    if not license then
-        return {
-            theme = Config.Theme or 'dark',
-            cameraEffects = Config.CameraEffects ~= false,
-            cameraEffectType = 'cinema',
-            streamerMode = Config.StreamerMode or false,
-        }
-    end
-
-    return getPlayerSettingsFromDB(license, license2)
-end)
-
 lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', function(source, citizenId)
     if not citizenId then
         return {
@@ -487,6 +390,14 @@ lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(so
             gender = gender
         }
     }
+end)
+
+-- Broadcast da mudança da convar `mri:color` para NUIs já abertas.
+AddConvarChangeListener('mri:color', function(name)
+    if name ~= 'mri:color' then return end
+    local newColor = resolveAccentColor()
+    dprint(string.format('[mri_Qmultichar] convar mri:color alterada para %s, propagando aos clientes', newColor))
+    TriggerClientEvent('mri_Qmultichar:client:accentColorChanged', -1, newColor)
 end)
 
 local function AddDeleteTable(tableName, columnName)

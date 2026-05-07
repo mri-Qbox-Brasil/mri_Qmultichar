@@ -18,43 +18,7 @@ interface MockCharacter {
 
 const MOCK_RESOURCE = 'mri_Qmultichar'
 
-const mockTheme = {
-  name: 'Dark',
-  colors: {
-    background: 'rgba(2, 6, 23, 0.95)',
-    card: 'rgba(15, 23, 42, 0.9)',
-    border: 'rgba(51, 65, 85, 0.5)',
-    text: { primary: '#F8FAFC', secondary: '#CBD5E1', muted: '#94A3B8' },
-    accent: { primary: '#3B82F6', secondary: '#6366F1', success: '#22C55E', danger: '#EF4444' },
-    button: { primary: '#3B82F6', primaryHover: '#2563EB', danger: '#EF4444', dangerHover: '#DC2626' },
-  },
-}
-
-const mockAvailableThemes: Record<string, typeof mockTheme> = {
-  dark: mockTheme,
-  mri: {
-    name: 'MRI',
-    colors: {
-      background: 'rgba(5, 46, 22, 0.95)',
-      card: 'rgba(20, 83, 45, 0.9)',
-      border: 'rgba(34, 197, 94, 0.3)',
-      text: { primary: '#F0FDF4', secondary: '#DCFCE7', muted: '#BBF7D0' },
-      accent: { primary: '#22C55E', secondary: '#4ADE80', success: '#22C55E', danger: '#EF4444' },
-      button: { primary: '#22C55E', primaryHover: '#16A34A', danger: '#EF4444', dangerHover: '#DC2626' },
-    },
-  },
-  purple: {
-    name: 'Purple',
-    colors: {
-      background: 'rgba(30, 27, 75, 0.95)',
-      card: 'rgba(55, 48, 163, 0.9)',
-      border: 'rgba(99, 102, 241, 0.3)',
-      text: { primary: '#EEF2FF', secondary: '#E0E7FF', muted: '#C7D2FE' },
-      accent: { primary: '#8B5CF6', secondary: '#A78BFA', success: '#22C55E', danger: '#EF4444' },
-      button: { primary: '#8B5CF6', primaryHover: '#7C3AED', danger: '#EF4444', dangerHover: '#DC2626' },
-    },
-  },
-}
+const mockAccentColor = '#00E699'
 
 const mockMusic = {
   enabled: true,
@@ -211,17 +175,22 @@ function jsonResponse(body: unknown): Response {
   })
 }
 
+const mockDefaults = {
+  cameraEffects: true,
+  cameraEffectType: 'cinema',
+  streamerMode: false,
+}
+
 function postOpen() {
   window.postMessage(
     {
       action: 'open',
       characters: mockCharacters,
       amount: 4,
-      theme: mockTheme,
+      accentColor: mockAccentColor,
+      allowAccentOverride: true,
+      defaults: mockDefaults,
       music: mockMusic,
-      allowThemeChange: true,
-      availableThemes: mockAvailableThemes,
-      streamerMode: false,
       locales: mockLocales,
     },
     '*',
@@ -238,15 +207,20 @@ function handleMockEndpoint(endpoint: string, payload: unknown): Response | null
         success: true,
         characters: mockCharacters,
         amount: 4,
-        theme: mockTheme,
+        accentColor: mockAccentColor,
+        allowAccentOverride: true,
+        defaults: mockDefaults,
         music: mockMusic,
-        allowThemeChange: true,
-        availableThemes: mockAvailableThemes,
         locales: mockLocales,
       })
     case 'getCharacterPhoto':
       return jsonResponse({ success: false })
     case 'getPreviewData':
+      return jsonResponse({ success: true })
+    case 'setCameraEffects':
+      console.info('[dev-mock] setCameraEffects', payload)
+      return jsonResponse({ success: true })
+    case 'savePhotoBase64':
       return jsonResponse({ success: true })
     case 'loadCharacter':
       console.info('[dev-mock] loadCharacter', payload)
@@ -288,10 +262,11 @@ export function installDevMock() {
   console.info('[dev-mock] NUI mock installed. Use window.__mriDev to inspect.')
   ;(window as any).__mriDev = {
     characters: mockCharacters,
-    theme: mockTheme,
-    availableThemes: mockAvailableThemes,
+    accentColor: mockAccentColor,
     locales: mockLocales,
     sendOpen: postOpen,
     sendClose: () => window.postMessage({ action: 'close' }, '*'),
+    setAccent: (hex: string) =>
+      window.postMessage({ action: 'updateAccentColor', accentColor: hex }, '*'),
   }
 }

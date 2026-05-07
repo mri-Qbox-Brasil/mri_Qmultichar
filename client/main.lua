@@ -8,12 +8,6 @@ local isNuiOpen = false
 
 local isSpawning = false
 
-local playerSettings = {
-    cameraEffects = true,
-    streamerMode = false,
-    theme = 'dark'
-}
-
 local isCreatingCharacter = false
 
 local isInCharacterCreation = false
@@ -280,27 +274,12 @@ local function openIlleniumCharacterCreator(gender)
     return true
 end
 
-local function loadPlayerSettings()
-    local success, settings = pcall(function()
-        return lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
-    end)
-
-    if success and settings then
-        playerSettings.cameraEffects = settings.cameraEffects ~= false
-        playerSettings.streamerMode = settings.streamerMode == true
-        playerSettings.theme = settings.theme or 'dark'
-        playerSettings.cameraEffectType = settings.cameraEffectType or 'cinema'
-
-        SendNUIMessage({ action = 'setStreamerMode', enabled = playerSettings.streamerMode })
-
-        if playerSettings.theme then
-            SendNUIMessage({ action = 'updateTheme', theme = playerSettings.theme })
-        end
-
-        if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
-            exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects, playerSettings.cameraEffectType)
-        end
+local function fetchInitialPayload()
+    local payload = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    if type(payload) ~= 'table' then
+        return nil
     end
+    return payload
 end
 
 local function openMultichar()
@@ -308,18 +287,10 @@ local function openMultichar()
 
     dprint('[mri_Qmultichar] Preparando dados para abrir NUI...')
 
-    local characters, amount, theme, music, allowThemeChange, availableThemes, locales = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
-
-    local settings = lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
-    if settings then
-        playerSettings.cameraEffects = settings.cameraEffects ~= false
-        playerSettings.streamerMode = settings.streamerMode == true
-        playerSettings.theme = settings.theme or 'dark'
-        playerSettings.cameraEffectType = settings.cameraEffectType or 'cinema'
-
-        if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
-            exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects, playerSettings.cameraEffectType)
-        end
+    local payload = fetchInitialPayload()
+    if not payload then
+        lib.print.error('[mri_Qmultichar] Falha ao obter payload inicial do servidor')
+        return
     end
 
     isNuiOpen = true
@@ -328,14 +299,13 @@ local function openMultichar()
     dprint('[mri_Qmultichar] Abrindo NUI com dados carregados')
     SendNUIMessage({
         action = 'open',
-        characters = characters,
-        amount = amount or 3,
-        theme = theme,
-        music = music,
-        allowThemeChange = allowThemeChange,
-        availableThemes = availableThemes or {},
-        locales = locales or {},
-        streamerMode = playerSettings.streamerMode
+        characters = payload.characters or {},
+        amount = payload.slots or 3,
+        accentColor = payload.accentColor,
+        allowAccentOverride = payload.allowAccentOverride ~= false,
+        defaults = payload.defaults or {},
+        music = payload.music,
+        locales = payload.locales or {},
     })
 end
 
@@ -462,24 +432,23 @@ end
 
 RegisterNUICallback('getCharacters', function(_, cb)
     dprint('[mri_Qmultichar] Callback getCharacters chamado')
-    local characters, amount, theme, music, allowThemeChange, availableThemes, locales = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+    local payload = fetchInitialPayload()
 
-    if characters then
-        dprint(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, amount or 3))
+    if payload then
+        local characters = payload.characters or {}
+        dprint(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, payload.slots or 3))
         cb({
             success = true,
             characters = characters,
-            amount = amount or 3,
-            theme = theme,
-            music = music,
-            allowThemeChange = allowThemeChange,
-            availableThemes = availableThemes or {},
-            locales = locales or {}
+            amount = payload.slots or 3,
+            accentColor = payload.accentColor,
+            allowAccentOverride = payload.allowAccentOverride ~= false,
+            defaults = payload.defaults or {},
+            music = payload.music,
+            locales = payload.locales or {},
         })
     else
         lib.print.error('[mri_Qmultichar] Erro ao carregar personagens')
-        local themeName = Config.Theme or 'dark'
-        local themeData = Config.Themes[themeName] or Config.Themes.dark
         local musicConfig = Config.Music or { enabled = false, url = '', volume = 0.3, loop = true, autoplay = true }
         local localeFile = LoadResourceFile(GetCurrentResourceName(), string.format('locales/%s.json', Config.Locale or 'pt-br'))
         local locales = {}
@@ -493,45 +462,26 @@ RegisterNUICallback('getCharacters', function(_, cb)
             success = false,
             characters = {},
             amount = 3,
-            theme = themeData,
+            accentColor = Config.AccentColor or '#00E699',
+            allowAccentOverride = Config.AllowAccentOverride ~= false,
+            defaults = {
+                cameraEffects = Config.CameraEffects ~= false,
+                cameraEffectType = Config.CameraEffectType or 'cinema',
+                streamerMode = Config.StreamerMode == true,
+            },
             music = musicConfig,
-            allowThemeChange = Config.AllowThemeChange or true,
-            availableThemes = Config.Themes or {},
-            locales = locales
+            locales = locales,
         })
     end
 end)
 
-RegisterNUICallback('updateSettings', function(data, cb)
-    local success = lib.callback.await('mri_Qmultichar:server:updateSettings', false, data)
-
-    if success then
-        if data.streamerMode ~= nil then
-            playerSettings.streamerMode = data.streamerMode
-            SendNUIMessage({ action = 'setStreamerMode', enabled = data.streamerMode })
-        end
-
-        if data.theme then
-            playerSettings.theme = data.theme
-            SendNUIMessage({ action = 'updateTheme', theme = data.theme })
-        end
-
-        if data.cameraEffects ~= nil then
-            playerSettings.cameraEffects = data.cameraEffects
-            if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
-                exports.mri_Qmultichar:setCameraEffects(data.cameraEffects, data.cameraEffectType or 'cinema')
-            end
-        end
-
-        if data.cameraEffectType then
-            playerSettings.cameraEffectType = data.cameraEffectType
-            if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
-                exports.mri_Qmultichar:setCameraEffects(playerSettings.cameraEffects or true, data.cameraEffectType)
-            end
-        end
+-- Aplicação dos efeitos de câmera (timecycle modifier do preview cam).
+-- NUI armazena a preferência em localStorage e dispara este callback ao mudar.
+RegisterNUICallback('setCameraEffects', function(data, cb)
+    if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
+        exports.mri_Qmultichar:setCameraEffects(data.enabled ~= false, data.effectType or 'cinema')
     end
-
-    cb({ success = success })
+    cb({ success = true })
 end)
 
 local pendingHeadshots = {}
@@ -594,11 +544,6 @@ captureHeadshotForCharacter = function(citizenId, ped)
     dprint(string.format('[mri_Qmultichar] captureBase64 enviado para NUI: citizenid=%s, txd=%s', citizenId, txd))
     return true
 end
-
-RegisterNUICallback('getSettings', function(_data, cb)
-    local settings = lib.callback.await('mri_Qmultichar:server:getPlayerSettings', false)
-    cb({ success = true, settings = settings })
-end)
 
 RegisterNUICallback('getCharacterPhoto', function(data, cb)
     local citizenId = data.citizenid
@@ -1173,7 +1118,8 @@ CreateThread(function()
             pcall(function() exports.spawnmanager:setAutoSpawn(false) end)
             Wait(250)
 
-            local characters, amount = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
+            local payload = fetchInitialPayload()
+            local characters = payload and payload.characters or {}
             local firstCharacterCitizenId = characters[1] and characters[1].citizenid
 
             local jobName = characters[1] and characters[1].job and (characters[1].job.name or (characters[1].job.label and string.lower(string.gsub(characters[1].job.label, '%s+', '')))) or 'unemployed'
@@ -1257,9 +1203,9 @@ CreateThread(function()
     SetEntityInvincible(PlayerPedId(), false)
 end)
 
-CreateThread(function()
-    Wait(2000)
-    loadPlayerSettings()
+RegisterNetEvent('mri_Qmultichar:client:accentColorChanged', function(newColor)
+    if not isNuiOpen then return end
+    SendNUIMessage({ action = 'updateAccentColor', accentColor = newColor })
 end)
 
 exports('openMultichar', openMultichar)

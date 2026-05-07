@@ -1,13 +1,11 @@
 import { MriActionModal, MriBadge } from '@mriqbox/ui-kit'
 import { AlertTriangle } from 'lucide-react'
-import type { UiTheme } from '../lib/mriTheme'
 
 interface DeleteConfirmDialogProps {
   open: boolean
   onClose: () => void
   onConfirm: () => void
   characterName?: string
-  theme: UiTheme | null
   locales?: any
 }
 

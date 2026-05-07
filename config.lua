@@ -4,9 +4,17 @@ Config.Debug = false
 
 Config.Locale = 'pt-br'
 
-Config.Theme = 'mri'
+-- Cor de destaque (HSL --primary do shadcn). Lê primeiro da convar global
+-- `mri:color` (suite MRI compartilha o tema) e cai no default abaixo.
+Config.AccentColor = GetConvar('mri:color', '#00E699')
 
-Config.AllowThemeChange = true
+-- Player pode sobrescrever a cor localmente (localStorage da NUI)?
+Config.AllowAccentOverride = true
+
+-- Defaults dos toggles de NUI (cosméticos, persistem em localStorage do CEF).
+Config.CameraEffects = true
+Config.CameraEffectType = 'cinema'
+Config.StreamerMode = false
 
 Config.Music = {
     enabled = true,

@@ -12,13 +12,11 @@ import {
 } from '@mriqbox/ui-kit'
 import { ArrowLeft, ShieldPlus, X } from 'lucide-react'
 import { nationalities } from '../data/nationalities'
-import type { UiTheme } from '../lib/mriTheme'
 
 declare function GetParentResourceName(): string
 
 interface CharacterCreationProps {
   slot: number
-  theme: UiTheme | null
   onCancel: () => void
   onSuccess: () => void
   locales?: any
@@ -36,7 +34,6 @@ function formatBirthdate(date: Date) {
 
 export function CharacterCreation({
   slot,
-  theme: _theme,
   onCancel,
   onSuccess,
   locales = {},

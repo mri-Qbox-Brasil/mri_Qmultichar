@@ -4,7 +4,6 @@ import { Briefcase, ChevronRight, Plus, Sparkles, Wallet } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Skeleton } from './ui/skeleton'
 import { cn } from '@/lib/utils'
-import type { UiTheme } from '@/lib/mriTheme'
 import type { Character } from '../App'
 
 declare function GetParentResourceName(): string
@@ -15,7 +14,6 @@ interface CharacterListProps {
   selectedCharacter: Character | null
   onSelect: (character: Character) => void
   onCreate: (slot: number) => void
-  theme: UiTheme | null
   characterPhotos?: Record<string, string>
   locales?: any
 }
@@ -26,7 +24,6 @@ export function CharacterList({
   selectedCharacter,
   onSelect,
   onCreate,
-  theme: _theme,
   characterPhotos: externalPhotos = {},
   locales = {},
 }: CharacterListProps) {

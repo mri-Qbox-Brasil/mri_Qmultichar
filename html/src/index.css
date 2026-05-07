@@ -54,6 +54,12 @@ html, body, #root {
   height: 100vh;
 }
 
+/* Popovers do Radix renderizam em portal no <body>; o SettingsPanel sobe a z-index
+   acima de 99999, então elevamos os popovers (color picker, etc.) acima dele. */
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }

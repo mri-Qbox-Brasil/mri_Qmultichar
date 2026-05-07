@@ -26,10 +26,13 @@ import { MusicPlayer } from './components/MusicPlayer'
 import { SettingsPanel } from './components/SettingsPanel'
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar'
 
-import { getMriThemeVars, type UiTheme } from './lib/mriTheme'
+import { applyAccentColor, isValidHex } from './lib/accentColor'
+import { useLocalSettings } from './lib/useLocalSettings'
 import { formatNumber } from './utils/formatNumber'
 
 declare function GetParentResourceName(): string
+
+const FALLBACK_ACCENT = '#00E699'
 
 export interface Character {
   citizenid: string
@@ -59,14 +62,18 @@ export interface Character {
   photo?: string
 }
 
-type Theme = UiTheme
-
 interface MusicConfig {
   enabled: boolean
   url: string
   volume: number
   loop: boolean
   autoplay: boolean
+}
+
+interface ServerDefaults {
+  streamerMode?: boolean
+  cameraEffects?: boolean
+  cameraEffectType?: string
 }
 
 interface InfoTileProps {
@@ -96,19 +103,31 @@ function App() {
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [showCreation, setShowCreation] = useState(false)
   const [creatingSlot, setCreatingSlot] = useState<number | null>(null)
-  const [theme, setTheme] = useState<Theme | null>(null)
   const [music, setMusic] = useState<MusicConfig | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [characterToDelete, setCharacterToDelete] = useState<Character | null>(null)
   const [selectedCharacterPhoto, setSelectedCharacterPhoto] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
-  const [allowThemeChange, setAllowThemeChange] = useState(true)
-  const [availableThemes, setAvailableThemes] = useState<{ [key: string]: Theme }>({})
-  const [streamerMode, setStreamerMode] = useState(false)
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>({})
   const [locales, setLocales] = useState<any>({})
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
-  const availableThemesRef = useRef(availableThemes)
+
+  const [serverAccentColor, setServerAccentColor] = useState<string>(FALLBACK_ACCENT)
+  const [allowAccentOverride, setAllowAccentOverride] = useState(true)
+  const [serverDefaults, setServerDefaults] = useState<ServerDefaults>({})
+
+  const {
+    settings,
+    setStreamerMode,
+    setCameraEffects,
+    setCameraEffectType,
+    setAccentColorOverride,
+  } = useLocalSettings(serverDefaults)
+
+  const effectiveAccentColor = allowAccentOverride && settings.accentColorOverride
+    ? settings.accentColorOverride
+    : serverAccentColor
+
   const musicRef = useRef(music)
   const selectedCharacterRef = useRef(selectedCharacter)
 
@@ -203,10 +222,6 @@ function App() {
   }
 
   useEffect(() => {
-    availableThemesRef.current = availableThemes
-  }, [availableThemes])
-
-  useEffect(() => {
     musicRef.current = music
   }, [music])
 
@@ -215,14 +230,22 @@ function App() {
   }, [selectedCharacter])
 
   useEffect(() => {
-    const vars = getMriThemeVars(theme) as Record<string, string>
-    const root = document.documentElement
-    const applied = Object.entries(vars).filter(([key]) => key.startsWith('--'))
-    applied.forEach(([key, value]) => root.style.setProperty(key, value, 'important'))
-    return () => {
-      applied.forEach(([key]) => root.style.removeProperty(key))
+    if (isValidHex(effectiveAccentColor)) {
+      applyAccentColor(effectiveAccentColor)
     }
-  }, [theme])
+  }, [effectiveAccentColor])
+
+  // Dispara o export Lua que aplica o timecycle modifier do preview cam.
+  useEffect(() => {
+    fetch(`https://${GetParentResourceName()}/setCameraEffects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enabled: settings.cameraEffects,
+        effectType: settings.cameraEffectType,
+      }),
+    }).catch(() => {})
+  }, [settings.cameraEffects, settings.cameraEffectType])
 
   useEffect(() => {
     fetch(`https://${GetParentResourceName()}/nuiStarted`, {
@@ -236,11 +259,16 @@ function App() {
 
       if (data && data.action === 'open') {
         if (data.locales) setLocales(data.locales)
-        if (data.availableThemes) setAvailableThemes(data.availableThemes)
-        if (data.theme) setTheme(data.theme)
+        if (typeof data.accentColor === 'string' && isValidHex(data.accentColor)) {
+          setServerAccentColor(data.accentColor)
+        }
+        if (typeof data.allowAccentOverride === 'boolean') {
+          setAllowAccentOverride(data.allowAccentOverride)
+        }
+        if (data.defaults && typeof data.defaults === 'object') {
+          setServerDefaults(data.defaults)
+        }
         if (data.music) setMusic(data.music)
-        if (data.allowThemeChange !== undefined) setAllowThemeChange(data.allowThemeChange)
-        if (data.streamerMode !== undefined) setStreamerMode(data.streamerMode)
 
         if (data.characters) {
           applyCharacters(data.characters)
@@ -261,17 +289,9 @@ function App() {
         setTimeout(() => {
           loadCharacters()
         }, 300)
-      } else if (data && data.action === 'setStreamerMode') {
-        setStreamerMode(data.enabled)
-
-        if (data.enabled && musicRef.current) {
-          setMusic({ ...musicRef.current, enabled: false })
-        } else if (!data.enabled && musicRef.current) {
-          setMusic({ ...musicRef.current, enabled: true })
-        }
-      } else if (data && data.action === 'updateTheme') {
-        if (availableThemesRef.current[data.theme]) {
-          setTheme(availableThemesRef.current[data.theme])
+      } else if (data && data.action === 'updateAccentColor') {
+        if (typeof data.accentColor === 'string' && isValidHex(data.accentColor)) {
+          setServerAccentColor(data.accentColor)
         }
       } else if (data && data.action === 'characterPhotoReady') {
         if (data.photo) {
@@ -316,26 +336,21 @@ function App() {
           setMaxSlots(data.amount || 3)
           setStatusMessage(null)
 
-          if (data.theme) {
-            setTheme(data.theme)
+          if (typeof data.accentColor === 'string' && isValidHex(data.accentColor)) {
+            setServerAccentColor(data.accentColor)
           }
-
+          if (typeof data.allowAccentOverride === 'boolean') {
+            setAllowAccentOverride(data.allowAccentOverride)
+          }
+          if (data.defaults && typeof data.defaults === 'object') {
+            setServerDefaults(data.defaults)
+          }
           if (data.music) {
             setMusic(data.music)
           }
-
-          if (data.allowThemeChange !== undefined) {
-            setAllowThemeChange(data.allowThemeChange)
-          }
-
-          if (data.availableThemes) {
-            setAvailableThemes(data.availableThemes)
-          }
-
           if (data.locales) {
             setLocales(data.locales)
           }
-
         } else {
           console.error('[mri_Qmultichar] Erro ao carregar personagens:', data)
           setCharacters([])
@@ -463,13 +478,12 @@ function App() {
 
   if (showCreation) {
     return (
-      <div className="mri-app-shell" style={getMriThemeVars(theme)}>
+      <div className="mri-app-shell">
         <div className="fixed inset-0 z-10 flex items-center justify-center p-4" style={{ pointerEvents: 'none' }}>
           <div style={{ pointerEvents: 'auto' }}>
             <CharacterCreation
-            slot={creatingSlot || 1}
-            theme={theme}
-            locales={locales}
+              slot={creatingSlot || 1}
+              locales={locales}
               onCancel={() => {
                 setShowCreation(false)
                 setCreatingSlot(null)
@@ -479,14 +493,14 @@ function App() {
           </div>
         </div>
         <div className="fixed bottom-0 left-0 right-0 z-[10001] flex justify-center px-4 pb-5">
-          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} locales={locales} />
+          <MusicPlayer music={music || undefined} isStreamerMode={settings.streamerMode} locales={locales} />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="mri-app-shell" style={getMriThemeVars(theme)}>
+    <div className="mri-app-shell">
       <div className="relative flex h-full items-start justify-between gap-6 px-6 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
         <div
           className="flex h-fit w-[25rem] max-w-[25rem] flex-col self-center overflow-visible"
@@ -500,7 +514,6 @@ function App() {
                 selectedCharacter={selectedCharacter}
                 onSelect={handleCharacterSelect}
                 onCreate={handleCreateCharacter}
-                theme={theme}
                 characterPhotos={characterPhotos}
                 locales={locales}
               />
@@ -519,14 +532,13 @@ function App() {
             >
               <MriBadge
                 variant="outline"
-                className="rounded-full border-primary/30 bg-black px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
-                style={{ opacity: 1 }}
+                className="rounded-full border-primary/30 bg-card px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
               >
                 {locales.characters?.selection_badge || 'Selecao de personagem'}
               </MriBadge>
               <GlitchName
                 name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
-                theme={theme || undefined}
+                accentColor={effectiveAccentColor}
               />
             </div>
           )}
@@ -623,7 +635,7 @@ function App() {
 
               <div className="space-y-3 pt-1">
                 {statusMessage && (
-                  <div className="rounded-2xl border border-red-500/30 bg-[#14080a]/95 px-3 py-2 text-sm text-red-100">
+                  <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
                     {statusMessage}
                   </div>
                 )}
@@ -663,7 +675,7 @@ function App() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-[10000] flex justify-center px-4 pb-5" style={{ pointerEvents: 'auto' }}>
-        <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
+        <MusicPlayer music={music || undefined} isStreamerMode={settings.streamerMode} locales={locales} />
       </div>
 
       <MriButton
@@ -680,15 +692,18 @@ function App() {
 
       {showSettings && (
         <SettingsPanel
-          theme={theme}
-          availableThemes={availableThemes}
           onClose={() => setShowSettings(false)}
-          onThemeChange={(themeName) => {
-            if (availableThemes[themeName]) {
-              setTheme(availableThemes[themeName])
-            }
-          }}
-          allowThemeChange={allowThemeChange}
+          accentColor={effectiveAccentColor}
+          serverAccentColor={serverAccentColor}
+          accentColorOverride={settings.accentColorOverride}
+          allowAccentOverride={allowAccentOverride}
+          onAccentColorChange={setAccentColorOverride}
+          streamerMode={settings.streamerMode}
+          onStreamerModeChange={setStreamerMode}
+          cameraEffects={settings.cameraEffects}
+          onCameraEffectsChange={setCameraEffects}
+          cameraEffectType={settings.cameraEffectType}
+          onCameraEffectTypeChange={setCameraEffectType}
           locales={locales}
         />
       )}
@@ -701,7 +716,6 @@ function App() {
         }}
         onConfirm={confirmDelete}
         characterName={characterToDelete ? `${characterToDelete.charinfo.firstname} ${characterToDelete.charinfo.lastname}` : undefined}
-        theme={theme}
         locales={locales}
       />
     </div>

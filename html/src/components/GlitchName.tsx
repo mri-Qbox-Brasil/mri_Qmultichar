@@ -2,22 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 
 interface GlitchNameProps {
   name: string
-  theme?: {
-    colors: {
-      text: {
-        primary: string
-      }
-      accent?: {
-        primary?: string
-      }
-    }
-  }
+  accentColor?: string
 }
 
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
-export function GlitchName({ name, theme }: GlitchNameProps) {
+export function GlitchName({ name, accentColor: accentProp }: GlitchNameProps) {
   const [displayText, setDisplayText] = useState<string>('')
   const [isAnimating, setIsAnimating] = useState(false)
   const animationRef = useRef<number>()
@@ -74,8 +65,8 @@ export function GlitchName({ name, theme }: GlitchNameProps) {
 
   if (!name) return null
 
-  const accentColor = theme?.colors.accent?.primary || theme?.colors.text.primary || '#3B82F6'
-  const textColor = theme?.colors.text.primary || '#FFFFFF'
+  const accentColor = accentProp || '#00E699'
+  const textColor = '#FFFFFF'
 
   return (
     <div
@@ -106,7 +97,6 @@ export function GlitchName({ name, theme }: GlitchNameProps) {
             0 0 100px ${accentColor}80
           `,
           letterSpacing: '0.1em',
-          fontFamily: 'Inter, "Outfit", system-ui, -apple-system, sans-serif',
           textTransform: 'none',
           animation: isAnimating ? 'glitch 0.15s infinite, pulse 2s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
           userSelect: 'none',

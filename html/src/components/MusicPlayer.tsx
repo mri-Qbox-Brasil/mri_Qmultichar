@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MriBadge, MriButton, MriCard, MriSpinner } from '@mriqbox/ui-kit'
 import { Pause, Play, Volume2 } from 'lucide-react'
-import type { UiTheme } from '../lib/mriTheme'
 
 declare function GetParentResourceName(): string
 
@@ -22,12 +21,11 @@ interface MusicConfig {
 
 interface MusicPlayerProps {
   music?: MusicConfig
-  theme?: UiTheme
   isStreamerMode?: boolean
   locales?: any
 }
 
-export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {} }: MusicPlayerProps) {
+export function MusicPlayer({ music, isStreamerMode = false, locales = {} }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
@@ -359,9 +357,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
     return null
   }
 
-  const accentColor = theme?.colors.accent?.primary || theme?.colors.text.primary || '#00FFA3'
-  const mutedColor = theme?.colors.text.muted || '#A1A1AA'
-  const borderColor = theme?.colors.border || 'rgba(39, 39, 42, 0.6)'
+  const sliderProgress = currentVolume * 100
 
   return (
     <MriCard
@@ -409,8 +405,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
             <img
               src={ytThumb}
               alt="thumb"
-              className="h-10 w-10 rounded-xl object-cover"
-              style={{ border: `1px solid ${borderColor}` }}
+              className="h-10 w-10 rounded-xl border border-border/80 object-cover"
             />
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-primary">
@@ -419,7 +414,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
           )}
 
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Volume2 className="h-4 w-4 shrink-0" style={{ color: mutedColor }} />
+            <Volume2 className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="range"
               min="0"
@@ -431,7 +426,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
               onMouseDown={(event) => event.stopPropagation()}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-transparent"
               style={{
-                background: `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${currentVolume * 100}%, ${borderColor} ${currentVolume * 100}%, ${borderColor} 100%)`,
+                background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${sliderProgress}%, hsl(var(--border)) ${sliderProgress}%, hsl(var(--border)) 100%)`,
               }}
             />
             <span className="w-10 text-right text-xs text-muted-foreground">

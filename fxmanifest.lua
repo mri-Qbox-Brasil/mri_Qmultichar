@@ -11,7 +11,6 @@ ox_lib 'locale'
 shared_scripts {
     '@ox_lib/init.lua',
     'config.lua',
-    'config.themes.lua',
 }
 
 client_scripts {
