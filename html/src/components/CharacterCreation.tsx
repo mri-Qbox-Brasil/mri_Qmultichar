@@ -108,7 +108,7 @@ export function CharacterCreation({
   return (
     <>
       <div className="w-full max-w-3xl px-4">
-        <MriCard className="rounded-[2rem] border border-border/80 bg-card/95 shadow-2xl shadow-black/30">
+        <MriCard className="rounded-3xl border border-border/80 bg-card/95 shadow-2xl shadow-black/30">
           <MriCardHeader className="space-y-4 border-b border-border/70 p-6">
             <div className="flex items-center justify-between gap-4">
               <MriButton
@@ -238,7 +238,7 @@ export function CharacterCreation({
         <MriModal
           onClose={() => setErrorMessage(null)}
           hideBlur
-          className="w-[min(92vw,28rem)] max-w-[28rem] overflow-hidden rounded-[1.75rem] border border-border/80 bg-card p-0 shadow-2xl"
+          className="w-[min(92vw,28rem)] max-w-[28rem] overflow-hidden rounded-3xl border border-border/80 bg-card p-0 shadow-2xl"
         >
           <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
             <h3 className="text-lg font-semibold text-foreground">

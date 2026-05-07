@@ -114,7 +114,7 @@ export function SettingsPanel({
       <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" style={{ pointerEvents: 'none' }}>
         <MriCard
           className={cn(
-            'mri-panel-chrome w-full max-w-[22rem] rounded-[2rem]',
+            'mri-panel-chrome w-full max-w-[22rem] rounded-3xl',
             'animate-in zoom-in-95 fade-in duration-300',
           )}
           style={{ pointerEvents: 'auto' }}
@@ -145,7 +145,7 @@ export function SettingsPanel({
           </MriCardHeader>
 
           <MriCardContent className="space-y-5 px-5 pb-5 pt-2">
-            <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+            <div className="rounded-3xl border border-border/70 bg-background/45 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {streamerMode ? <Music2 className="h-4 w-4 text-primary" /> : <Music className="h-4 w-4 text-primary" />}
@@ -179,7 +179,7 @@ export function SettingsPanel({
             </div>
 
             {allowThemeChange ? (
-              <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+              <div className="rounded-3xl border border-border/70 bg-background/45 p-4">
                 <div className="mb-4 flex items-center gap-2">
                   <Palette className="h-4 w-4 text-primary" />
                   <span className="font-medium text-foreground">
@@ -205,7 +205,7 @@ export function SettingsPanel({
                         type="button"
                         onClick={() => handleThemeChange(themeName)}
                         className={cn(
-                          'rounded-[1.25rem] border p-3 text-left transition-all duration-200',
+                          'rounded-2xl border p-3 text-left transition-all duration-200',
                           'hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/15',
                           selectedTheme === themeName
                             ? 'border-primary/50 bg-primary/10'
@@ -235,7 +235,7 @@ export function SettingsPanel({
                 </div>
               </div>
             ) : (
-              <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-4">
+              <div className="rounded-3xl border border-border/70 bg-background/45 p-4">
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl bg-background/60 text-muted-foreground">
                     <EyeOff className="h-4 w-4" />

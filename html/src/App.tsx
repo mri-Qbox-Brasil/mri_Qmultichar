@@ -537,9 +537,9 @@ function App() {
           style={{ pointerEvents: 'auto' }}
         >
           {selectedCharacter ? (
-            <div className="space-y-4 rounded-[1.9rem] border border-border/80 bg-card p-5">
+            <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-5">
               <div className="flex items-start gap-4">
-                <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-background">
+                <Avatar className="h-24 w-24 rounded-3xl border-2 border-primary bg-background">
                   {selectedPhoto ? (
                     <AvatarImage
                       src={selectedPhoto}
@@ -547,7 +547,7 @@ function App() {
                       className="object-cover"
                     />
                   ) : null}
-                  <AvatarFallback className="rounded-[1.35rem] bg-background text-2xl font-bold text-foreground">
+                  <AvatarFallback className="rounded-2xl bg-background text-2xl font-bold text-foreground">
                     {selectedCharacter.charinfo.firstname[0]}
                     {selectedCharacter.charinfo.lastname[0]}
                   </AvatarFallback>
@@ -647,8 +647,8 @@ function App() {
               </div>
             </div>
           ) : (
-            <div className="w-full rounded-[1.9rem] border border-dashed border-border/80 bg-card p-10 text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-primary/25 bg-primary/10 text-primary">
+            <div className="w-full rounded-3xl border border-dashed border-border/80 bg-card p-10 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/25 bg-primary/10 text-primary">
                 <User className="h-9 w-9" />
               </div>
               <h3 className="text-xl font-semibold text-foreground">

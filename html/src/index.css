@@ -1,34 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 240 10% 4%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 4%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 4%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 160 100% 45%;
-  --primary-foreground: 160 100% 10%;
-  --secondary: 240 5% 15%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 240 5% 15%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 160 100% 45%;
-  --accent-foreground: 160 100% 10%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 240 5% 15%;
-  --input: 240 5% 15%;
-  --ring: 160 100% 45%;
-  --radius: 1.5rem;
-}
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 160 100% 45%;
+    --primary-foreground: 144 100% 10%;
+    --secondary: 240 5% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 5% 15%;
+    --muted-foreground: 240 5% 60%;
+    --accent: 240 5% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 15%;
+    --input: 240 5% 15%;
+    --ring: 160 100% 45%;
+    --radius: 1rem;
+  }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  * {
+    @apply border-border;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-transparent text-foreground antialiased;
+    font-family: 'Saira', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
 }
 
 /* Truque do 1%: força o buffer de cor do CEF a ficar opaco. */
@@ -44,12 +54,6 @@ html, body, #root {
   height: 100vh;
 }
 
-/* Cards do ui-kit precisam de bg sólido — o CEF não respeita o overlay translúcido. */
-[class*="MriCard"]:not([class*="MriCardContent"]):not([class*="MriCardHeader"]):not([class*="MriCardFooter"]),
-.mri-panel-chrome {
-  background-color: hsl(var(--card));
-}
-
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -57,8 +61,10 @@ html, body, #root {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  @apply bg-muted rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
 }
 
 * {

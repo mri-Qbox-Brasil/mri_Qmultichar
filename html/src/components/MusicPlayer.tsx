@@ -365,7 +365,7 @@ export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {}
 
   return (
     <MriCard
-      className="flex min-w-[320px] max-w-[420px] items-center gap-4 rounded-[1.5rem] border border-border/80 px-4 py-3 shadow-2xl shadow-black/25"
+      className="flex min-w-[320px] max-w-[420px] items-center gap-4 rounded-3xl border border-border/80 px-4 py-3 shadow-2xl shadow-black/25"
       style={{ pointerEvents: 'auto' }}
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}

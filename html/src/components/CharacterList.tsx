@@ -130,7 +130,7 @@ export function CharacterList({
           <MriCard
             key={`slot-${slot}-${character?.citizenid || 'empty'}`}
             className={cn(
-              'group relative cursor-pointer overflow-hidden rounded-[1.75rem] border p-4',
+              'group relative cursor-pointer overflow-hidden rounded-3xl border p-4',
               isSelected
                 ? 'border-primary/45'
                 : 'border-border/80 hover:border-primary/30',
@@ -152,11 +152,11 @@ export function CharacterList({
             <div className="flex items-center gap-4">
               <div className="relative">
                 {loadingPhotos && character ? (
-                  <Skeleton className="h-16 w-16 rounded-[1.35rem]" />
+                  <Skeleton className="h-16 w-16 rounded-2xl" />
                 ) : (
                   <Avatar
                     className={cn(
-                      'h-16 w-16 rounded-[1.35rem] border border-white/10 group-hover:scale-105',
+                      'h-16 w-16 rounded-2xl border border-white/10 group-hover:scale-105',
                       isEmpty ? 'bg-card' : 'bg-background',
                     )}
                   >
@@ -167,7 +167,7 @@ export function CharacterList({
                         className="object-cover"
                       />
                     ) : null}
-                    <AvatarFallback className="rounded-[1.15rem] bg-card text-base font-semibold text-foreground">
+                    <AvatarFallback className="rounded-2xl bg-card text-base font-semibold text-foreground">
                       {character ? getInitials(character.charinfo.firstname, character.charinfo.lastname) : <Plus className="h-5 w-5" />}
                     </AvatarFallback>
                   </Avatar>
