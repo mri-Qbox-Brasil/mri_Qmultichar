@@ -1114,6 +1114,12 @@ CreateThread(function()
     while true do
         Wait(0)
         if NetworkIsSessionStarted() then
+            if LocalPlayer.state.isLoggedIn then
+                dprint('[mri_Qmultichar] Player já logado em personagem; solicitando logout server-side')
+                TriggerServerEvent('mri_Qmultichar:server:requestLogout')
+                break
+            end
+
             dprint('[mri_Qmultichar] Sessão iniciada, configurando multichar...')
             pcall(function() exports.spawnmanager:setAutoSpawn(false) end)
             Wait(250)

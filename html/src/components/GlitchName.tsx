@@ -97,7 +97,7 @@ export function GlitchName({ name, accentColor: accentProp }: GlitchNameProps) {
             0 0 100px ${accentColor}80
           `,
           letterSpacing: '0.1em',
-          textTransform: 'none',
+          textTransform: 'uppercase',
           animation: isAnimating ? 'glitch 0.15s infinite, pulse 2s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
           userSelect: 'none',
           whiteSpace: 'nowrap',

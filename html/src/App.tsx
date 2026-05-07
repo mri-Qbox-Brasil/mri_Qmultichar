@@ -530,12 +530,6 @@ function App() {
               className="absolute left-1/2 top-5 z-[1000] flex w-full max-w-[32rem] -translate-x-1/2 flex-col items-center gap-3 px-6"
               style={{ pointerEvents: 'none' }}
             >
-              <MriBadge
-                variant="outline"
-                className="rounded-full border-primary/30 bg-card px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
-              >
-                {locales.characters?.selection_badge || 'Selecao de personagem'}
-              </MriBadge>
               <GlitchName
                 name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
                 accentColor={effectiveAccentColor}

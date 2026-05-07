@@ -212,6 +212,22 @@ lib.callback.register('mri_Qmultichar:server:saveCharacterPhoto', function(sourc
     return false
 end)
 
+RegisterNetEvent('mri_Qmultichar:server:requestLogout', function()
+    local source = source
+    if not source or source == 0 then return end
+
+    if exports.qbx_core and exports.qbx_core.Logout then
+        local ok, err = pcall(function()
+            exports.qbx_core:Logout(source)
+        end)
+        if not ok then
+            lib.print.warn(string.format('[mri_Qmultichar] Falha ao solicitar logout para source %s: %s', source, tostring(err)))
+        end
+    else
+        lib.print.warn('[mri_Qmultichar] qbx_core:Logout export indisponível, não foi possível deslogar player')
+    end
+end)
+
 RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
     local source = source
     dprint(string.format('[mri_Qmultichar] [SERVER] Definindo bucket %d para source %d', bucket, source))

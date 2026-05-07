@@ -9,7 +9,7 @@ Config.Locale = 'pt-br'
 Config.AccentColor = GetConvar('mri:color', '#00E699')
 
 -- Player pode sobrescrever a cor localmente (localStorage da NUI)?
-Config.AllowAccentOverride = true
+Config.AllowAccentOverride = false
 
 -- Defaults dos toggles de NUI (cosméticos, persistem em localStorage do CEF).
 Config.CameraEffects = true
