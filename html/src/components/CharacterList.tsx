@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MriBadge, MriCard } from '@mriqbox/ui-kit'
-import { Briefcase, ChevronRight, Lock, Plus, Sparkles, Wallet } from 'lucide-react'
+import { Briefcase, ChevronRight, Plus, Sparkles, Wallet } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Skeleton } from './ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ interface CharacterListProps {
   onCreate: (slot: number) => void
   theme: UiTheme | null
   characterPhotos?: Record<string, string>
+  locales?: any
 }
 
 export function CharacterList({
@@ -27,6 +28,7 @@ export function CharacterList({
   onCreate,
   theme: _theme,
   characterPhotos: externalPhotos = {},
+  locales = {},
 }: CharacterListProps) {
   const slots = Array.from({ length: maxSlots }, (_, index) => index + 1)
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>(externalPhotos)
@@ -123,7 +125,6 @@ export function CharacterList({
         const character = getCharacterForSlot(slot)
         const isSelected = selectedCharacter?.citizenid === character?.citizenid
         const isEmpty = !character
-        const isBlocked = character?.logoutBlocked === true
 
         return (
           <MriCard
@@ -133,7 +134,6 @@ export function CharacterList({
               isSelected
                 ? 'border-primary/45'
                 : 'border-border/80 hover:border-primary/30',
-              isBlocked && 'border-red-500/35 hover:border-red-500/45',
               isEmpty && 'border-dashed',
             )}
             style={{ opacity: 1 }}
@@ -157,9 +157,7 @@ export function CharacterList({
                   <Avatar
                     className={cn(
                       'h-16 w-16 rounded-[1.35rem] border border-white/10 group-hover:scale-105',
-                      isEmpty
-                        ? 'bg-[#0f1115]/95'
-                        : `bg-black`,
+                      isEmpty ? 'bg-[#0f1115]/95' : 'bg-black',
                     )}
                   >
                     {character && characterPhotos[character.citizenid] ? (
@@ -186,11 +184,15 @@ export function CharacterList({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-semibold text-foreground">
-                      {character ? `${character.charinfo.firstname} ${character.charinfo.lastname}` : `Slot ${slot}`}
+                      {character
+                        ? `${character.charinfo.firstname} ${character.charinfo.lastname}`
+                        : (locales.characters?.slot_label?.replace('%{slot}', String(slot)) || `Slot ${slot}`)}
                     </h3>
-                    <p className="mt-1 truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      {character ? `ID ${character.citizenid}` : 'Pronto para criar'}
-                    </p>
+                    {character && (
+                      <p className="mt-1 truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        {locales.characters?.id_prefix || 'ID'} {character.citizenid}
+                      </p>
+                    )}
                   </div>
 
                   <ChevronRight className={cn(
@@ -199,27 +201,16 @@ export function CharacterList({
                   )} />
                 </div>
 
-                {character ? (
+                {character && (
                   <div className="flex flex-wrap items-center gap-2">
                     <MriBadge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
                       <Briefcase className="mr-1 h-3 w-3" />
-                      {character.job?.label || 'Unemployed'}
+                      {character.job?.label || locales.characters?.unemployed || 'Unemployed'}
                     </MriBadge>
                     <MriBadge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                       <Wallet className="mr-1 h-3 w-3" />
                       ${(character.money?.cash || 0).toLocaleString()}
                     </MriBadge>
-                    {isBlocked && (
-                      <MriBadge variant="outline" className="rounded-full border-red-500/35 px-2.5 py-1 text-[11px] font-medium text-red-100">
-                        <Lock className="mr-1 h-3 w-3" />
-                        Bloqueado
-                      </MriBadge>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    <span>Clique para criar personagem</span>
                   </div>
                 )}
               </div>

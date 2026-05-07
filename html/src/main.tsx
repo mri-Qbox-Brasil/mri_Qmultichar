@@ -4,6 +4,11 @@ import App from './App'
 import '@mriqbox/ui-kit/dist/style.css'
 import './index.css'
 
+if (import.meta.env.DEV) {
+  const { installDevMock } = await import('./dev/mockNui')
+  installDevMock()
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

@@ -171,7 +171,6 @@ function getReadableForeground(color?: string, lightFallback = 'rgb(255, 255, 25
 
 function toCssVariableValue(color: string | undefined, fallback: string) {
   const parsed = parseColor(color, fallback)
-  // Forçar o canal alfa para 1 (sólido) antes de converter para HSL
   return rgbToHslTriplet({ ...parsed, a: 1 })
 }
 

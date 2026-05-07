@@ -1,4 +1,3 @@
--- Comando para definir slots de um jogador
 lib.addCommand('setslots', {
     help = locale('commands.setslots.help'),
     restricted = 'group.admin',
@@ -9,33 +8,32 @@ lib.addCommand('setslots', {
 }, function(source, args)
     local targetId = args.id
     local slots = args.slots
-    
+
     if not targetId or not slots then
         exports.qbx_core:Notify(source, locale('commands.setslots.usage'), 'error')
         return
     end
-    
+
     if slots < 1 or slots > Config.CharacterSlots.maxSlots then
         exports.qbx_core:Notify(source, locale('commands.setslots.invalid_range', { max = Config.CharacterSlots.maxSlots }), 'error')
         return
     end
-    
+
     local targetPlayer = exports.qbx_core:GetPlayer(targetId)
     if not targetPlayer then
         exports.qbx_core:Notify(source, locale('commands.player_not_found'), 'error')
         return
     end
-    
+
     local license = GetPlayerIdentifierByType(targetId, 'license')
     local license2 = GetPlayerIdentifierByType(targetId, 'license2')
-    
+
     local newSlots = exports.mri_Qmultichar:setPlayerSlots(license, license2, slots)
-    
+
     exports.qbx_core:Notify(source, locale('commands.setslots.success_source', { name = GetPlayerName(targetId), slots = newSlots }), 'success')
     exports.qbx_core:Notify(targetId, locale('commands.setslots.success_target', { slots = newSlots }), 'info')
 end)
 
--- Comando para ver slots de um jogador
 lib.addCommand('getslots', {
     help = locale('commands.getslots.help'),
     restricted = 'group.admin',
@@ -44,27 +42,26 @@ lib.addCommand('getslots', {
     }
 }, function(source, args)
     local targetId = args.id
-    
+
     if not targetId then
         exports.qbx_core:Notify(source, locale('commands.getslots.usage'), 'error')
         return
     end
-    
+
     local targetPlayer = exports.qbx_core:GetPlayer(targetId)
     if not targetPlayer then
         exports.qbx_core:Notify(source, locale('commands.player_not_found'), 'error')
         return
     end
-    
+
     local license = GetPlayerIdentifierByType(targetId, 'license')
     local license2 = GetPlayerIdentifierByType(targetId, 'license2')
-    
+
     local slots = exports.mri_Qmultichar:getPlayerSlots(license, license2)
-    
+
     exports.qbx_core:Notify(source, locale('commands.getslots.result', { name = GetPlayerName(targetId), slots = slots }), 'info')
 end)
 
--- Comando para adicionar slots a um jogador (adiciona ao valor atual)
 lib.addCommand('addslots', {
     help = locale('commands.addslots.help'),
     restricted = 'group.admin',
@@ -75,38 +72,35 @@ lib.addCommand('addslots', {
 }, function(source, args)
     local targetId = args.id
     local slotsToAdd = args.slots
-    
+
     if not targetId or not slotsToAdd then
         exports.qbx_core:Notify(source, locale('commands.addslots.usage'), 'error')
         return
     end
-    
+
     if slotsToAdd < 1 then
         exports.qbx_core:Notify(source, locale('commands.addslots.invalid_amount'), 'error')
         return
     end
-    
+
     local targetPlayer = exports.qbx_core:GetPlayer(targetId)
     if not targetPlayer then
         exports.qbx_core:Notify(source, locale('commands.player_not_found'), 'error')
         return
     end
-    
+
     local license = GetPlayerIdentifierByType(targetId, 'license')
     local license2 = GetPlayerIdentifierByType(targetId, 'license2')
-    
-    -- Obter slots atuais
+
     local currentSlots = exports.mri_Qmultichar:getPlayerSlots(license, license2)
     local newSlots = currentSlots + slotsToAdd
-    
-    -- Definir novos slots (a função já valida o máximo)
+
     local finalSlots = exports.mri_Qmultichar:setPlayerSlots(license, license2, newSlots)
-    
+
     exports.qbx_core:Notify(source, locale('commands.addslots.success_source', { amount = slotsToAdd, name = GetPlayerName(targetId), total = finalSlots }), 'success')
     exports.qbx_core:Notify(targetId, locale('commands.addslots.success_target', { amount = slotsToAdd, total = finalSlots }), 'success')
 end)
 
--- Comando para remover slots de um jogador
 lib.addCommand('removeslots', {
     help = locale('commands.removeslots.help'),
     restricted = 'group.admin',
@@ -117,59 +111,60 @@ lib.addCommand('removeslots', {
 }, function(source, args)
     local targetId = args.id
     local slotsToRemove = args.slots
-    
+
     if not targetId or not slotsToRemove then
         exports.qbx_core:Notify(source, locale('commands.removeslots.usage'), 'error')
         return
     end
-    
+
     if slotsToRemove < 1 then
         exports.qbx_core:Notify(source, locale('commands.removeslots.invalid_amount'), 'error')
         return
     end
-    
+
     local targetPlayer = exports.qbx_core:GetPlayer(targetId)
     if not targetPlayer then
         exports.qbx_core:Notify(source, locale('commands.player_not_found'), 'error')
         return
     end
-    
+
     local license = GetPlayerIdentifierByType(targetId, 'license')
     local license2 = GetPlayerIdentifierByType(targetId, 'license2')
-    
-    -- Obter slots atuais
+
     local currentSlots = exports.mri_Qmultichar:getPlayerSlots(license, license2)
-    local newSlots = math.max(1, currentSlots - slotsToRemove) -- Mínimo de 1 slot
-    
-    -- Definir novos slots
+    local newSlots = math.max(1, currentSlots - slotsToRemove)
+
     local finalSlots = exports.mri_Qmultichar:setPlayerSlots(license, license2, newSlots)
-    
+
     exports.qbx_core:Notify(source, locale('commands.removeslots.success_source', { amount = slotsToRemove, name = GetPlayerName(targetId), total = finalSlots }), 'success')
     exports.qbx_core:Notify(targetId, locale('commands.removeslots.success_target', { amount = slotsToRemove, total = finalSlots }), 'info')
 end)
 
--- Comando para ver seus próprios slots
 lib.addCommand('myslots', {
     help = locale('commands.myslots.help'),
 }, function(source, args)
     local license = GetPlayerIdentifierByType(source, 'license')
     local license2 = GetPlayerIdentifierByType(source, 'license2')
-    
+
     local slots = exports.mri_Qmultichar:getPlayerSlots(license, license2)
-    
+
     exports.qbx_core:Notify(source, locale('commands.myslots.result', { slots = slots }), 'info')
 end)
 
 lib.addCommand('logout', {
     help = 'Desconecta do personagem atual apenas se voce tiver 2 ou mais personagens.',
 }, function(source)
-    local canLogout, characterCount = exports.mri_Qmultichar:CanPlayerLogout(source)
+    local license = GetPlayerIdentifierByType(source, 'license')
+    local license2 = GetPlayerIdentifierByType(source, 'license2')
+    local characterCount = tonumber(MySQL.scalar.await(
+        'SELECT COUNT(DISTINCT citizenid) FROM players WHERE license = ? OR license = ?',
+        { license, license2 }
+    )) or 0
 
-    if not canLogout then
+    if characterCount < 2 then
         exports.qbx_core:Notify(source, string.format('Voce precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
         return
     end
 
     exports.qbx_core:Logout(source)
 end)
-

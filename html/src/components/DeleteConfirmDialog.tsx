@@ -27,7 +27,7 @@ export function DeleteConfirmDialog({
       title={locales.characters?.confirm_delete_title || 'Confirmar Exclusão'}
       icon={AlertTriangle}
       variant="destructive"
-      confirmLabel={locales.buttons?.delete || 'Deletar'}
+      confirmLabel={locales.buttons?.delete || locales.characters?.delete_character || 'Deletar'}
       cancelLabel={locales.buttons?.cancel || 'Cancelar'}
       onClose={onClose}
       onConfirm={onConfirm}

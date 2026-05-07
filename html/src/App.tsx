@@ -3,8 +3,6 @@ import {
   MriBadge,
   MriButton,
   MriCardContent,
-  MriCardHeader,
-  MriSectionHeader,
   MriScrollArea,
 } from '@mriqbox/ui-kit'
 import {
@@ -59,8 +57,6 @@ export interface Character {
   }
   cid?: number
   photo?: string
-  logoutBlocked?: boolean
-  logoutBlockedReason?: string
 }
 
 type Theme = UiTheme
@@ -125,7 +121,54 @@ function App() {
   const selectedCharacterRef = useRef(selectedCharacter)
 
   const getPreferredCharacter = (nextCharacters: Character[]) =>
-    nextCharacters.find((character) => !character.logoutBlocked) ?? nextCharacters[0] ?? null
+    nextCharacters[0] ?? null
+
+  const captureTxdAsBase64 = (txd: string, citizenid: string) => {
+    const url = `https://nui-img/${txd}/${txd}?v=${Date.now()}`
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+
+    const finalize = (dataUrl: string | null) => {
+      if (!dataUrl) {
+        console.error('[mri_Qmultichar] captureTxdAsBase64: falha ao gerar base64', { txd, citizenid })
+        return
+      }
+
+      setCharacterPhotos((prev) => ({ ...prev, [citizenid]: dataUrl }))
+      if (selectedCharacterRef.current?.citizenid === citizenid) {
+        setSelectedCharacterPhoto(dataUrl)
+      }
+
+      fetch(`https://${GetParentResourceName()}/savePhotoBase64`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ citizenid, photo: dataUrl }),
+      }).catch(console.error)
+    }
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth || 96
+        canvas.height = img.naturalHeight || 96
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          finalize(null)
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        finalize(canvas.toDataURL('image/png'))
+      } catch (error) {
+        console.error('[mri_Qmultichar] captureTxdAsBase64: erro de canvas', error)
+        finalize(null)
+      }
+    }
+    img.onerror = (error) => {
+      console.error('[mri_Qmultichar] captureTxdAsBase64: erro ao carregar nui-img', error, { url })
+      finalize(null)
+    }
+    img.src = url
+  }
 
   const requestPreviewForCharacter = (character: Character | null) => {
     if (!character) {
@@ -147,9 +190,22 @@ function App() {
   const applyCharacters = (nextCharacters: Character[]) => {
     setCharacters(nextCharacters)
 
+    const photosFromServer: Record<string, string> = {}
+    for (const character of nextCharacters) {
+      if (character.photo) {
+        photosFromServer[character.citizenid] = character.photo
+      }
+    }
+    if (Object.keys(photosFromServer).length > 0) {
+      setCharacterPhotos((prev) => ({ ...prev, ...photosFromServer }))
+    }
+
     const preferredCharacter = getPreferredCharacter(nextCharacters)
     setSelectedCharacter(preferredCharacter)
-    setSelectedCharacterPhoto(preferredCharacter ? characterPhotos[preferredCharacter.citizenid] || null : null)
+    const preferredPhoto = preferredCharacter
+      ? photosFromServer[preferredCharacter.citizenid] || characterPhotos[preferredCharacter.citizenid] || preferredCharacter.photo || null
+      : null
+    setSelectedCharacterPhoto(preferredPhoto)
 
     requestPreviewForCharacter(preferredCharacter)
   }
@@ -167,7 +223,16 @@ function App() {
   }, [selectedCharacter])
 
   useEffect(() => {
-    console.log('[mri_Qmultichar] Enviando handshake nuiStarted...')
+    const vars = getMriThemeVars(theme) as Record<string, string>
+    const root = document.documentElement
+    const applied = Object.entries(vars).filter(([key]) => key.startsWith('--'))
+    applied.forEach(([key, value]) => root.style.setProperty(key, value, 'important'))
+    return () => {
+      applied.forEach(([key]) => root.style.removeProperty(key))
+    }
+  }, [theme])
+
+  useEffect(() => {
     fetch(`https://${GetParentResourceName()}/nuiStarted`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -226,6 +291,10 @@ function App() {
           if (selectedCharacterRef.current && selectedCharacterRef.current.citizenid === data.citizenid) {
             setSelectedCharacterPhoto(data.photo)
           }
+        }
+      } else if (data && data.action === 'captureBase64') {
+        if (typeof data.txd === 'string' && typeof data.citizenid === 'string') {
+          captureTxdAsBase64(data.txd, data.citizenid)
         }
       }
     }
@@ -289,12 +358,6 @@ function App() {
   }
 
   const handleLoadCharacter = (citizenid: string) => {
-    const character = characters.find((candidate) => candidate.citizenid === citizenid)
-    if (character?.logoutBlocked) {
-      setStatusMessage(character.logoutBlockedReason || 'Este personagem nao pode ser usado agora.')
-      return
-    }
-
     setStatusMessage(null)
 
     fetch(`https://${GetParentResourceName()}/loadCharacter`, {
@@ -309,12 +372,12 @@ function App() {
         if (data.success) {
           setIsOpen(false)
         } else {
-          setStatusMessage(data.message || 'Nao foi possivel carregar este personagem.')
+          setStatusMessage(data.message || locales.characters?.load_failed || 'Nao foi possivel carregar este personagem.')
         }
       })
       .catch((err) => {
         console.error('Erro ao carregar personagem:', err)
-        setStatusMessage('Erro ao carregar personagem.')
+        setStatusMessage(locales.characters?.error_loading_character || 'Erro ao carregar personagem.')
       })
   }
 
@@ -364,7 +427,7 @@ function App() {
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character)
     setShowCreation(false)
-    setStatusMessage(character.logoutBlocked ? character.logoutBlockedReason || 'Este personagem esta bloqueado apos logout.' : null)
+    setStatusMessage(null)
 
     fetch(`https://${GetParentResourceName()}/getCharacterPhoto`, {
       method: 'POST',
@@ -400,13 +463,11 @@ function App() {
   }
 
   const selectedPhoto = selectedCharacter ? selectedCharacterPhoto || characterPhotos[selectedCharacter.citizenid] : null
-  const isSelectedCharacterBlocked = selectedCharacter?.logoutBlocked === true
   const selectedGrade = selectedCharacter
     ? typeof selectedCharacter.job?.grade === 'object'
       ? selectedCharacter.job.grade.name
       : String(selectedCharacter.job?.grade || '0')
     : '0'
-  const rightPanelHeight = 'calc(88vh - 5.75rem)'
 
   if (showCreation) {
     return (
@@ -426,7 +487,7 @@ function App() {
           </div>
         </div>
         <div className="fixed bottom-0 left-0 right-0 z-[10001] flex justify-center px-4 pb-5">
-          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
+          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} locales={locales} />
         </div>
       </div>
     )
@@ -434,40 +495,11 @@ function App() {
 
   return (
     <div className="mri-app-shell" style={getMriThemeVars(theme)}>
-      <div className="relative flex h-full items-start justify-between gap-6 px-12 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
+      <div className="relative flex h-full items-start justify-between gap-6 px-6 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
         <div
-          className="flex h-fit w-[25rem] max-w-[25rem] flex-col overflow-visible"
+          className="flex h-fit w-[25rem] max-w-[25rem] flex-col self-center overflow-visible"
           style={{ pointerEvents: 'auto' }}
         >
-          <MriCardHeader
-            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
-            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <MriSectionHeader
-                  icon={User}
-                  title={locales.characters?.title || 'My Characters'}
-                  className="!mb-0"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {locales.characters?.subtitle || 'Selecione um slot existente ou crie um novo personagem.'}
-                </p>
-              </div>
-              <MriBadge variant="secondary" className="min-w-[4.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold">
-                {characters.length} / {maxSlots}
-              </MriBadge>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {characters.length === 0 && (
-                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
-                  {locales.characters?.no_characters || 'Nenhum personagem criado'}
-                </MriBadge>
-              )}
-            </div>
-          </MriCardHeader>
-
           <MriCardContent className="flex-1 overflow-hidden p-0">
             <MriScrollArea className="h-full">
               <CharacterList
@@ -478,6 +510,7 @@ function App() {
                 onCreate={handleCreateCharacter}
                 theme={theme}
                 characterPhotos={characterPhotos}
+                locales={locales}
               />
             </MriScrollArea>
           </MriCardContent>
@@ -497,7 +530,7 @@ function App() {
                 className="rounded-full border-primary/30 bg-black px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
                 style={{ opacity: 1 }}
               >
-                Preview Ativo
+                {locales.characters?.selection_badge || 'Selecao de personagem'}
               </MriBadge>
               <GlitchName
                 name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
@@ -508,203 +541,138 @@ function App() {
         </div>
 
         <div
-          className="flex h-fit w-[26rem] max-w-[26rem] flex-col overflow-visible"
+          className="flex h-fit w-[26rem] max-w-[26rem] flex-col self-center overflow-visible"
           style={{ pointerEvents: 'auto' }}
         >
-          <MriCardHeader
-            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
-            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <MriSectionHeader
-                  icon={User}
-                  title={locales.characters?.character_info || 'Character Info'}
-                  className="!mb-0"
+          {selectedCharacter ? (
+            <div
+              className="space-y-4 rounded-[1.9rem] border border-border/80 p-5"
+              style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+            >
+              <div className="flex items-start gap-4">
+                <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-black">
+                  {selectedPhoto ? (
+                    <AvatarImage
+                      src={selectedPhoto}
+                      alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="rounded-[1.35rem] bg-[#0f1115]/95 text-2xl font-bold text-foreground">
+                    {selectedCharacter.charinfo.firstname[0]}
+                    {selectedCharacter.charinfo.lastname[0]}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div>
+                    <h3 className="truncate text-2xl font-semibold text-foreground">
+                      {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
+                      <Shield className="mr-1 h-3.5 w-3.5" />
+                      {selectedCharacter.citizenid}
+                    </MriBadge>
+                    <MriBadge variant="secondary" className="rounded-full px-3 py-1 text-xs font-medium">
+                      <Crown className="mr-1 h-3.5 w-3.5" />
+                      {selectedGrade}
+                    </MriBadge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <InfoTile
+                  icon={Wallet}
+                  label={locales.characters?.cash || 'Cash'}
+                  value={`$${formatNumber(selectedCharacter.money?.cash || 0)}`}
                 />
-                <p className="text-sm text-muted-foreground">
-                  {selectedCharacter
-                    ? (locales.characters?.selected_details || 'Detalhes completos do personagem selecionado.')
-                    : (locales.characters?.select_prompt || 'Escolha um slot para visualizar os detalhes.')}
-                </p>
+                <InfoTile
+                  icon={Building2}
+                  label={locales.characters?.bank || 'Bank'}
+                  value={`$${formatNumber(selectedCharacter.money?.bank || 0)}`}
+                />
+                <InfoTile
+                  icon={Briefcase}
+                  label={locales.characters?.job || 'Job'}
+                  value={selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
+                />
+                <InfoTile
+                  icon={Crown}
+                  label={locales.characters?.grade || 'Grade'}
+                  value={selectedGrade}
+                />
+                <InfoTile
+                  icon={User}
+                  label={locales.characters?.gender || 'Gender'}
+                  value={selectedCharacter.charinfo.gender === 0
+                    ? (locales.characters?.male || 'Male')
+                    : (locales.characters?.female || 'Female')}
+                />
+                <InfoTile
+                  icon={Calendar}
+                  label={locales.characters?.birthdate || 'Birthdate'}
+                  value={selectedCharacter.charinfo.birthdate || 'N/A'}
+                />
+                <InfoTile
+                  icon={User}
+                  label={locales.characters?.nationality || 'Nationality'}
+                  value={selectedCharacter.charinfo.nationality || 'N/A'}
+                />
+                <InfoTile
+                  icon={Shield}
+                  label={locales.characters?.gang || 'Gang'}
+                  value={selectedCharacter.gang?.label || 'N/A'}
+                />
               </div>
 
-              {selectedCharacter && (
-                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
-                  Slot {selectedCharacter.cid || '?'}
-                </MriBadge>
-              )}
-            </div>
-          </MriCardHeader>
-
-          <MriCardContent className="flex-1 overflow-hidden p-0">
-            {selectedCharacter ? (
-              <MriScrollArea className="h-full" style={{ height: rightPanelHeight }}>
-                <div className="space-y-4 p-5">
-                  <div
-                    className="rounded-[1.5rem] border border-border/80 p-4"
-                    style={{ 
-                      background: '#0f1115', 
-                      backgroundColor: '#0f1115', 
-                      opacity: 1,
-                      transform: 'translateZ(0)'
-                    }}
-                  >
-                    <div className="flex items-start gap-4">
-                      <Avatar className="h-24 w-24 rounded-[1.5rem] border-2 border-primary bg-black">
-                        {selectedPhoto ? (
-                          <AvatarImage
-                            src={selectedPhoto}
-                            alt={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
-                            className="object-cover"
-                          />
-                        ) : null}
-                        <AvatarFallback className="rounded-[1.35rem] bg-[#0f1115]/95 text-2xl font-bold text-foreground">
-                          {selectedCharacter.charinfo.firstname[0]}
-                          {selectedCharacter.charinfo.lastname[0]}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <div>
-                          <h3 className="truncate text-2xl font-semibold text-foreground">
-                            {selectedCharacter.charinfo.firstname} {selectedCharacter.charinfo.lastname}
-                          </h3>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs font-medium">
-                            <Shield className="mr-1 h-3.5 w-3.5" />
-                            {selectedCharacter.citizenid}
-                          </MriBadge>
-                          <MriBadge variant="secondary" className="rounded-full px-3 py-1 text-xs font-medium">
-                            <Crown className="mr-1 h-3.5 w-3.5" />
-                            {selectedGrade}
-                          </MriBadge>
-                        </div>
-                      </div>
-                    </div>
+              <div className="space-y-3 pt-1">
+                {statusMessage && (
+                  <div className="rounded-2xl border border-red-500/30 bg-[#14080a]/95 px-3 py-2 text-sm text-red-100">
+                    {statusMessage}
                   </div>
+                )}
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <InfoTile
-                      icon={Wallet}
-                      label={locales.characters?.cash || 'Cash'}
-                      value={`$${formatNumber(selectedCharacter.money?.cash || 0)}`}
-                    />
-                    <InfoTile
-                      icon={Building2}
-                      label={locales.characters?.bank || 'Bank'}
-                      value={`$${formatNumber(selectedCharacter.money?.bank || 0)}`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <InfoTile
-                      icon={Briefcase}
-                      label={locales.characters?.job || 'Job'}
-                      value={selectedCharacter.job?.label || (locales.characters?.unemployed || 'UNEMPLOYED')}
-                    />
-                    <InfoTile
-                      icon={Crown}
-                      label={locales.characters?.grade || 'Grade'}
-                      value={selectedGrade}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <InfoTile
-                      icon={User}
-                      label={locales.characters?.gender || 'Gender'}
-                      value={selectedCharacter.charinfo.gender === 0
-                        ? (locales.characters?.male || 'Male')
-                        : (locales.characters?.female || 'Female')}
-                    />
-                    <InfoTile
-                      icon={Calendar}
-                      label={locales.characters?.birthdate || 'Birthdate'}
-                      value={selectedCharacter.charinfo.birthdate || 'N/A'}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <InfoTile
-                      icon={User}
-                      label={locales.characters?.nationality || 'Nationality'}
-                      value={selectedCharacter.charinfo.nationality || 'N/A'}
-                    />
-                    <InfoTile
-                      icon={Shield}
-                      label={locales.characters?.gang || 'Gang'}
-                      value={selectedCharacter.gang?.label || 'N/A'}
-                    />
-                  </div>
-
-                  <div
-                    className="rounded-[1.5rem] border border-border/80 p-3.5"
-                    style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-                  >
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                        {locales.buttons?.actions || 'Actions'}
-                      </span>
-                      <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs">
-                        {selectedCharacter.cid ? `Slot ${selectedCharacter.cid}` : 'Ready'}
-                      </MriBadge>
-                    </div>
-
-                    <div className="space-y-3">
-                      {statusMessage && (
-                        <div className="rounded-2xl border border-red-500/30 bg-[#14080a]/95 px-3 py-2 text-sm text-red-100">
-                          {statusMessage}
-                        </div>
-                      )}
-
-                      <MriButton
-                        className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
-                        disabled={isSelectedCharacterBlocked}
-                        onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
-                      >
-                        <Play className="mr-2 h-4 w-4" />
-                        {isSelectedCharacterBlocked
-                          ? 'Indisponivel apos logout'
-                          : (locales.buttons?.choose_character || 'Choose Character')}
-                      </MriButton>
-
-                      <MriButton
-                        variant="destructive"
-                        className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
-                        onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {locales.buttons?.delete || 'Delete Character'}
-                      </MriButton>
-                    </div>
-                  </div>
-                </div>
-              </MriScrollArea>
-            ) : (
-              <div className="flex h-full items-center justify-center p-6">
-                <div
-                  className="w-full rounded-[1.9rem] border border-dashed border-border/80 p-10 text-center"
-                  style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+                <MriButton
+                  className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
+                  onClick={() => handleLoadCharacter(selectedCharacter.citizenid)}
                 >
-                  <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-primary/25 bg-primary/10 text-primary">
-                    <User className="h-9 w-9" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground">
-                    {locales.characters?.select_character || 'Select a character'}
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {locales.characters?.select_or_create || 'Escolha um slot na lista ou crie um novo personagem.'}
-                  </p>
-                </div>
+                  <Play className="mr-2 h-4 w-4" />
+                  {locales.buttons?.choose_character || 'Choose Character'}
+                </MriButton>
+
+                <MriButton
+                  variant="destructive"
+                  className="h-12 w-full rounded-2xl text-sm font-semibold shadow-lg shadow-black/20"
+                  onClick={() => handleDeleteCharacter(selectedCharacter.citizenid)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {locales.buttons?.delete || 'Delete Character'}
+                </MriButton>
               </div>
-            )}
-          </MriCardContent>
+            </div>
+          ) : (
+            <div
+              className="w-full rounded-[1.9rem] border border-dashed border-border/80 p-10 text-center"
+              style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
+            >
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-primary/25 bg-primary/10 text-primary">
+                <User className="h-9 w-9" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground">
+                {locales.characters?.select_character || 'Select a character'}
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {locales.characters?.select_or_create || 'Escolha um slot na lista ou crie um novo personagem.'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -714,7 +682,7 @@ function App() {
 
       <MriButton
         size="icon"
-        className="fixed bottom-24 right-6 z-[99999] h-14 w-14 rounded-full shadow-2xl shadow-black/30"
+        className="fixed bottom-6 right-6 z-[99999] h-14 w-14 rounded-full shadow-2xl shadow-black/30"
         style={{ pointerEvents: 'auto' }}
         onClick={(event) => {
           event.stopPropagation()
@@ -735,6 +703,7 @@ function App() {
             }
           }}
           allowThemeChange={allowThemeChange}
+          locales={locales}
         />
       )}
 
@@ -747,6 +716,7 @@ function App() {
         onConfirm={confirmDelete}
         characterName={characterToDelete ? `${characterToDelete.charinfo.firstname} ${characterToDelete.charinfo.lastname}` : undefined}
         theme={theme}
+        locales={locales}
       />
     </div>
   )

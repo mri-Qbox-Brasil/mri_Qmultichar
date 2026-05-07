@@ -41,6 +41,7 @@ html, body, #root {
 
 .mri-app-shell {
   background: transparent !important;
+  height: 100vh;
 }
 
 /* BLINDAGEM DE COR DOS CARDS E ACELERAÇÃO DE HARDWARE */

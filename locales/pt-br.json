@@ -1,52 +1,116 @@
 {
     "characters": {
         "title": "Personagens",
+        "subtitle": "Selecione um slot existente ou crie um novo personagem.",
+        "selection_badge": "Selecao de personagem",
         "select_character": "Selecione um Personagem",
+        "select_or_create": "Escolha um slot na lista ou crie um novo personagem.",
+        "select_prompt": "Escolha um slot para visualizar os detalhes.",
+        "selected_details": "Detalhes completos do personagem selecionado.",
         "create_character": "Criar Novo Personagem",
         "delete_character": "Deletar Personagem",
+        "confirm_delete_title": "Confirmar Exclusao",
         "confirm_delete": "Tem certeza que deseja deletar este personagem?",
-        "delete_warning": "Esta ação não pode ser desfeita!",
-        "no_characters": "Nenhum personagem encontrado",
-        "max_characters": "Você atingiu o limite máximo de personagens",
+        "delete_warning": "Esta acao nao pode ser desfeita!",
+        "no_characters": "Nenhum personagem criado",
+        "max_characters": "Voce atingiu o limite maximo de personagens",
         "character_deleted": "Personagem deletado com sucesso",
         "character_created": "Personagem criado com sucesso",
         "error_creating": "Erro ao criar personagem",
         "error_deleting": "Erro ao deletar personagem",
         "error_loading": "Erro ao carregar personagens",
-        "character_info": "Informações do Personagem",
+        "error_loading_character": "Erro ao carregar personagem.",
+        "load_failed": "Nao foi possivel carregar este personagem.",
+        "character_info": "Informacoes do Personagem",
         "details_subtitle": "Detalhes do personagem selecionado",
+        "id_prefix": "ID",
+        "slot_label": "Slot %{slot}",
         "job": "Trabalho",
         "grade": "Grau",
         "cash": "Dinheiro",
         "bank": "Banco",
-        "gender": "Gênero",
+        "gender": "Genero",
         "birthdate": "Data de Nascimento",
+        "nationality": "Nacionalidade",
+        "gang": "Gangue",
         "unemployed": "Desempregado",
         "male": "Masculino",
         "female": "Feminino"
     },
     "character_creation": {
-        "title": "Criação de Personagem",
+        "title": "Criacao de Personagem",
+        "description": "Preencha os dados iniciais para criar sua identidade.",
         "first_name": "Nome",
+        "first_name_placeholder": "Joao",
         "last_name": "Sobrenome",
+        "last_name_placeholder": "Silva",
         "date_of_birth": "Data",
-        "gender": "Gênero",
+        "gender": "Genero",
         "male": "Masculino",
         "female": "Feminino",
         "nationality": "Nacionalidade",
+        "nationality_placeholder": "Nacionalidade",
+        "nationality_search": "Buscar nacionalidade",
+        "nationality_empty": "Nenhuma nacionalidade encontrada",
+        "default_nationality": "Brasileiro",
+        "birthdate": "Data de Nascimento",
+        "birthdate_placeholder": "DD/MM/AAAA",
+        "select_birthdate": "Por favor, selecione uma data de nascimento",
         "create": "Criar",
+        "creating": "Criando...",
+        "create_error": "Erro ao criar personagem:",
+        "generic_error": "Erro ao criar personagem",
+        "warning_title": "Aviso",
         "cancel": "Cancelar",
-        "invalid_name": "Nome inválido",
-        "invalid_date": "Data inválida",
-        "select_gender": "Selecione o gênero",
-        "select_nationality": "Selecione a nacionalidade"
+        "invalid_name": "Nome invalido",
+        "invalid_date": "Data invalida",
+        "select_gender": "Selecione o genero",
+        "select_nationality": "Selecione a nacionalidade",
+        "months": [
+            "Janeiro",
+            "Fevereiro",
+            "Marco",
+            "Abril",
+            "Maio",
+            "Junho",
+            "Julho",
+            "Agosto",
+            "Setembro",
+            "Outubro",
+            "Novembro",
+            "Dezembro"
+        ],
+        "week_days": [
+            "Dom",
+            "Seg",
+            "Ter",
+            "Qua",
+            "Qui",
+            "Sex",
+            "Sab"
+        ]
     },
     "settings": {
-        "title": "Configurações",
-        "music": "Música",
+        "title": "Configuracoes",
+        "subtitle": "Ajuste o visual e a experiencia de usuario.",
+        "music": "Musica",
         "sounds": "Sons",
         "language": "Idioma",
         "theme": "Tema",
+        "theme_section_title": "Tema da interface",
+        "theme_select_placeholder": "Selecione um tema",
+        "theme_search_placeholder": "Buscar tema",
+        "theme_empty": "Nenhum tema encontrado",
+        "theme_active_badge": "Ativo",
+        "theme_locked_title": "Mudanca de tema indisponivel",
+        "theme_locked_description": "O servidor desativou a troca manual de tema para esta sessao.",
+        "streamer_mode_title": "Modo Streamer",
+        "streamer_active": "Ativado",
+        "streamer_inactive": "Desativado",
+        "streamer_on_description": "A musica da tela foi desativada para nao aparecer na transmissao.",
+        "streamer_off_description": "Ao ativar o modo streamer a musica do seu menu de selecao de personagem sera desativada",
+        "streamer_enable": "Ligar modo streamer",
+        "streamer_disable": "Desligar modo streamer",
         "close": "Fechar"
     },
     "buttons": {
@@ -54,9 +118,16 @@
         "delete": "Deletar",
         "select": "Selecionar",
         "choose_character": "Selecionar Personagem",
+        "actions": "Acoes",
         "cancel": "Cancelar",
         "confirm": "Confirmar",
         "back": "Voltar"
+    },
+    "music_player": {
+        "youtube_label": "YouTube",
+        "audio_label": "Audio",
+        "loading_track": "Carregando faixa...",
+        "background_music": "Musica de fundo"
     },
     "messages": {
         "loading": "Carregando...",
@@ -66,54 +137,54 @@
         "warning": "Aviso"
     },
     "server": {
-        "character_not_found": "Personagem não encontrado",
+        "character_not_found": "Personagem nao encontrado",
         "character_limit_reached": "Limite de personagens atingido",
         "database_error": "Erro no banco de dados",
-        "invalid_data": "Dados inválidos"
+        "invalid_data": "Dados invalidos"
     },
     "commands": {
-        "player_not_found": "Jogador não encontrado",
+        "player_not_found": "Jogador nao encontrado",
         "setslots": {
-            "help": "Define o número de slots de personagem de um jogador",
+            "help": "Define o numero de slots de personagem de um jogador",
             "usage": "Uso: /setslots [id] [slots]",
-            "invalid_range": "Número de slots deve estar entre 1 e %{max}",
+            "invalid_range": "Numero de slots deve estar entre 1 e %{max}",
             "success_source": "Slots do jogador %{name} definidos para %{slots}",
             "success_target": "Seus slots de personagem foram alterados para %{slots}",
             "params": {
                 "id": "ID do jogador",
-                "slots": "Número de slots"
+                "slots": "Numero de slots"
             }
         },
         "getslots": {
-            "help": "Ver o número de slots de personagem de um jogador",
+            "help": "Ver o numero de slots de personagem de um jogador",
             "usage": "Uso: /getslots [id]",
             "result": "Jogador %{name} tem %{slots} slots de personagem"
         },
         "addslots": {
             "help": "Adiciona slots de personagem a um jogador",
             "usage": "Uso: /addslots [id] [slots]",
-            "invalid_amount": "Número de slots deve ser maior que 0",
+            "invalid_amount": "Numero de slots deve ser maior que 0",
             "success_source": "Adicionados %{amount} slots ao jogador %{name}. Total: %{total}",
-            "success_target": "Você recebeu %{amount} slots adicionais! Total: %{total}",
+            "success_target": "Voce recebeu %{amount} slots adicionais! Total: %{total}",
             "params": {
                 "id": "ID do jogador",
-                "slots": "Número de slots para adicionar"
+                "slots": "Numero de slots para adicionar"
             }
         },
         "removeslots": {
             "help": "Remove slots de personagem de um jogador",
             "usage": "Uso: /removeslots [id] [slots]",
-            "invalid_amount": "Número de slots deve ser maior que 0",
+            "invalid_amount": "Numero de slots deve ser maior que 0",
             "success_source": "Removidos %{amount} slots do jogador %{name}. Total: %{total}",
-            "success_target": "Você perdeu %{amount} slots. Total: %{total}",
+            "success_target": "Voce perdeu %{amount} slots. Total: %{total}",
             "params": {
                 "id": "ID do jogador",
-                "slots": "Número de slots para remover"
+                "slots": "Numero de slots para remover"
             }
         },
         "myslots": {
-            "help": "Ver seu número de slots de personagem",
-            "result": "Você tem %{slots} slots de personagem disponíveis"
+            "help": "Ver seu numero de slots de personagem",
+            "result": "Voce tem %{slots} slots de personagem disponiveis"
         }
     }
 }
