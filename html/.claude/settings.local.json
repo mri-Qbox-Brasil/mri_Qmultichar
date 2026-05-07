@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/subze/Desktop/altv-server/Bases Dev/Elysium/Data/resources/[qbx]/mri_Qmultichar/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/src/main.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/src/dev/mockNui.ts)"
+    ]
+  }
+}
