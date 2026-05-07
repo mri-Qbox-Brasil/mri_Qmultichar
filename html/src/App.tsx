@@ -422,7 +422,7 @@ function App() {
 
   return (
     <div className="mri-app-shell" style={getMriThemeVars(theme)}>
-      <div className="relative flex h-full items-start justify-between gap-6 px-12 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
+      <div className="relative flex h-full items-start justify-between gap-6 px-6 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
         <div
           className="flex h-fit w-[25rem] max-w-[25rem] flex-col self-center overflow-visible"
           style={{ pointerEvents: 'auto' }}
@@ -608,7 +608,7 @@ function App() {
 
       <MriButton
         size="icon"
-        className="fixed bottom-24 right-6 z-[99999] h-14 w-14 rounded-full shadow-2xl shadow-black/30"
+        className="fixed bottom-6 right-6 z-[99999] h-14 w-14 rounded-full shadow-2xl shadow-black/30"
         style={{ pointerEvents: 'auto' }}
         onClick={(event) => {
           event.stopPropagation()
