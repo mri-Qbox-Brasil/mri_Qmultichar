@@ -6,7 +6,10 @@
       "Bash(npm run *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/src/main.tsx)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/src/dev/mockNui.ts)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5500/src/dev/mockNui.ts)",
+      "Bash(python3 -c ' *)",
+      "Bash(sed -i '/^[[:space:]]*--/d; s/[[:space:]]\\\\+--[^\"'\"'\"']*$//' client/camera.lua)",
+      "Bash(grep -c \"^--\\\\|--$\\\\|^[[:space:]]*--\" client/camera.lua)"
     ]
   }
 }

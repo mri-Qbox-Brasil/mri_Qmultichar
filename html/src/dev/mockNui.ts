@@ -1,12 +1,3 @@
-// Dev-only mock layer. Imported from main.tsx behind `import.meta.env.DEV`,
-// so it is fully tree-shaken from production builds.
-//
-// What it does when running via `npm run dev` in a browser:
-//   1. Stubs `GetParentResourceName` so fetch URLs resolve.
-//   2. Intercepts `fetch` calls to the NUI handlers (`https://<resource>/...`)
-//      and returns plausible mock responses.
-//   3. Posts an `open` message to the window so the App reveals itself
-//      with fake characters / theme / locales.
 
 interface MockCharacter {
   citizenid: string
@@ -240,8 +231,6 @@ function postOpen() {
 function handleMockEndpoint(endpoint: string, payload: unknown): Response | null {
   switch (endpoint) {
     case 'nuiStarted':
-      // Reply to handshake AND trigger the UI to open — by this point the
-      // App has registered its `message` listener.
       setTimeout(postOpen, 0)
       return jsonResponse({ success: true })
     case 'getCharacters':
@@ -287,19 +276,15 @@ export function installDevMock() {
       try {
         payload = init?.body ? JSON.parse(init.body as string) : undefined
       } catch {
-        // ignore parse errors
       }
       return handleMockEndpoint(endpoint, payload) ?? jsonResponse({ success: true })
     }
     return originalFetch(input as any, init)
   }
 
-  // Make the page visible so the transparent NUI styles don't make it invisible.
   document.documentElement.style.background = '#0b1220'
   document.body.style.background = '#0b1220'
 
-  // The App will send `nuiStarted` via fetch on mount; the mock replies and
-  // posts the `open` message back. Exposed helpers for manual testing too.
   console.info('[dev-mock] NUI mock installed. Use window.__mriDev to inspect.')
   ;(window as any).__mriDev = {
     characters: mockCharacters,

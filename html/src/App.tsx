@@ -123,6 +123,53 @@ function App() {
   const getPreferredCharacter = (nextCharacters: Character[]) =>
     nextCharacters[0] ?? null
 
+  const captureTxdAsBase64 = (txd: string, citizenid: string) => {
+    const url = `https://nui-img/${txd}/${txd}?v=${Date.now()}`
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+
+    const finalize = (dataUrl: string | null) => {
+      if (!dataUrl) {
+        console.error('[mri_Qmultichar] captureTxdAsBase64: falha ao gerar base64', { txd, citizenid })
+        return
+      }
+
+      setCharacterPhotos((prev) => ({ ...prev, [citizenid]: dataUrl }))
+      if (selectedCharacterRef.current?.citizenid === citizenid) {
+        setSelectedCharacterPhoto(dataUrl)
+      }
+
+      fetch(`https://${GetParentResourceName()}/savePhotoBase64`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ citizenid, photo: dataUrl }),
+      }).catch(console.error)
+    }
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth || 96
+        canvas.height = img.naturalHeight || 96
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          finalize(null)
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        finalize(canvas.toDataURL('image/png'))
+      } catch (error) {
+        console.error('[mri_Qmultichar] captureTxdAsBase64: erro de canvas', error)
+        finalize(null)
+      }
+    }
+    img.onerror = (error) => {
+      console.error('[mri_Qmultichar] captureTxdAsBase64: erro ao carregar nui-img', error, { url })
+      finalize(null)
+    }
+    img.src = url
+  }
+
   const requestPreviewForCharacter = (character: Character | null) => {
     if (!character) {
       return
@@ -143,9 +190,22 @@ function App() {
   const applyCharacters = (nextCharacters: Character[]) => {
     setCharacters(nextCharacters)
 
+    const photosFromServer: Record<string, string> = {}
+    for (const character of nextCharacters) {
+      if (character.photo) {
+        photosFromServer[character.citizenid] = character.photo
+      }
+    }
+    if (Object.keys(photosFromServer).length > 0) {
+      setCharacterPhotos((prev) => ({ ...prev, ...photosFromServer }))
+    }
+
     const preferredCharacter = getPreferredCharacter(nextCharacters)
     setSelectedCharacter(preferredCharacter)
-    setSelectedCharacterPhoto(preferredCharacter ? characterPhotos[preferredCharacter.citizenid] || null : null)
+    const preferredPhoto = preferredCharacter
+      ? photosFromServer[preferredCharacter.citizenid] || characterPhotos[preferredCharacter.citizenid] || preferredCharacter.photo || null
+      : null
+    setSelectedCharacterPhoto(preferredPhoto)
 
     requestPreviewForCharacter(preferredCharacter)
   }
@@ -173,7 +233,6 @@ function App() {
   }, [theme])
 
   useEffect(() => {
-    console.log('[mri_Qmultichar] Enviando handshake nuiStarted...')
     fetch(`https://${GetParentResourceName()}/nuiStarted`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -232,6 +291,10 @@ function App() {
           if (selectedCharacterRef.current && selectedCharacterRef.current.citizenid === data.citizenid) {
             setSelectedCharacterPhoto(data.photo)
           }
+        }
+      } else if (data && data.action === 'captureBase64') {
+        if (typeof data.txd === 'string' && typeof data.citizenid === 'string') {
+          captureTxdAsBase64(data.txd, data.citizenid)
         }
       }
     }
