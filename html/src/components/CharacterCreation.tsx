@@ -23,7 +23,7 @@ interface CharacterCreationProps {
   locales?: any
 }
 
-type PickerModal = 'nationality' | 'birthdate' | null
+type PickerModal = 'birthdate' | null
 
 interface CenteredModalProps {
   title: string
@@ -149,6 +149,117 @@ function ThemedSelect<T extends string | number>({
   )
 }
 
+interface SearchableSelectProps {
+  value: string
+  options: string[]
+  onChange: (value: string) => void
+  placeholder?: string
+  searchPlaceholder?: string
+  emptyLabel?: string
+  icon?: ReactNode
+}
+
+function SearchableSelect({
+  value,
+  options,
+  onChange,
+  placeholder,
+  searchPlaceholder,
+  emptyLabel,
+  icon,
+}: SearchableSelectProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const filtered = useMemo(() => {
+    const trimmed = query.trim().toLowerCase()
+    if (!trimmed) return options
+    return options.filter((option) => option.toLowerCase().includes(trimmed))
+  }, [options, query])
+
+  const hasValue = value.trim().length > 0
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          'flex h-12 w-full items-center justify-between rounded-2xl border bg-background/45 px-4 text-left text-sm font-medium outline-none transition hover:bg-background/60',
+          open ? 'border-primary/50' : 'border-border/70 hover:border-primary/40',
+        )}
+      >
+        <span className={cn('flex items-center gap-2 truncate', hasValue ? 'text-foreground' : 'text-muted-foreground')}>
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          {hasValue ? value : placeholder ?? ''}
+        </span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl shadow-black/40">
+          <div className="border-b border-border/70 p-2">
+            <MriInput
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={searchPlaceholder ?? ''}
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto py-1">
+            {filtered.length > 0 ? (
+              filtered.map((option) => {
+                const isSelected = option === value
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      onChange(option)
+                      setOpen(false)
+                      setQuery('')
+                    }}
+                    className={cn(
+                      'flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition',
+                      isSelected
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-foreground hover:bg-background/60',
+                    )}
+                  >
+                    <span>{option}</span>
+                    {isSelected && <Check className="h-4 w-4" />}
+                  </button>
+                )
+              })
+            ) : (
+              <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                {emptyLabel ?? ''}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PickerButton({ value, placeholder, icon, onClick }: PickerButtonProps) {
   const hasValue = value.trim().length > 0
 
@@ -176,14 +287,13 @@ export function CharacterCreation({
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
-    nationality: 'Brasileiro',
+    nationality: locales.character_creation?.default_nationality || 'Brasileiro',
     gender: '0',
     birthdate: '',
   })
   const [loading, setLoading] = useState(false)
   const [activeModal, setActiveModal] = useState<PickerModal>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [nationalitySearch, setNationalitySearch] = useState('')
 
   const minYear = 1900
   const maxYear = 2006
@@ -194,12 +304,18 @@ export function CharacterCreation({
   const [currentYear, setCurrentYear] = useState(maxYear)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
-  const months = [
+  const fallbackMonths: string[] = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
   ]
+  const fallbackWeekDays: string[] = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const months: string[] = Array.isArray(locales.character_creation?.months) && locales.character_creation.months.length === 12
+    ? locales.character_creation.months
+    : fallbackMonths
+  const weekDays: string[] = Array.isArray(locales.character_creation?.week_days) && locales.character_creation.week_days.length === 7
+    ? locales.character_creation.week_days
+    : fallbackWeekDays
 
   const genderOptions = useMemo(
     () => [
@@ -208,12 +324,6 @@ export function CharacterCreation({
     ],
     [locales.character_creation?.female, locales.character_creation?.male],
   )
-
-  const filteredNationalities = useMemo(() => {
-    const query = nationalitySearch.trim().toLowerCase()
-    if (!query) return nationalities
-    return nationalities.filter((nationality) => nationality.toLowerCase().includes(query))
-  }, [nationalitySearch])
 
   const getDaysInMonth = (month: number, year: number) => new Date(year, month, 0).getDate()
   const getFirstDayOfMonth = (month: number, year: number) => new Date(year, month - 1, 1).getDay()
@@ -229,7 +339,6 @@ export function CharacterCreation({
 
   const closeModal = () => {
     setActiveModal(null)
-    setNationalitySearch('')
   }
 
   const handleDateClick = (day: number) => {
@@ -373,11 +482,14 @@ export function CharacterCreation({
                   <label className="text-sm font-medium text-foreground">
                     {locales.character_creation?.nationality || 'Nacionalidade'}
                   </label>
-                  <PickerButton
+                  <SearchableSelect
                     value={formData.nationality}
+                    options={nationalities}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, nationality: value }))}
                     placeholder={locales.character_creation?.nationality_placeholder || 'Nacionalidade'}
+                    searchPlaceholder={locales.character_creation?.nationality_search || 'Buscar nacionalidade'}
+                    emptyLabel={locales.character_creation?.nationality_empty || 'Nenhuma nacionalidade encontrada'}
                     icon={<Globe className="h-4 w-4" />}
-                    onClick={() => setActiveModal('nationality')}
                   />
                 </div>
 
@@ -432,40 +544,6 @@ export function CharacterCreation({
           </MriCardContent>
         </MriCard>
       </div>
-
-      {activeModal === 'nationality' && (
-        <CenteredModal title={locales.character_creation?.nationality || 'Nacionalidade'} onClose={closeModal} className="w-[min(92vw,34rem)] max-w-[34rem]">
-          <div className="space-y-4">
-            <MriInput
-              value={nationalitySearch}
-              onChange={(event) => setNationalitySearch(event.target.value)}
-              placeholder={locales.character_creation?.nationality_search || 'Buscar nacionalidade'}
-            />
-
-            <div className="max-h-[18rem] space-y-2 overflow-y-auto pr-1">
-              {filteredNationalities.length > 0 ? (
-                filteredNationalities.map((nationality) => (
-                  <MriButton
-                    key={nationality}
-                    variant={formData.nationality === nationality ? 'default' : 'secondary'}
-                    className="h-11 w-full justify-start rounded-2xl px-4"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, nationality }))
-                      closeModal()
-                    }}
-                  >
-                    {nationality}
-                  </MriButton>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-border/70 bg-background/45 px-4 py-6 text-center text-sm text-muted-foreground">
-                  {locales.character_creation?.nationality_empty || 'Nenhuma nacionalidade encontrada'}
-                </div>
-              )}
-            </div>
-          </div>
-        </CenteredModal>
-      )}
 
       {activeModal === 'birthdate' && (
         <CenteredModal title={locales.character_creation?.birthdate || 'Data de Nascimento'} onClose={closeModal} className="w-[min(92vw,24rem)] max-w-[24rem] overflow-visible">

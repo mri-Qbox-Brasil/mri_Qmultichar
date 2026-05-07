@@ -17,6 +17,7 @@ interface CharacterListProps {
   onCreate: (slot: number) => void
   theme: UiTheme | null
   characterPhotos?: Record<string, string>
+  locales?: any
 }
 
 export function CharacterList({
@@ -27,6 +28,7 @@ export function CharacterList({
   onCreate,
   theme: _theme,
   characterPhotos: externalPhotos = {},
+  locales = {},
 }: CharacterListProps) {
   const slots = Array.from({ length: maxSlots }, (_, index) => index + 1)
   const [characterPhotos, setCharacterPhotos] = useState<Record<string, string>>(externalPhotos)
@@ -182,11 +184,13 @@ export function CharacterList({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-semibold text-foreground">
-                      {character ? `${character.charinfo.firstname} ${character.charinfo.lastname}` : `Slot ${slot}`}
+                      {character
+                        ? `${character.charinfo.firstname} ${character.charinfo.lastname}`
+                        : (locales.characters?.slot_label?.replace('%{slot}', String(slot)) || `Slot ${slot}`)}
                     </h3>
                     {character && (
                       <p className="mt-1 truncate text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        ID {character.citizenid}
+                        {locales.characters?.id_prefix || 'ID'} {character.citizenid}
                       </p>
                     )}
                   </div>
@@ -201,7 +205,7 @@ export function CharacterList({
                   <div className="flex flex-wrap items-center gap-2">
                     <MriBadge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
                       <Briefcase className="mr-1 h-3 w-3" />
-                      {character.job?.label || 'Unemployed'}
+                      {character.job?.label || locales.characters?.unemployed || 'Unemployed'}
                     </MriBadge>
                     <MriBadge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
                       <Wallet className="mr-1 h-3 w-3" />

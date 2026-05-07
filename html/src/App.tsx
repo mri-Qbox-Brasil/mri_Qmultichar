@@ -309,12 +309,12 @@ function App() {
         if (data.success) {
           setIsOpen(false)
         } else {
-          setStatusMessage(data.message || 'Nao foi possivel carregar este personagem.')
+          setStatusMessage(data.message || locales.characters?.load_failed || 'Nao foi possivel carregar este personagem.')
         }
       })
       .catch((err) => {
         console.error('Erro ao carregar personagem:', err)
-        setStatusMessage('Erro ao carregar personagem.')
+        setStatusMessage(locales.characters?.error_loading_character || 'Erro ao carregar personagem.')
       })
   }
 
@@ -424,7 +424,7 @@ function App() {
           </div>
         </div>
         <div className="fixed bottom-0 left-0 right-0 z-[10001] flex justify-center px-4 pb-5">
-          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} />
+          <MusicPlayer music={music || undefined} theme={theme || undefined} isStreamerMode={streamerMode} locales={locales} />
         </div>
       </div>
     )
@@ -447,6 +447,7 @@ function App() {
                 onCreate={handleCreateCharacter}
                 theme={theme}
                 characterPhotos={characterPhotos}
+                locales={locales}
               />
             </MriScrollArea>
           </MriCardContent>
@@ -466,7 +467,7 @@ function App() {
                 className="rounded-full border-primary/30 bg-black px-4 py-1.5 text-xs uppercase tracking-[0.22em] text-primary"
                 style={{ opacity: 1 }}
               >
-                Preview Ativo
+                {locales.characters?.selection_badge || 'Selecao de personagem'}
               </MriBadge>
               <GlitchName
                 name={`${selectedCharacter.charinfo.firstname} ${selectedCharacter.charinfo.lastname}`}
@@ -639,6 +640,7 @@ function App() {
             }
           }}
           allowThemeChange={allowThemeChange}
+          locales={locales}
         />
       )}
 
@@ -651,6 +653,7 @@ function App() {
         onConfirm={confirmDelete}
         characterName={characterToDelete ? `${characterToDelete.charinfo.firstname} ${characterToDelete.charinfo.lastname}` : undefined}
         theme={theme}
+        locales={locales}
       />
     </div>
   )

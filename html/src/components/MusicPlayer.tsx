@@ -24,9 +24,10 @@ interface MusicPlayerProps {
   music?: MusicConfig
   theme?: UiTheme
   isStreamerMode?: boolean
+  locales?: any
 }
 
-export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlayerProps) {
+export function MusicPlayer({ music, theme, isStreamerMode = false, locales = {} }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentVolume, setCurrentVolume] = useState(music?.volume || 0.3)
   const [isLoading, setIsLoading] = useState(false)
@@ -393,10 +394,14 @@ export function MusicPlayer({ music, theme, isStreamerMode = false }: MusicPlaye
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-center gap-2">
           <MriBadge variant={isYouTube ? 'default' : 'secondary'} className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.18em]">
-            {isYouTube ? 'YouTube' : 'Audio'}
+            {isYouTube
+              ? (locales.music_player?.youtube_label || 'YouTube')
+              : (locales.music_player?.audio_label || 'Audio')}
           </MriBadge>
           <span className="truncate text-sm font-medium text-foreground" title={ytTitle || music.url}>
-            {isYouTube ? (ytTitle || 'Carregando faixa...') : 'Música de fundo'}
+            {isYouTube
+              ? (ytTitle || locales.music_player?.loading_track || 'Carregando faixa...')
+              : (locales.music_player?.background_music || 'Música de fundo')}
           </span>
         </div>
 
