@@ -3,8 +3,6 @@ import {
   MriBadge,
   MriButton,
   MriCardContent,
-  MriCardHeader,
-  MriSectionHeader,
   MriScrollArea,
 } from '@mriqbox/ui-kit'
 import {
@@ -439,35 +437,6 @@ function App() {
           className="flex h-fit w-[25rem] max-w-[25rem] flex-col overflow-visible"
           style={{ pointerEvents: 'auto' }}
         >
-          <MriCardHeader
-            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
-            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <MriSectionHeader
-                  icon={User}
-                  title={locales.characters?.title || 'My Characters'}
-                  className="!mb-0"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {locales.characters?.subtitle || 'Selecione um slot existente ou crie um novo personagem.'}
-                </p>
-              </div>
-              <MriBadge variant="secondary" className="min-w-[4.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold">
-                {characters.length} / {maxSlots}
-              </MriBadge>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {characters.length === 0 && (
-                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
-                  {locales.characters?.no_characters || 'Nenhum personagem criado'}
-                </MriBadge>
-              )}
-            </div>
-          </MriCardHeader>
-
           <MriCardContent className="flex-1 overflow-hidden p-0">
             <MriScrollArea className="h-full">
               <CharacterList
@@ -511,32 +480,6 @@ function App() {
           className="flex h-fit w-[26rem] max-w-[26rem] flex-col overflow-visible"
           style={{ pointerEvents: 'auto' }}
         >
-          <MriCardHeader
-            className="mb-4 rounded-[1.75rem] border border-border/80 p-5"
-            style={{ backgroundColor: 'rgb(15, 17, 21)', opacity: 1 }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <MriSectionHeader
-                  icon={User}
-                  title={locales.characters?.character_info || 'Character Info'}
-                  className="!mb-0"
-                />
-                <p className="text-sm text-muted-foreground">
-                  {selectedCharacter
-                    ? (locales.characters?.selected_details || 'Detalhes completos do personagem selecionado.')
-                    : (locales.characters?.select_prompt || 'Escolha um slot para visualizar os detalhes.')}
-                </p>
-              </div>
-
-              {selectedCharacter && (
-                <MriBadge variant="outline" className="rounded-full px-3 py-1 text-xs text-muted-foreground">
-                  Slot {selectedCharacter.cid || '?'}
-                </MriBadge>
-              )}
-            </div>
-          </MriCardHeader>
-
           <MriCardContent className="flex-1 overflow-hidden p-0">
             {selectedCharacter ? (
               <MriScrollArea className="h-full" style={{ height: rightPanelHeight }}>
