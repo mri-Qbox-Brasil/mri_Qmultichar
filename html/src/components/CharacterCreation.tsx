@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MriButton,
   MriCard,
@@ -8,7 +8,7 @@ import {
   MriModal,
   MriSectionHeader,
 } from '@mriqbox/ui-kit'
-import { ArrowLeft, Calendar, ChevronLeft, ChevronRight, Globe, ShieldPlus, User, X } from 'lucide-react'
+import { ArrowLeft, Calendar, Check, ChevronDown, ChevronLeft, ChevronRight, Globe, ShieldPlus, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { nationalities } from '../data/nationalities'
 import type { UiTheme } from '../lib/mriTheme'
@@ -23,7 +23,7 @@ interface CharacterCreationProps {
   locales?: any
 }
 
-type PickerModal = 'nationality' | 'gender' | 'birthdate' | null
+type PickerModal = 'nationality' | 'birthdate' | null
 
 interface CenteredModalProps {
   title: string
@@ -57,6 +57,95 @@ function CenteredModal({ title, onClose, children, className }: CenteredModalPro
       </div>
       <div className="p-5">{children}</div>
     </MriModal>
+  )
+}
+
+interface ThemedSelectProps<T extends string | number> {
+  value: T
+  options: Array<{ label: string; value: T }>
+  onChange: (value: T) => void
+  icon?: ReactNode
+  className?: string
+  size?: 'sm' | 'md'
+}
+
+function ThemedSelect<T extends string | number>({
+  value,
+  options,
+  onChange,
+  icon,
+  className,
+  size = 'md',
+}: ThemedSelectProps<T>) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? ''
+  const triggerHeight = size === 'sm' ? 'h-10' : 'h-12'
+  const panelMaxHeight = options.length > 8 ? 'max-h-64' : ''
+
+  return (
+    <div className={cn('relative', className)} ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          'flex w-full items-center justify-between rounded-2xl border bg-background/45 px-4 text-left text-sm font-medium text-foreground outline-none transition hover:bg-background/60',
+          triggerHeight,
+          open ? 'border-primary/50' : 'border-border/70 hover:border-primary/40',
+        )}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          {selectedLabel}
+        </span>
+        <ChevronDown
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl shadow-black/40">
+          <div className={cn('overflow-y-auto', panelMaxHeight)}>
+            {options.map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    'flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition',
+                    isSelected
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-foreground hover:bg-background/60',
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {isSelected && <Check className="h-4 w-4" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -118,11 +207,6 @@ export function CharacterCreation({
       { label: locales.character_creation?.female || 'Feminino', value: '1' },
     ],
     [locales.character_creation?.female, locales.character_creation?.male],
-  )
-
-  const selectedGenderLabel = useMemo(
-    () => genderOptions.find((option) => option.value === formData.gender)?.label || genderOptions[0].label,
-    [formData.gender, genderOptions],
   )
 
   const filteredNationalities = useMemo(() => {
@@ -301,11 +385,11 @@ export function CharacterCreation({
                   <label className="text-sm font-medium text-foreground">
                     {locales.character_creation?.gender || 'Gênero'}
                   </label>
-                  <PickerButton
-                    value={selectedGenderLabel}
-                    placeholder={locales.character_creation?.gender || 'Gênero'}
+                  <ThemedSelect
+                    value={formData.gender}
+                    options={genderOptions}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}
                     icon={<User className="h-4 w-4" />}
-                    onClick={() => setActiveModal('gender')}
                   />
                 </div>
               </div>
@@ -349,26 +433,6 @@ export function CharacterCreation({
         </MriCard>
       </div>
 
-      {activeModal === 'gender' && (
-        <CenteredModal title={locales.character_creation?.gender || 'Gênero'} onClose={closeModal} className="w-[min(92vw,22rem)] max-w-[22rem]">
-          <div className="space-y-3">
-            {genderOptions.map((option) => (
-              <MriButton
-                key={option.value}
-                variant={formData.gender === option.value ? 'default' : 'secondary'}
-                className="h-12 w-full rounded-2xl justify-start px-4"
-                onClick={() => {
-                  setFormData((prev) => ({ ...prev, gender: option.value }))
-                  closeModal()
-                }}
-              >
-                {option.label}
-              </MriButton>
-            ))}
-          </div>
-        </CenteredModal>
-      )}
-
       {activeModal === 'nationality' && (
         <CenteredModal title={locales.character_creation?.nationality || 'Nacionalidade'} onClose={closeModal} className="w-[min(92vw,34rem)] max-w-[34rem]">
           <div className="space-y-4">
@@ -404,7 +468,7 @@ export function CharacterCreation({
       )}
 
       {activeModal === 'birthdate' && (
-        <CenteredModal title={locales.character_creation?.birthdate || 'Data de Nascimento'} onClose={closeModal} className="w-[min(92vw,24rem)] max-w-[24rem]">
+        <CenteredModal title={locales.character_creation?.birthdate || 'Data de Nascimento'} onClose={closeModal} className="w-[min(92vw,24rem)] max-w-[24rem] overflow-visible">
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <MriButton
@@ -419,29 +483,21 @@ export function CharacterCreation({
               </MriButton>
 
               <div className="grid flex-1 grid-cols-2 gap-2">
-                <select
-                  className="h-10 rounded-2xl border border-border/70 bg-background/50 px-3 text-sm text-foreground outline-none transition focus:border-primary/50"
+                <ThemedSelect
+                  size="sm"
                   value={currentMonth}
-                  onChange={(event) => setCurrentMonth(Number.parseInt(event.target.value, 10))}
-                >
-                  {months.map((month, index) => (
-                    <option key={month} value={index + 1}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
+                  options={months.map((month, index) => ({ label: month, value: index + 1 }))}
+                  onChange={(value) => setCurrentMonth(value)}
+                />
 
-                <select
-                  className="h-10 rounded-2xl border border-border/70 bg-background/50 px-3 text-sm text-foreground outline-none transition focus:border-primary/50"
+                <ThemedSelect
+                  size="sm"
                   value={currentYear}
-                  onChange={(event) => setCurrentYear(Number.parseInt(event.target.value, 10))}
-                >
-                  {Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index).reverse().map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
+                  options={Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index)
+                    .reverse()
+                    .map((year) => ({ label: String(year), value: year }))}
+                  onChange={(value) => setCurrentYear(value)}
+                />
               </div>
 
               <MriButton

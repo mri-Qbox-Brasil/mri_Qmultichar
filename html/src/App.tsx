@@ -163,6 +163,16 @@ function App() {
   }, [selectedCharacter])
 
   useEffect(() => {
+    const vars = getMriThemeVars(theme) as Record<string, string>
+    const root = document.documentElement
+    const applied = Object.entries(vars).filter(([key]) => key.startsWith('--'))
+    applied.forEach(([key, value]) => root.style.setProperty(key, value, 'important'))
+    return () => {
+      applied.forEach(([key]) => root.style.removeProperty(key))
+    }
+  }, [theme])
+
+  useEffect(() => {
     console.log('[mri_Qmultichar] Enviando handshake nuiStarted...')
     fetch(`https://${GetParentResourceName()}/nuiStarted`, {
       method: 'POST',
