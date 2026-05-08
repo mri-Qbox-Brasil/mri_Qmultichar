@@ -618,9 +618,8 @@ local function beginCharacterLoad(citizenId, options)
             return
         end
 
-        if not isResourceStarted('mri_Qspawn') then
-            DoScreenFadeOut(10)
-        end
+        DoScreenFadeOut(250)
+        while not IsScreenFadedOut() do Wait(0) end
 
         local success = pcall(function()
             lib.callback.await('qbx_core:server:loadCharacter', false, citizenId)
@@ -653,57 +652,6 @@ RegisterNUICallback('loadCharacter', function(data, cb)
         success = success,
         message = message,
     })
-
-    if true then
-        return
-    end
-
-    local citizenId = data.citizenid
-    if not citizenId then
-        cb({ success = false, message = 'CitizenID não fornecido' })
-        return
-    end
-
-    if isLoadingCharacter then
-        cb({ success = false, message = 'Carregamento de personagem já em andamento' })
-        return
-    end
-
-    isLoadingCharacter = true
-
-    cb({ success = true })
-
-    CreateThread(function()
-        if isSpawning then
-            isLoadingCharacter = false
-            return
-        end
-
-        if not isResourceStarted('mri_Qspawn') then
-            DoScreenFadeOut(10)
-        end
-
-        local success = pcall(function()
-            lib.callback.await('qbx_core:server:loadCharacter', false, citizenId)
-        end)
-
-        if success then
-            isSpawning = true
-
-            exports.mri_Qmultichar:destroyPreviewCam()
-            closeMultichar()
-
-            Citizen.Wait(200)
-
-            if chooseConfiguredSpawn(citizenId) then
-                isSpawning = false
-            else
-                spawnLastLocation()
-            end
-        end
-
-        isLoadingCharacter = false
-    end)
 end)
 
 RegisterNUICallback('createCharacter', function(data, cb)
