@@ -503,7 +503,7 @@ function App() {
     <div className="mri-app-shell">
       <div className="relative flex h-full items-start justify-between gap-6 px-6 pt-4 pb-8" style={{ pointerEvents: 'none' }}>
         <div
-          className="flex h-fit w-[25rem] max-w-[25rem] flex-col self-center overflow-visible"
+          className="flex h-fit w-[26rem] max-w-[26rem] flex-col self-center overflow-visible"
           style={{ pointerEvents: 'auto' }}
         >
           <MriCardContent className="flex-1 overflow-hidden p-0">
