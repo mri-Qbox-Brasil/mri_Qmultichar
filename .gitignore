@@ -1,4 +1,4 @@
-html/node_modules/
-html/.vite/
+node_modules/
+.vite/
 
 .claude/

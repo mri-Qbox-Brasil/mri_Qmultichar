@@ -24,11 +24,10 @@ server_scripts {
     'server/commands.lua',
 }
 
-ui_page 'html/dist/index.html'
+ui_page 'html/index.html'
 
 files {
-    'html/index.html',
-    'html/dist/**/*',
+    'html/**/*',
     'locales/*.json',
 }
 
