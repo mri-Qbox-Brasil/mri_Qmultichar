@@ -1,9 +1,3 @@
-local function dprint(...)
-    if Config and Config.Debug then
-        lib.print.info(...)
-    end
-end
-
 local HEX_PATTERN = '^#%x%x%x%x%x%x$'
 
 local function isValidHex(value)

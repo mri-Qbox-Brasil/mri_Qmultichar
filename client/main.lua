@@ -1,9 +1,3 @@
-local function dprint(...)
-    if Config and Config.Debug then
-        lib.print.info(...)
-    end
-end
-
 local isNuiOpen = false
 
 local isSpawning = false
@@ -86,7 +80,7 @@ local function finishCharacterCreation(reason, waitTime)
         Wait(waitTime)
     end
 
-    dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Finalizando criação (%s)...', reason or 'sem motivo'))
+    DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Finalizando criação (%s)...', reason or 'sem motivo'))
 
     CreateThread(function()
         local data = awaitPlayerData(5000)
@@ -105,7 +99,7 @@ local function finishCharacterCreation(reason, waitTime)
     TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
     isInCharacterCreation = false
     isCreatingCharacter = false
-    dprint('[mri_Qmultichar] [CRIAÇÃO] Criação finalizada, flags resetadas')
+    DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Criação finalizada, flags resetadas')
 end
 
 local function useStartingApartment()
@@ -227,8 +221,8 @@ local function prepareFreemodePedForCreation(gender)
 end
 
 local function openIlleniumCharacterCreator(gender)
-    if not isResourceStarted('illenium-appearance') then
-        lib.print.error('[mri_Qmultichar] [CRIAÇÃO] illenium-appearance não está iniciado')
+    if not Appearance.isReady() then
+        lib.print.error('[mri_Qmultichar] [CRIAÇÃO] nenhum resource de appearance compatível está iniciado')
         return false
     end
 
@@ -242,24 +236,22 @@ local function openIlleniumCharacterCreator(gender)
 
     isIlleniumCustomizationActive = true
 
-    local ok, err = pcall(function()
-        exports['illenium-appearance']:startPlayerCustomization(function(appearance)
-            isIlleniumCustomizationActive = false
+    local ok = Appearance.startCustomization(function(appearance)
+        isIlleniumCustomizationActive = false
 
-            if appearance then
-                dprint('[mri_Qmultichar] [CRIAÇÃO] Aparência salva pelo illenium-appearance')
-                TriggerServerEvent('illenium-appearance:server:saveAppearance', appearance)
-                finishCharacterCreation('appearance_saved', 500)
-            else
-                lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Customização do illenium foi fechada sem salvar')
-                finishCharacterCreation('appearance_closed', 500)
-            end
-        end, getIlleniumCharacterConfig())
-    end)
+        if appearance then
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Aparência salva pelo %s', Appearance.getResourceName()))
+            Appearance.saveAppearance(appearance)
+            finishCharacterCreation('appearance_saved', 500)
+        else
+            lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Customização foi fechada sem salvar')
+            finishCharacterCreation('appearance_closed', 500)
+        end
+    end, getIlleniumCharacterConfig())
 
     if not ok then
         isIlleniumCustomizationActive = false
-        lib.print.error(string.format('[mri_Qmultichar] [CRIAÇÃO] Falha ao abrir startPlayerCustomization: %s', err))
+        lib.print.error('[mri_Qmultichar] [CRIAÇÃO] Falha ao abrir startCustomization')
         return false
     end
 
@@ -285,7 +277,7 @@ end
 local function openMultichar()
     if isNuiOpen then return end
 
-    dprint('[mri_Qmultichar] Preparando dados para abrir NUI...')
+    DebugPrint('[mri_Qmultichar] Preparando dados para abrir NUI...')
 
     local payload = fetchInitialPayload()
     if not payload then
@@ -296,7 +288,7 @@ local function openMultichar()
     isNuiOpen = true
     SetNuiFocus(true, true)
 
-    dprint('[mri_Qmultichar] Abrindo NUI com dados carregados')
+    DebugPrint('[mri_Qmultichar] Abrindo NUI com dados carregados')
     SendNUIMessage({
         action = 'open',
         characters = payload.characters or {},
@@ -431,12 +423,12 @@ local function spawnDefault()
 end
 
 RegisterNUICallback('getCharacters', function(_, cb)
-    dprint('[mri_Qmultichar] Callback getCharacters chamado')
+    DebugPrint('[mri_Qmultichar] Callback getCharacters chamado')
     local payload = fetchInitialPayload()
 
     if payload then
         local characters = payload.characters or {}
-        dprint(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, payload.slots or 3))
+        DebugPrint(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, payload.slots or 3))
         cb({
             success = true,
             characters = characters,
@@ -541,7 +533,7 @@ captureHeadshotForCharacter = function(citizenId, ped)
         txd = txd,
     })
 
-    dprint(string.format('[mri_Qmultichar] captureBase64 enviado para NUI: citizenid=%s, txd=%s', citizenId, txd))
+    DebugPrint(string.format('[mri_Qmultichar] captureBase64 enviado para NUI: citizenid=%s, txd=%s', citizenId, txd))
     return true
 end
 
@@ -576,7 +568,7 @@ RegisterNUICallback('savePhotoBase64', function(data, cb)
 
     local ok = lib.callback.await('mri_Qmultichar:server:saveCharacterPhoto', false, citizenId, photo)
     if ok then
-        dprint(string.format('[mri_Qmultichar] Foto salva no metadata para %s', citizenId))
+        DebugPrint(string.format('[mri_Qmultichar] Foto salva no metadata para %s', citizenId))
     else
         lib.print.warn(string.format('[mri_Qmultichar] Falha ao salvar foto no metadata para %s', citizenId))
     end
@@ -703,7 +695,7 @@ RegisterNUICallback('createCharacter', function(data, cb)
         end)
 
         if success and newData then
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Iniciando criação de personagem...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando criação de personagem...')
 
             if isSpawning then
                 lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Spawn já em andamento, cancelando...')
@@ -712,56 +704,56 @@ RegisterNUICallback('createCharacter', function(data, cb)
             end
 
             isSpawning = true
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Flag isSpawning = true')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isSpawning = true')
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo câmera de preview...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo câmera de preview...')
             exports.mri_Qmultichar:destroyPreviewCam()
             closeMultichar()
 
             Citizen.Wait(500)
-            dprint('[mri_Qmultichar] [CRIAÇÃO] NUI fechada, aguardando...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] NUI fechada, aguardando...')
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Definindo bucket 2 para criação...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Definindo bucket 2 para criação...')
             TriggerServerEvent('mri_Qmultichar:server:setBucket', 2)
             Citizen.Wait(200)
 
             local illeniumLocation = getIlleniumLocation()
-            dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Localização do illenium: %.2f, %.2f, %.2f, %.2f',
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Localização do illenium: %.2f, %.2f, %.2f, %.2f',
                 illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, illeniumLocation.w))
 
             local currentPos = GetEntityCoords(cache.ped)
-            dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição atual: %.2f, %.2f, %.2f',
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição atual: %.2f, %.2f, %.2f',
                 currentPos.x, currentPos.y, currentPos.z))
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade out...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade out...')
             DoScreenFadeOut(500)
             while not IsScreenFadedOut() do
                 Wait(0)
             end
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Limpando preview de jobs...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Limpando preview de jobs...')
             FreezeEntityPosition(PlayerPedId(), false)
             ClearPedTasks(PlayerPedId())
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Carregando colisão na localização do illenium...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Carregando colisão na localização do illenium...')
             RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
             while not HasCollisionLoadedAroundEntity(cache.ped) do
                 Wait(0)
             end
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Reposicionando personagem para localização do illenium...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Reposicionando personagem para localização do illenium...')
             SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
             SetEntityHeading(cache.ped, illeniumLocation.w)
             SetEntityVisible(cache.ped, true, false)
 
             Citizen.Wait(200)
             local newPos = GetEntityCoords(cache.ped)
-            dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Nova posição após reposicionar: %.2f, %.2f, %.2f',
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Nova posição após reposicionar: %.2f, %.2f, %.2f',
                 newPos.x, newPos.y, newPos.z))
 
             Citizen.Wait(300)
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade in...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade in...')
             DoScreenFadeIn(250)
             while not IsScreenFadedIn() do
                 Wait(0)
@@ -769,7 +761,7 @@ RegisterNUICallback('createCharacter', function(data, cb)
 
             local qbxConfig = getQbxConfig()
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Disparando eventos do qbx_core...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Disparando eventos do qbx_core...')
             TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
             TriggerEvent('QBCore:Client:OnPlayerLoaded')
             TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
@@ -778,17 +770,17 @@ RegisterNUICallback('createCharacter', function(data, cb)
             Wait(500)
 
             local posBeforeIllenium = GetEntityCoords(cache.ped)
-            dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição antes de abrir illenium: %.2f, %.2f, %.2f',
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição antes de abrir illenium: %.2f, %.2f, %.2f',
                 posBeforeIllenium.x, posBeforeIllenium.y, posBeforeIllenium.z))
 
             isInCharacterCreation = true
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Flag isInCharacterCreation = true')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isInCharacterCreation = true')
 
             CreateThread(function()
                 local illeniumLocation = getIlleniumLocation()
                 local maxWaitTime = 300000
                 local startTime = GetGameTimer()
-                dprint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento iniciada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento iniciada')
 
                 while isInCharacterCreation do
                     if GetGameTimer() - startTime > maxWaitTime then
@@ -801,14 +793,14 @@ RegisterNUICallback('createCharacter', function(data, cb)
                         Wait(2000)
 
                         if not isIlleniumCustomizationActive then
-                            dprint('[mri_Qmultichar] [CRIAÇÃO] Illenium não está mais ativo, desativando monitoramento...')
+                            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium não está mais ativo, desativando monitoramento...')
                             finishCharacterCreation('monitor_detected_closed')
                             break
                         end
                     end
 
                     if LocalPlayer.state.isLoggedIn and not isIlleniumCustomizationActive then
-                        dprint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado (isLoggedIn = true), desativando monitoramento...')
+                        DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado (isLoggedIn = true), desativando monitoramento...')
                         finishCharacterCreation('monitor_player_loaded')
                         break
                     end
@@ -827,16 +819,16 @@ RegisterNUICallback('createCharacter', function(data, cb)
                             SetEntityHeading(cache.ped, illeniumLocation.w)
 
                             local afterPos = GetEntityCoords(cache.ped)
-                            dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Reposicionado para: %.2f, %.2f, %.2f',
+                            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Reposicionado para: %.2f, %.2f, %.2f',
                                 afterPos.x, afterPos.y, afterPos.z))
                         else
                             Wait(3000)
                             if LocalPlayer.state.isLoggedIn then
-                                dprint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado após fechar illenium, desativando...')
+                                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado após fechar illenium, desativando...')
                                 finishCharacterCreation('monitor_closed_after_loaded')
                                 break
                             else
-                                dprint('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado durante monitoramento, desativando...')
+                                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado durante monitoramento, desativando...')
                                 finishCharacterCreation('monitor_closed_without_load')
                                 break
                             end
@@ -846,10 +838,10 @@ RegisterNUICallback('createCharacter', function(data, cb)
                     Wait(500)
                 end
 
-                dprint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento finalizada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento finalizada')
             end)
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Abrindo illenium-appearance...')
+            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Abrindo appearance (%s)...', Appearance.getResourceName() or '?'))
 
             Citizen.Wait(500)
 
@@ -859,13 +851,13 @@ RegisterNUICallback('createCharacter', function(data, cb)
                 TriggerEvent('qb-clothes:client:CreateFirstCharacter')
             end
 
-            dprint('[mri_Qmultichar] [CRIAÇÃO] Illenium aberto, aguardando...')
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium aberto, aguardando...')
 
             CreateThread(function()
                 Wait(2000)
                 if isInCharacterCreation then
                     local posAfterIllenium = GetEntityCoords(cache.ped)
-                    dprint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição após 2s do illenium: %.2f, %.2f, %.2f',
+                    DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição após 2s do illenium: %.2f, %.2f, %.2f',
                         posAfterIllenium.x, posAfterIllenium.y, posAfterIllenium.z))
                 end
             end)
@@ -878,40 +870,40 @@ RegisterNUICallback('createCharacter', function(data, cb)
 end)
 
 RegisterNetEvent('illenium-appearance:client:characterSaved', function()
-    dprint('[mri_Qmultichar] [ILLENIUM] Evento characterSaved recebido')
+    DebugPrint('[mri_Qmultichar] [ILLENIUM] Evento characterSaved recebido')
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
         isIlleniumCustomizationActive = false
         finishCharacterCreation('event_character_saved', 2000)
     else
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
     end
 end)
 
 RegisterNetEvent('qb-clothes:client:characterSaved', function()
-    dprint('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes characterSaved recebido')
+    DebugPrint('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes characterSaved recebido')
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação...')
         isIlleniumCustomizationActive = false
         finishCharacterCreation('event_qb_character_saved', 2000)
     else
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = false, ignorando evento')
     end
 end)
 
 RegisterNetEvent('illenium-appearance:client:close', function()
-    dprint('[mri_Qmultichar] [ILLENIUM] Evento close recebido')
+    DebugPrint('[mri_Qmultichar] [ILLENIUM] Evento close recebido')
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
         isIlleniumCustomizationActive = false
         finishCharacterCreation('event_illenium_close', 2000)
     end
 end)
 
 RegisterNetEvent('qb-clothes:client:close', function()
-    dprint('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes close recebido')
+    DebugPrint('[mri_Qmultichar] [ILLENIUM] Evento qb-clothes close recebido')
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
+        DebugPrint('[mri_Qmultichar] [ILLENIUM] isInCharacterCreation = true, finalizando criação (close)...')
         isIlleniumCustomizationActive = false
         finishCharacterCreation('event_qb_close', 2000)
     end
@@ -919,7 +911,7 @@ end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [LOADED] Personagem carregado, finalizando criação...')
+        DebugPrint('[mri_Qmultichar] [LOADED] Personagem carregado, finalizando criação...')
         isIlleniumCustomizationActive = false
         finishCharacterCreation('event_player_loaded', 1000)
         return
@@ -947,7 +939,7 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
             return
         end
 
-        dprint(string.format('[mri_Qmultichar] Char %s sem foto salva, capturando...', citizenId))
+        DebugPrint(string.format('[mri_Qmultichar] Char %s sem foto salva, capturando...', citizenId))
         pcall(captureHeadshotForCharacter, citizenId, PlayerPedId())
     end)
 end)
@@ -1003,7 +995,7 @@ RegisterNUICallback('getPreviewData', function(data, cb)
         return
     end
 
-    dprint(string.format('[mri_Qmultichar] [PREVIEW] Atualizando preview para CitizenID: %s, Job: %s', citizenId, jobName))
+    DebugPrint(string.format('[mri_Qmultichar] [PREVIEW] Atualizando preview para CitizenID: %s, Job: %s', citizenId, jobName))
 
     cb({ success = true })
 
@@ -1022,10 +1014,10 @@ end)
 RegisterNUICallback('nuiStarted', function(_, cb)
     local wasNotReady = not isNuiReady
     isNuiReady = true
-    dprint('[mri_Qmultichar] NUI sinalizou que está pronta (Handshake OK)')
+    DebugPrint('[mri_Qmultichar] NUI sinalizou que está pronta (Handshake OK)')
 
     if wasNotReady and isNuiOpen then
-        dprint('[mri_Qmultichar] NUI pronta após fallback, reenviando dados de abertura...')
+        DebugPrint('[mri_Qmultichar] NUI pronta após fallback, reenviando dados de abertura...')
         isNuiOpen = false
         openMultichar()
     end
@@ -1036,7 +1028,7 @@ end)
 RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
     if GetInvokingResource() then return end
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [LOGOUT] Resetando flag isInCharacterCreation ao fazer logout')
+        DebugPrint('[mri_Qmultichar] [LOGOUT] Resetando flag isInCharacterCreation ao fazer logout')
         isIlleniumCustomizationActive = false
         isInCharacterCreation = false
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
@@ -1050,7 +1042,7 @@ end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     if isInCharacterCreation then
-        dprint('[mri_Qmultichar] [UNLOAD] Resetando flag isInCharacterCreation ao descarregar personagem')
+        DebugPrint('[mri_Qmultichar] [UNLOAD] Resetando flag isInCharacterCreation ao descarregar personagem')
         isIlleniumCustomizationActive = false
         isInCharacterCreation = false
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
@@ -1058,17 +1050,17 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
 end)
 
 CreateThread(function()
-    dprint('[mri_Qmultichar] Thread de inicialização iniciada')
+    DebugPrint('[mri_Qmultichar] Thread de inicialização iniciada')
     while true do
         Wait(0)
         if NetworkIsSessionStarted() then
             if LocalPlayer.state.isLoggedIn then
-                dprint('[mri_Qmultichar] Player já logado em personagem; solicitando logout server-side')
+                DebugPrint('[mri_Qmultichar] Player já logado em personagem; solicitando logout server-side')
                 TriggerServerEvent('mri_Qmultichar:server:requestLogout')
                 break
             end
 
-            dprint('[mri_Qmultichar] Sessão iniciada, configurando multichar...')
+            DebugPrint('[mri_Qmultichar] Sessão iniciada, configurando multichar...')
             pcall(function() exports.spawnmanager:setAutoSpawn(false) end)
             Wait(250)
 
@@ -1114,21 +1106,21 @@ CreateThread(function()
             ShutdownLoadingScreen()
             ShutdownLoadingScreenNui()
 
-            dprint('[mri_Qmultichar] Configurando preview cam...')
+            DebugPrint('[mri_Qmultichar] Configurando preview cam...')
             Citizen.Wait(100)
             pcall(function()
                 exports.mri_Qmultichar:setupPreviewCam()
             end)
 
             Wait(100)
-            dprint('[mri_Qmultichar] Abrindo NUI...')
+            DebugPrint('[mri_Qmultichar] Abrindo NUI...')
 
             local timeout = 50
             while not isNuiReady and timeout > 0 do
                 Wait(100)
                 timeout = timeout - 1
                 if timeout % 10 == 0 then
-                    dprint('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
+                    DebugPrint('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
                 end
             end
 

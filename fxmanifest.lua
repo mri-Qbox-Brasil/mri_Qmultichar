@@ -11,9 +11,13 @@ ox_lib 'locale'
 shared_scripts {
     '@ox_lib/init.lua',
     'config.lua',
+    'shared/debug.lua',
 }
 
 client_scripts {
+    'bridge/appearance/bridge.lua',
+    'bridge/appearance/illenium.lua',
+    'bridge/appearance/fivem.lua',
     'client/main.lua',
     'client/camera.lua',
 }

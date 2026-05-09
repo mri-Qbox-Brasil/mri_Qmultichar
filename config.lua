@@ -4,14 +4,10 @@ Config.Debug = false
 
 Config.Locale = 'pt-br'
 
--- Cor de destaque (HSL --primary do shadcn). Lê primeiro da convar global
--- `mri:color` (suite MRI compartilha o tema) e cai no default abaixo.
 Config.AccentColor = GetConvar('mri:color', '#00E699')
 
--- Player pode sobrescrever a cor localmente (localStorage da NUI)?
 Config.AllowAccentOverride = false
 
--- Defaults dos toggles de NUI (cosméticos, persistem em localStorage do CEF).
 Config.CameraEffects = true
 Config.CameraEffectType = 'cinema'
 Config.StreamerMode = false
@@ -82,6 +78,15 @@ Config.CharacterCreation = {
 }
 
 Config.DeleteTables = {
+}
+
+Config.Appearance = {
+    resource = 'auto',
+    autoPreference = {
+        'mri_Qappearance',
+        'illenium-appearance',
+        'fivem-appearance',
+    },
 }
 
 return Config

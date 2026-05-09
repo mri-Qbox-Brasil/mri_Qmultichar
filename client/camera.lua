@@ -1,9 +1,3 @@
-local function dprint(...)
-    if Config and Config.Debug then
-        lib.print.info(...)
-    end
-end
-
 local previewCam = nil
 local previewVehicle = nil
 local previewPedEntity = nil
@@ -170,7 +164,7 @@ local function setupPreviewCam(scenario, pedCoords, camConfig)
         return
     end
     
-    dprint('[mri_Qmultichar] [CAMERA] Configurando câmera de preview...')
+    DebugPrint('[mri_Qmultichar] [CAMERA] Configurando câmera de preview...')
     
     camConfig = camConfig or {}
     local zoomOut = camConfig.zoomOut or false
@@ -280,11 +274,11 @@ end
 
 local function destroyPreviewCam()
     if not previewCam then 
-        dprint('[mri_Qmultichar] [CAMERA] destroyPreviewCam chamado mas não há câmera ativa')
+        DebugPrint('[mri_Qmultichar] [CAMERA] destroyPreviewCam chamado mas não há câmera ativa')
         return 
     end
 
-    dprint('[mri_Qmultichar] [CAMERA] Destruindo câmera de preview...')
+    DebugPrint('[mri_Qmultichar] [CAMERA] Destruindo câmera de preview...')
     SetCamActive(previewCam, false)
     DestroyCam(previewCam, true)
     previewCam = nil
@@ -306,10 +300,10 @@ local function destroyPreviewCam()
     if not isCreating then
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
     else
-        dprint('[mri_Qmultichar] [CAMERA] Não removendo bucket pois está criando personagem')
+        DebugPrint('[mri_Qmultichar] [CAMERA] Não removendo bucket pois está criando personagem')
     end
     
-    dprint('[mri_Qmultichar] [CAMERA] Câmera de preview destruída')
+    DebugPrint('[mri_Qmultichar] [CAMERA] Câmera de preview destruída')
 end
 
 local function setupPolicePreview()
@@ -501,7 +495,7 @@ local function randomPed()
     local ped = randomPeds[math.random(1, #randomPeds)]
     lib.requestModel(ped.model, 60000)
     SetPlayerModel(cache.playerId, ped.model)
-    pcall(function() exports['illenium-appearance']:setPedAppearance(PlayerPedId(), ped) end)
+    Appearance.setPedAppearance(PlayerPedId(), ped)
     SetModelAsNoLongerNeeded(ped.model)
     SetEntityVisible(PlayerPedId(), true, 0)
 
@@ -523,7 +517,7 @@ local function previewPed(citizenId, jobName)
         return
     end
     
-    dprint(string.format('[mri_Qmultichar] [PREVIEW] previewPed chamado - CitizenID: %s, Job: %s', citizenId or 'nil', jobName or 'nil'))
+    DebugPrint(string.format('[mri_Qmultichar] [PREVIEW] previewPed chamado - CitizenID: %s, Job: %s', citizenId or 'nil', jobName or 'nil'))
     
     DoScreenFadeOut(500)
     Citizen.Wait(500)
@@ -538,7 +532,7 @@ local function previewPed(citizenId, jobName)
         lib.requestModel(model, 60000)
         SetPlayerModel(cache.playerId, model)
         SetEntityVisible(PlayerPedId(), true)
-        pcall(function() exports['illenium-appearance']:setPedAppearance(PlayerPedId(), json.decode(clothing)) end)
+        Appearance.setPedAppearance(PlayerPedId(), json.decode(clothing))
         SetModelAsNoLongerNeeded(model)
     else
         randomPed()
@@ -550,7 +544,7 @@ local function previewPed(citizenId, jobName)
     
     jobName = jobName and jobName:lower() or 'unemployed'
     
-    dprint(string.format('[mri_Qmultichar] [PREVIEW] Configurando preview para job: %s', jobName))
+    DebugPrint(string.format('[mri_Qmultichar] [PREVIEW] Configurando preview para job: %s', jobName))
     
     if jobName == 'police' or jobName == 'bcso' or jobName == 'sasp' then
         setupPolicePreview()
@@ -583,11 +577,11 @@ exports('setCameraEffects', function(enabled, effectType)
     if enabled then
         SetTimecycleModifier(cameraEffectType)
         SetTimecycleModifierStrength(0.5)
-        dprint(string.format('[mri_Qmultichar] [CAMERA] Efeitos ativados: %s', cameraEffectType))
+        DebugPrint(string.format('[mri_Qmultichar] [CAMERA] Efeitos ativados: %s', cameraEffectType))
     else
         SetTimecycleModifier('default')
         SetTimecycleModifierStrength(0.0)
-        dprint('[mri_Qmultichar] [CAMERA] Efeitos desativados')
+        DebugPrint('[mri_Qmultichar] [CAMERA] Efeitos desativados')
     end
     
     if previewCam and DoesCamExist(previewCam) then
