@@ -29,6 +29,19 @@ CreateThread(function()
             KEY `license2` (`license2`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ]])
+
+    MySQL.query([[
+        CREATE TABLE IF NOT EXISTS `mri_qmultichar_photos` (
+            `citizenid` VARCHAR(50) NOT NULL,
+            `photo` MEDIUMTEXT NOT NULL,
+            `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`citizenid`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ]])
+
+    -- registra pro cleanup automático em DeleteCharacterData
+    Config.DeleteTables = Config.DeleteTables or {}
+    Config.DeleteTables[#Config.DeleteTables + 1] = { 'mri_qmultichar_photos', 'citizenid' }
 end)
 
 local function getPlayerSlots(license, license2)
@@ -87,7 +100,13 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
 
     local slots = getPlayerSlots(license, license2)
 
-    local result = MySQL.query.await('SELECT citizenid, charinfo, money, job, gang, position, metadata, cid FROM players WHERE license = ? OR license = ? ORDER BY cid', {license, license2})
+    local result = MySQL.query.await([[
+        SELECT p.citizenid, p.charinfo, p.money, p.job, p.gang, p.position, p.metadata, p.cid, ph.photo
+        FROM players p
+        LEFT JOIN mri_qmultichar_photos ph ON ph.citizenid = p.citizenid
+        WHERE p.license = ? OR p.license = ?
+        ORDER BY p.cid
+    ]], {license, license2})
 
     local characters = {}
     local seenCitizenIds = {}
@@ -116,7 +135,7 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
                     position = json.decode(result[i].position),
                     metadata = metadata,
                     cid = result[i].cid,
-                    photo = metadata.photo or nil,
+                    photo = result[i].photo,
                 }
             end
         end
@@ -159,12 +178,12 @@ lib.callback.register('mri_Qmultichar:server:getCharacterPhoto', function(_sourc
         return nil
     end
 
-    local result = MySQL.scalar.await('SELECT JSON_UNQUOTE(JSON_EXTRACT(metadata, "$.photo")) FROM players WHERE citizenid = ? LIMIT 1', { citizenId })
-    if result == nil or result == '' or result == 'null' then
+    local photo = MySQL.scalar.await('SELECT photo FROM mri_qmultichar_photos WHERE citizenid = ?', { citizenId })
+    if photo == nil or photo == '' then
         return nil
     end
 
-    return result
+    return photo
 end)
 
 lib.callback.register('mri_Qmultichar:server:saveCharacterPhoto', function(source, citizenId, photoBase64)
@@ -181,12 +200,13 @@ lib.callback.register('mri_Qmultichar:server:saveCharacterPhoto', function(sourc
         return false
     end
 
-    local affected = MySQL.update.await('UPDATE players SET metadata = JSON_SET(COALESCE(metadata, JSON_OBJECT()), "$.photo", ?) WHERE citizenid = ?', {
-        photoBase64, citizenId,
-    })
+    local affected = MySQL.insert.await([[
+        INSERT INTO mri_qmultichar_photos (citizenid, photo) VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE photo = VALUES(photo)
+    ]], { citizenId, photoBase64 })
 
-    if affected and affected > 0 then
-        dprint(string.format('[mri_Qmultichar] Foto salva em metadata.photo para citizenid %s (%d bytes)', citizenId, #photoBase64))
+    if affected then
+        DebugPrint(string.format('[mri_Qmultichar] Foto salva em mri_qmultichar_photos para citizenid %s (%d bytes)', citizenId, #photoBase64))
         return true
     end
 
@@ -211,7 +231,7 @@ end)
 
 RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
     local source = source
-    dprint(string.format('[mri_Qmultichar] [SERVER] Definindo bucket %d para source %d', bucket, source))
+    DebugPrint(string.format('[mri_Qmultichar] [SERVER] Definindo bucket %d para source %d', bucket, source))
 
     if exports.qbx_core and exports.qbx_core.SetPlayerBucket then
         exports.qbx_core:SetPlayerBucket(source, bucket)
@@ -219,7 +239,7 @@ RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
         SetPlayerRoutingBucket(source, bucket)
     end
 
-    dprint(string.format('[mri_Qmultichar] [SERVER] Bucket %d definido para source %d', bucket, source))
+    DebugPrint(string.format('[mri_Qmultichar] [SERVER] Bucket %d definido para source %d', bucket, source))
 end)
 
 local function doesTableExist(tableName)
@@ -301,7 +321,7 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         return false
     end
 
-    dprint(string.format('[mri_Qmultichar] Personagem deletado com sucesso. Source: %s, CitizenID: %s', source, citizenId))
+    DebugPrint(string.format('[mri_Qmultichar] Personagem deletado com sucesso. Source: %s, CitizenID: %s', source, citizenId))
 
     return true
 end)
@@ -393,7 +413,7 @@ end)
 AddConvarChangeListener('mri:color', function(name)
     if name ~= 'mri:color' then return end
     local newColor = resolveAccentColor()
-    dprint(string.format('[mri_Qmultichar] convar mri:color alterada para %s, propagando aos clientes', newColor))
+    DebugPrint(string.format('[mri_Qmultichar] convar mri:color alterada para %s, propagando aos clientes', newColor))
     TriggerClientEvent('mri_Qmultichar:client:accentColorChanged', -1, newColor)
 end)
 
@@ -409,13 +429,13 @@ local function AddDeleteTable(tableName, columnName)
     for i = 1, #Config.DeleteTables do
         if Config.DeleteTables[i][1] == tableName then
             Config.DeleteTables[i][2] = columnName
-            dprint(string.format('[mri_Qmultichar] Tabela de deleção atualizada: %s (%s)', tableName, columnName))
+            DebugPrint(string.format('[mri_Qmultichar] Tabela de deleção atualizada: %s (%s)', tableName, columnName))
             return true
         end
     end
 
     table.insert(Config.DeleteTables, {tableName, columnName})
-    dprint(string.format('[mri_Qmultichar] Nova tabela de deleção adicionada: %s (%s)', tableName, columnName))
+    DebugPrint(string.format('[mri_Qmultichar] Nova tabela de deleção adicionada: %s (%s)', tableName, columnName))
     return true
 end
 
