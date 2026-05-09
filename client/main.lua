@@ -179,11 +179,7 @@ local function getIlleniumCharacterConfig()
 end
 
 local function isNuiFocusedSafe()
-    local ok, focused = pcall(function()
-        return IsNuiFocused()
-    end)
-
-    return ok and focused == true
+    return IsNuiFocused() == true
 end
 
 local function prepareFreemodePedForCreation(gender)
@@ -1000,9 +996,7 @@ RegisterNUICallback('getPreviewData', function(data, cb)
     cb({ success = true })
 
     CreateThread(function()
-        pcall(function()
-            exports.mri_Qmultichar:previewPed(citizenId, jobName)
-        end)
+        exports.mri_Qmultichar:previewPed(citizenId, jobName)
     end)
 end)
 
@@ -1035,9 +1029,7 @@ RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
     end
 
     openMultichar()
-    pcall(function()
-        exports.mri_Qmultichar:setupPreviewCam()
-    end)
+    exports.mri_Qmultichar:setupPreviewCam()
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
@@ -1070,9 +1062,7 @@ CreateThread(function()
 
             local jobName = characters[1] and characters[1].job and (characters[1].job.name or (characters[1].job.label and string.lower(string.gsub(characters[1].job.label, '%s+', '')))) or 'unemployed'
             Citizen.Wait(100)
-            pcall(function()
-                exports.mri_Qmultichar:previewPed(firstCharacterCitizenId, jobName)
-            end)
+            exports.mri_Qmultichar:previewPed(firstCharacterCitizenId, jobName)
 
             local qbxConfig = getQbxConfig()
             if not qbxConfig or not qbxConfig.characters or not qbxConfig.characters.locations or #qbxConfig.characters.locations == 0 then
@@ -1108,9 +1098,7 @@ CreateThread(function()
 
             DebugPrint('[mri_Qmultichar] Configurando preview cam...')
             Citizen.Wait(100)
-            pcall(function()
-                exports.mri_Qmultichar:setupPreviewCam()
-            end)
+            exports.mri_Qmultichar:setupPreviewCam()
 
             Wait(100)
             DebugPrint('[mri_Qmultichar] Abrindo NUI...')

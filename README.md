@@ -67,7 +67,7 @@ Config.CharacterSlots = {
 
 ## Banco de Dados
 
-O recurso cria automaticamente a tabela `character_slots` para armazenar os slots personalizados dos jogadores.
+O recurso cria automaticamente a tabela `mri_qmultichar_slots` para armazenar os slots personalizados dos jogadores.
 
 ## Estrutura
 

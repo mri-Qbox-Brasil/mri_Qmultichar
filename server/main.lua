@@ -19,7 +19,7 @@ end
 
 CreateThread(function()
     MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `character_slots` (
+        CREATE TABLE IF NOT EXISTS `mri_qmultichar_slots` (
             `id` INT(11) NOT NULL AUTO_INCREMENT,
             `license` VARCHAR(255) NOT NULL,
             `license2` VARCHAR(255) DEFAULT NULL,
@@ -31,21 +31,8 @@ CreateThread(function()
     ]])
 end)
 
-CreateThread(function()
-    MySQL.query([[
-        CREATE TABLE IF NOT EXISTS `properties` (
-            `id` INT(11) NOT NULL AUTO_INCREMENT,
-            `property_name` VARCHAR(255) NOT NULL,
-            `coords` TEXT NOT NULL,
-            `owner` VARCHAR(255) DEFAULT NULL,
-            PRIMARY KEY (`id`),
-            KEY `owner` (`owner`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    ]])
-end)
-
 local function getPlayerSlots(license, license2)
-    local result = MySQL.single.await('SELECT slots FROM character_slots WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 })
+    local result = MySQL.single.await('SELECT slots FROM mri_qmultichar_slots WHERE license = ? OR license2 = ? LIMIT 1', { license, license2 })
     if result then
         return result.slots
     end
@@ -60,16 +47,16 @@ local function setPlayerSlots(license, license2, slots)
         slots = 1
     end
 
-    local existing = MySQL.single.await('SELECT id, license, license2 FROM character_slots WHERE license = ? OR license2 = ? OR license = ? OR license2 = ? LIMIT 1', {
+    local existing = MySQL.single.await('SELECT id, license, license2 FROM mri_qmultichar_slots WHERE license = ? OR license2 = ? OR license = ? OR license2 = ? LIMIT 1', {
         license, license, license2, license2
     })
 
     if existing then
-        MySQL.update.await('UPDATE character_slots SET slots = ?, license = ?, license2 = ? WHERE id = ?', {
+        MySQL.update.await('UPDATE mri_qmultichar_slots SET slots = ?, license = ?, license2 = ? WHERE id = ?', {
             slots, license, license2, existing.id
         })
     else
-        MySQL.insert.await('INSERT INTO character_slots (license, license2, slots) VALUES (?, ?, ?)', {
+        MySQL.insert.await('INSERT INTO mri_qmultichar_slots (license, license2, slots) VALUES (?, ?, ?)', {
             license, license2, slots
         })
     end
