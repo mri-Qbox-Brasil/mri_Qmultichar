@@ -150,21 +150,3 @@ lib.addCommand('myslots', {
 
     exports.qbx_core:Notify(source, locale('commands.myslots.result', { slots = slots }), 'info')
 end)
-
-lib.addCommand('logout', {
-    help = 'Desconecta do personagem atual apenas se voce tiver 2 ou mais personagens.',
-}, function(source)
-    local license = GetPlayerIdentifierByType(source, 'license')
-    local license2 = GetPlayerIdentifierByType(source, 'license2')
-    local characterCount = tonumber(MySQL.scalar.await(
-        'SELECT COUNT(DISTINCT citizenid) FROM players WHERE license = ? OR license = ?',
-        { license, license2 }
-    )) or 0
-
-    if characterCount < 2 then
-        exports.qbx_core:Notify(source, string.format('Você precisa ter pelo menos 2 personagens para usar logout. Atualmente: %d.', characterCount), 'error')
-        return
-    end
-
-    exports.qbx_core:Logout(source)
-end)
