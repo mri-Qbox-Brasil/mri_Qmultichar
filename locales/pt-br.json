@@ -150,43 +150,23 @@
     },
     "commands": {
         "player_not_found": "Jogador não encontrado",
-        "setslots": {
-            "help": "Define o número de slots de personagem de um jogador",
-            "usage": "Uso: /setslots [id] [slots]",
-            "invalid_range": "Número de slots deve estar entre 1 e %{max}",
-            "success_source": "Slots do jogador %{name} definidos para %{slots}",
-            "success_target": "Seus slots de personagem foram alterados para %{slots}",
+        "slots": {
+            "help": "Gerencia slots de personagem de um jogador (get/set/add/remove)",
             "params": {
+                "action": "Ação: get, set, add ou remove",
                 "id": "ID do jogador",
-                "slots": "Número de slots"
-            }
-        },
-        "getslots": {
-            "help": "Ver o número de slots de personagem de um jogador",
-            "usage": "Uso: /getslots [id]",
-            "result": "Jogador %{name} tem %{slots} slots de personagem"
-        },
-        "addslots": {
-            "help": "Adiciona slots de personagem a um jogador",
-            "usage": "Uso: /addslots [id] [slots]",
-            "invalid_amount": "Número de slots deve ser maior que 0",
-            "success_source": "Adicionados %{amount} slots ao jogador %{name}. Total: %{total}",
-            "success_target": "Você recebeu %{amount} slots adicionais! Total: %{total}",
-            "params": {
-                "id": "ID do jogador",
-                "slots": "Número de slots para adicionar"
-            }
-        },
-        "removeslots": {
-            "help": "Remove slots de personagem de um jogador",
-            "usage": "Uso: /removeslots [id] [slots]",
-            "invalid_amount": "Número de slots deve ser maior que 0",
-            "success_source": "Removidos %{amount} slots do jogador %{name}. Total: %{total}",
-            "success_target": "Você perdeu %{amount} slots. Total: %{total}",
-            "params": {
-                "id": "ID do jogador",
-                "slots": "Número de slots para remover"
-            }
+                "amount": "Quantidade (obrigatório para set/add/remove)"
+            },
+            "invalid_action": "Ação inválida. Use: get, set, add ou remove",
+            "invalid_amount": "Quantidade deve ser um número maior que 0",
+            "invalid_range": "Quantidade deve estar entre 1 e %{max}",
+            "get_result": "Jogador %{name} tem %{slots} slots de personagem",
+            "success_admin_set": "Slots do jogador %{name} definidos para %{slots}",
+            "success_admin_add": "Adicionados %{amount} slots ao jogador %{name}. Total: %{slots}",
+            "success_admin_remove": "Removidos %{amount} slots do jogador %{name}. Total: %{slots}",
+            "success_target_set": "Seus slots de personagem foram alterados para %{slots}",
+            "success_target_add": "Você recebeu %{amount} slots adicionais! Total: %{slots}",
+            "success_target_remove": "Você perdeu %{amount} slots. Total: %{slots}"
         },
         "myslots": {
             "help": "Ver seu número de slots de personagem",

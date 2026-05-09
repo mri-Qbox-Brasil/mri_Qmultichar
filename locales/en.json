@@ -150,43 +150,23 @@
     },
     "commands": {
         "player_not_found": "Player not found",
-        "setslots": {
-            "help": "Set the number of character slots for a player",
-            "usage": "Usage: /setslots [id] [slots]",
-            "invalid_range": "Number of slots must be between 1 and %{max}",
-            "success_source": "Player %{name} slots set to %{slots}",
-            "success_target": "Your character slots have been changed to %{slots}",
+        "slots": {
+            "help": "Manage a player's character slots (get/set/add/remove)",
             "params": {
+                "action": "Action: get, set, add or remove",
                 "id": "Player ID",
-                "slots": "Number of slots"
-            }
-        },
-        "getslots": {
-            "help": "View the number of character slots for a player",
-            "usage": "Usage: /getslots [id]",
-            "result": "Player %{name} has %{slots} character slots"
-        },
-        "addslots": {
-            "help": "Add character slots to a player",
-            "usage": "Usage: /addslots [id] [slots]",
-            "invalid_amount": "Number of slots must be greater than 0",
-            "success_source": "Added %{amount} slots to player %{name}. Total: %{total}",
-            "success_target": "You received %{amount} additional slots! Total: %{total}",
-            "params": {
-                "id": "Player ID",
-                "slots": "Number of slots to add"
-            }
-        },
-        "removeslots": {
-            "help": "Remove character slots from a player",
-            "usage": "Usage: /removeslots [id] [slots]",
-            "invalid_amount": "Number of slots must be greater than 0",
-            "success_source": "Removed %{amount} slots from player %{name}. Total: %{total}",
-            "success_target": "You lost %{amount} slots. Total: %{total}",
-            "params": {
-                "id": "Player ID",
-                "slots": "Number of slots to remove"
-            }
+                "amount": "Amount (required for set/add/remove)"
+            },
+            "invalid_action": "Invalid action. Use: get, set, add or remove",
+            "invalid_amount": "Amount must be a number greater than 0",
+            "invalid_range": "Amount must be between 1 and %{max}",
+            "get_result": "Player %{name} has %{slots} character slots",
+            "success_admin_set": "Player %{name} slots set to %{slots}",
+            "success_admin_add": "Added %{amount} slots to player %{name}. Total: %{slots}",
+            "success_admin_remove": "Removed %{amount} slots from player %{name}. Total: %{slots}",
+            "success_target_set": "Your character slots have been changed to %{slots}",
+            "success_target_add": "You received %{amount} additional slots! Total: %{slots}",
+            "success_target_remove": "You lost %{amount} slots. Total: %{slots}"
         },
         "myslots": {
             "help": "View your number of character slots",
