@@ -18,6 +18,8 @@ client_scripts {
     'bridge/appearance/bridge.lua',
     'bridge/appearance/illenium.lua',
     'bridge/appearance/fivem.lua',
+    'client/headshots.lua',
+    'client/nui.lua',
     'client/main.lua',
     'client/camera.lua',
 }

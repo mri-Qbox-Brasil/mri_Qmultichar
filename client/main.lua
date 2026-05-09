@@ -1,20 +1,17 @@
-local isNuiOpen = false
+-- Orquestrador do multichar: estado, lifecycle (load/create/finish),
+-- spawn flow, listeners de eventos do framework e thread de inicialização.
+-- NUI bridge mora em nui.lua, headshots em headshots.lua.
+
+Multichar = Multichar or {}
 
 local isSpawning = false
-
 local isCreatingCharacter = false
-
 local isInCharacterCreation = false
 local isIlleniumCustomizationActive = false
+local isLoadingCharacter = false
 
 local lastDeleteTime = 0
 local DELETE_COOLDOWN = 3000
-
-local isNuiReady = false
-
-local activeHeadshots = {}
-
-local captureHeadshotForCharacter
 
 local function awaitPlayerData(maxWaitMs)
     local elapsed = 0
@@ -63,12 +60,16 @@ local function isResourceStarted(resourceName)
     return resourceState == 'started' or resourceState == 'starting'
 end
 
-local function isCharacterCreationFlowActive()
+function Multichar.isCharacterCreationFlowActive()
     return isCreatingCharacter or isInCharacterCreation
 end
 
+function Multichar.markDeleteTimestamp()
+    lastDeleteTime = GetGameTimer()
+end
+
 local function finishCharacterCreation(reason, waitTime)
-    local shouldReset = isCharacterCreationFlowActive() or isIlleniumCustomizationActive
+    local shouldReset = Multichar.isCharacterCreationFlowActive() or isIlleniumCustomizationActive
 
     isIlleniumCustomizationActive = false
 
@@ -90,7 +91,7 @@ local function finishCharacterCreation(reason, waitTime)
             return
         end
 
-        local ok, err = pcall(captureHeadshotForCharacter, citizenId, PlayerPedId())
+        local ok, err = pcall(Headshots.capture, citizenId, PlayerPedId())
         if not ok then
             lib.print.warn(string.format('[mri_Qmultichar] Falha (pcall) ao capturar headshot após criação: %s', tostring(err)))
         end
@@ -262,74 +263,6 @@ local function openIlleniumCharacterCreator(gender)
     return true
 end
 
-local function fetchInitialPayload()
-    local payload = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
-    if type(payload) ~= 'table' then
-        return nil
-    end
-    return payload
-end
-
-local function openMultichar()
-    if isNuiOpen then return end
-
-    DebugPrint('[mri_Qmultichar] Preparando dados para abrir NUI...')
-
-    local payload = fetchInitialPayload()
-    if not payload then
-        lib.print.error('[mri_Qmultichar] Falha ao obter payload inicial do servidor')
-        return
-    end
-
-    isNuiOpen = true
-    SetNuiFocus(true, true)
-
-    DebugPrint('[mri_Qmultichar] Abrindo NUI com dados carregados')
-    SendNUIMessage({
-        action = 'open',
-        characters = payload.characters or {},
-        amount = payload.slots or 3,
-        accentColor = payload.accentColor,
-        allowAccentOverride = payload.allowAccentOverride ~= false,
-        defaults = payload.defaults or {},
-        music = payload.music,
-        locales = payload.locales or {},
-    })
-end
-
-local function CleanupHeadshots()
-    if type(activeHeadshots) ~= 'table' then
-        activeHeadshots = {}
-        return
-    end
-
-    local count = #activeHeadshots
-    if count > 0 then
-        for i = 1, count do
-            local headshot = activeHeadshots[i]
-            if headshot and headshot ~= 0 then
-                pcall(function()
-                    UnregisterPedheadshot(headshot)
-                end)
-            end
-        end
-    end
-
-    activeHeadshots = {}
-end
-
-local function closeMultichar()
-    if not isNuiOpen then return end
-
-    isNuiOpen = false
-    SetNuiFocus(false, false)
-    SendNUIMessage({
-        action = 'close',
-    })
-
-    CleanupHeadshots()
-end
-
 local function spawnLastLocation()
     if isSpawning then
         return
@@ -418,183 +351,25 @@ local function spawnDefault()
     isSpawning = false
 end
 
-RegisterNUICallback('getCharacters', function(_, cb)
-    DebugPrint('[mri_Qmultichar] Callback getCharacters chamado')
-    local payload = fetchInitialPayload()
-
-    if payload then
-        local characters = payload.characters or {}
-        DebugPrint(string.format('[mri_Qmultichar] Personagens carregados: %d, Slots: %d', #characters, payload.slots or 3))
-        cb({
-            success = true,
-            characters = characters,
-            amount = payload.slots or 3,
-            accentColor = payload.accentColor,
-            allowAccentOverride = payload.allowAccentOverride ~= false,
-            defaults = payload.defaults or {},
-            music = payload.music,
-            locales = payload.locales or {},
-        })
-    else
-        lib.print.error('[mri_Qmultichar] Erro ao carregar personagens')
-        local musicConfig = Config.Music or { enabled = false, url = '', volume = 0.3, loop = true, autoplay = true }
-        local localeFile = LoadResourceFile(GetCurrentResourceName(), string.format('locales/%s.json', Config.Locale or 'pt-br'))
-        local locales = {}
-        if localeFile then
-            local success, decoded = pcall(json.decode, localeFile)
-            if success and decoded then
-                locales = decoded
-            end
-        end
-        cb({
-            success = false,
-            characters = {},
-            amount = 3,
-            accentColor = Config.AccentColor or '#00E699',
-            allowAccentOverride = Config.AllowAccentOverride ~= false,
-            defaults = {
-                cameraEffects = Config.CameraEffects ~= false,
-                cameraEffectType = Config.CameraEffectType or 'cinema',
-                streamerMode = Config.StreamerMode == true,
-            },
-            music = musicConfig,
-            locales = locales,
-        })
-    end
-end)
-
--- Aplicação dos efeitos de câmera (timecycle modifier do preview cam).
--- NUI armazena a preferência em localStorage e dispara este callback ao mudar.
-RegisterNUICallback('setCameraEffects', function(data, cb)
-    if exports.mri_Qmultichar and exports.mri_Qmultichar.setCameraEffects then
-        exports.mri_Qmultichar:setCameraEffects(data.enabled ~= false, data.effectType or 'cinema')
-    end
-    cb({ success = true })
-end)
-
-local pendingHeadshots = {}
-
-captureHeadshotForCharacter = function(citizenId, ped)
-    if not citizenId then
-        lib.print.error('[mri_Qmultichar] captureHeadshotForCharacter: citizenId nao fornecido')
-        return false
-    end
-
-    ped = ped or PlayerPedId()
-    if not ped or ped == 0 or not DoesEntityExist(ped) then
-        lib.print.error('[mri_Qmultichar] captureHeadshotForCharacter: ped invalido')
-        return false
-    end
-
-    if not IsEntityVisible(ped) then
-        SetEntityVisible(ped, true, false)
-        Wait(100)
-    end
-
-    local handle = RegisterPedheadshotTransparent(ped)
-    if not handle or handle == 0 then
-        lib.print.error('[mri_Qmultichar] Falha ao registrar pedheadshot transparent')
-        return false
-    end
-
-    local timeout = 200
-    while not IsPedheadshotReady(handle) and timeout > 0 do
-        Wait(10)
-        timeout = timeout - 1
-    end
-
-    if not IsPedheadshotReady(handle) or not IsPedheadshotValid(handle) then
-        lib.print.error('[mri_Qmultichar] Pedheadshot nao ficou pronto/valido')
-        UnregisterPedheadshot(handle)
-        return false
-    end
-
-    local txd = GetPedheadshotTxdString(handle)
-    if not txd or txd == '' then
-        lib.print.error('[mri_Qmultichar] TXD string vazia')
-        UnregisterPedheadshot(handle)
-        return false
-    end
-
-    local previous = pendingHeadshots[citizenId]
-    if previous and previous ~= handle then
-        pcall(UnregisterPedheadshot, previous)
-    end
-    pendingHeadshots[citizenId] = handle
-    activeHeadshots[#activeHeadshots + 1] = handle
-
-    SendNUIMessage({
-        action = 'captureBase64',
-        citizenid = citizenId,
-        txd = txd,
-    })
-
-    DebugPrint(string.format('[mri_Qmultichar] captureBase64 enviado para NUI: citizenid=%s, txd=%s', citizenId, txd))
-    return true
-end
-
-RegisterNUICallback('getCharacterPhoto', function(data, cb)
-    local citizenId = data.citizenid
-    if not citizenId then
-        cb({ success = false, photo = nil })
-        return
-    end
-
-    local success, photo = pcall(function()
-        return lib.callback.await('mri_Qmultichar:server:getCharacterPhoto', false, citizenId)
-    end)
-
-    cb({ success = success and photo ~= nil, photo = success and photo or nil })
-end)
-
-RegisterNUICallback('savePhotoBase64', function(data, cb)
-    local citizenId = data.citizenid
-    local photo = data.photo
-
-    if not citizenId or type(photo) ~= 'string' or photo == '' then
-        cb({ success = false })
-        return
-    end
-
-    local handle = pendingHeadshots[citizenId]
-    pendingHeadshots[citizenId] = nil
-    if handle then
-        pcall(UnregisterPedheadshot, handle)
-    end
-
-    local ok = lib.callback.await('mri_Qmultichar:server:saveCharacterPhoto', false, citizenId, photo)
-    if ok then
-        DebugPrint(string.format('[mri_Qmultichar] Foto salva no metadata para %s', citizenId))
-    else
-        lib.print.warn(string.format('[mri_Qmultichar] Falha ao salvar foto no metadata para %s', citizenId))
-    end
-
-    cb({ success = ok == true })
-end)
-
-exports('captureHeadshotForCharacter', captureHeadshotForCharacter)
-
-local isLoadingCharacter = false
-
-local function beginCharacterLoad(citizenId, options)
+function Multichar.beginCharacterLoad(citizenId, options)
     options = options or {}
 
     if not citizenId then
-        return false, 'CitizenID nÃ£o fornecido'
+        return false, 'CitizenID não fornecido'
     end
 
     if isLoadingCharacter then
-        return false, 'Carregamento de personagem jÃ¡ em andamento'
+        return false, 'Carregamento de personagem já em andamento'
     end
 
     if isSpawning then
-        return false, 'Spawn jÃ¡ em andamento'
+        return false, 'Spawn já em andamento'
     end
 
     if not options.skipValidation then
         local validation = lib.callback.await('mri_Qmultichar:server:validateCharacterSelection', false, citizenId)
         if not validation or not validation.allowed then
-            return false, validation and validation.message or 'VocÃª nÃ£o pode selecionar este personagem.'
+            return false, validation and validation.message or 'Você não pode selecionar este personagem.'
         end
     end
 
@@ -617,7 +392,7 @@ local function beginCharacterLoad(citizenId, options)
             isSpawning = true
 
             exports.mri_Qmultichar:destroyPreviewCam()
-            closeMultichar()
+            Multichar.closeMultichar()
 
             Citizen.Wait(200)
 
@@ -634,49 +409,25 @@ local function beginCharacterLoad(citizenId, options)
     return true
 end
 
-RegisterNUICallback('loadCharacter', function(data, cb)
-    local success, message = beginCharacterLoad(data.citizenid)
-    cb({
-        success = success,
-        message = message,
-    })
-end)
-
-RegisterNUICallback('createCharacter', function(data, cb)
-    local charData = data.characterData
-    if not charData then
-        cb({ success = false, message = 'Dados do personagem não fornecidos' })
-        return
-    end
-
-    if not charData.firstname or not charData.lastname or not charData.nationality or not charData.birthdate then
-        cb({ success = false, message = 'Dados incompletos' })
-        return
-    end
-
+function Multichar.beginCharacterCreation(charData)
     if isCreatingCharacter then
-        cb({ success = false, message = 'Criação de personagem já em andamento' })
-        return
+        return false, 'Criação de personagem já em andamento'
     end
 
     local timeSinceDelete = GetGameTimer() - lastDeleteTime
     local cooldownTime = DELETE_COOLDOWN * 2
     if timeSinceDelete < cooldownTime then
         local remainingTime = math.ceil((cooldownTime - timeSinceDelete) / 1000)
-        cb({ success = false, message = string.format('Aguarde %d segundo(s) após deletar um personagem', remainingTime) })
-        return
+        return false, string.format('Aguarde %d segundo(s) após deletar um personagem', remainingTime)
     end
 
     local slotCheck = lib.callback.await('mri_Qmultichar:server:checkSlotAvailable', false, charData.cid)
     if not slotCheck or not slotCheck.available then
         lib.print.warn(string.format('[mri_Qmultichar] Slot %d não está disponível. Personagem ainda existe?', charData.cid))
-        cb({ success = false, message = 'Este slot ainda está ocupado. Aguarde alguns segundos e tente novamente.' })
-        return
+        return false, 'Este slot ainda está ocupado. Aguarde alguns segundos e tente novamente.'
     end
 
     isCreatingCharacter = true
-
-    cb({ success = true })
 
     CreateThread(function()
         local success, newData = pcall(function()
@@ -704,7 +455,7 @@ RegisterNUICallback('createCharacter', function(data, cb)
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo câmera de preview...')
             exports.mri_Qmultichar:destroyPreviewCam()
-            closeMultichar()
+            Multichar.closeMultichar()
 
             Citizen.Wait(500)
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] NUI fechada, aguardando...')
@@ -754,8 +505,6 @@ RegisterNUICallback('createCharacter', function(data, cb)
             while not IsScreenFadedIn() do
                 Wait(0)
             end
-
-            local qbxConfig = getQbxConfig()
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Disparando eventos do qbx_core...')
             TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
@@ -863,7 +612,9 @@ RegisterNUICallback('createCharacter', function(data, cb)
 
         isCreatingCharacter = false
     end)
-end)
+
+    return true
+end
 
 RegisterNetEvent('illenium-appearance:client:characterSaved', function()
     DebugPrint('[mri_Qmultichar] [ILLENIUM] Evento characterSaved recebido')
@@ -936,87 +687,8 @@ RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
         end
 
         DebugPrint(string.format('[mri_Qmultichar] Char %s sem foto salva, capturando...', citizenId))
-        pcall(captureHeadshotForCharacter, citizenId, PlayerPedId())
+        pcall(Headshots.capture, citizenId, PlayerPedId())
     end)
-end)
-
-RegisterNUICallback('deleteCharacter', function(data, cb)
-    local citizenId = data.citizenid
-    if not citizenId then
-        cb({ success = false, message = 'CitizenID não fornecido' })
-        return
-    end
-
-    Citizen.Wait(100)
-
-    local success = lib.callback.await('mri_Qmultichar:server:deleteCharacter', false, citizenId)
-
-    if success then
-        lastDeleteTime = GetGameTimer()
-
-        Citizen.Wait(500)
-
-        lib.notify({
-            title = locale('messages.success'),
-            description = locale('characters.character_deleted'),
-            type = 'success'
-        })
-
-        SendNUIMessage({
-            action = 'refreshCharacters',
-        })
-
-        cb({ success = true })
-    else
-        lib.notify({
-            title = locale('messages.error'),
-            description = locale('characters.error_deleting'),
-            type = 'error'
-        })
-        cb({ success = false, message = locale('characters.error_deleting') })
-    end
-end)
-
-RegisterNUICallback('getPreviewData', function(data, cb)
-    if isCharacterCreationFlowActive() then
-        lib.print.warn('[mri_Qmultichar] [PREVIEW] getPreviewData chamado durante fluxo de criação, ignorando...')
-        cb({ success = false })
-        return
-    end
-
-    local citizenId = data.citizenid
-    local jobName = data.job or 'unemployed'
-    if not citizenId then
-        cb({ success = false })
-        return
-    end
-
-    DebugPrint(string.format('[mri_Qmultichar] [PREVIEW] Atualizando preview para CitizenID: %s, Job: %s', citizenId, jobName))
-
-    cb({ success = true })
-
-    CreateThread(function()
-        exports.mri_Qmultichar:previewPed(citizenId, jobName)
-    end)
-end)
-
-RegisterNUICallback('close', function(_, cb)
-    closeMultichar()
-    cb({ success = true })
-end)
-
-RegisterNUICallback('nuiStarted', function(_, cb)
-    local wasNotReady = not isNuiReady
-    isNuiReady = true
-    DebugPrint('[mri_Qmultichar] NUI sinalizou que está pronta (Handshake OK)')
-
-    if wasNotReady and isNuiOpen then
-        DebugPrint('[mri_Qmultichar] NUI pronta após fallback, reenviando dados de abertura...')
-        isNuiOpen = false
-        openMultichar()
-    end
-
-    cb({ success = true })
 end)
 
 RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
@@ -1028,7 +700,7 @@ RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
         TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
     end
 
-    openMultichar()
+    Multichar.openMultichar()
     exports.mri_Qmultichar:setupPreviewCam()
 end)
 
@@ -1056,7 +728,7 @@ CreateThread(function()
             pcall(function() exports.spawnmanager:setAutoSpawn(false) end)
             Wait(250)
 
-            local payload = fetchInitialPayload()
+            local payload = lib.callback.await('mri_Qmultichar:server:getCharacters', false)
             local characters = payload and payload.characters or {}
             local firstCharacterCitizenId = characters[1] and characters[1].citizenid
 
@@ -1104,7 +776,7 @@ CreateThread(function()
             DebugPrint('[mri_Qmultichar] Abrindo NUI...')
 
             local timeout = 50
-            while not isNuiReady and timeout > 0 do
+            while not Multichar.isNuiReady() and timeout > 0 do
                 Wait(100)
                 timeout = timeout - 1
                 if timeout % 10 == 0 then
@@ -1112,17 +784,17 @@ CreateThread(function()
                 end
             end
 
-            if not isNuiReady then
+            if not Multichar.isNuiReady() then
                 lib.print.warn('[mri_Qmultichar] NUI demorou demais para sinalizar pronta, tentando abrir mesmo assim...')
             end
 
-            openMultichar()
+            Multichar.openMultichar()
 
             CreateThread(function()
                 Wait(2000)
-                if not isNuiOpen then
+                if not Multichar.isNuiOpen() then
                     lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando abrir novamente...')
-                    openMultichar()
+                    Multichar.openMultichar()
                 end
             end)
 
@@ -1130,20 +802,13 @@ CreateThread(function()
         end
     end
 
-    while isNuiOpen do
+    while Multichar.isNuiOpen() do
         SetEntityInvincible(PlayerPedId(), true)
         Wait(250)
     end
     SetEntityInvincible(PlayerPedId(), false)
 end)
 
-RegisterNetEvent('mri_Qmultichar:client:accentColorChanged', function(newColor)
-    if not isNuiOpen then return end
-    SendNUIMessage({ action = 'updateAccentColor', accentColor = newColor })
-end)
-
-exports('openMultichar', openMultichar)
-exports('closeMultichar', closeMultichar)
 exports('isInCharacterCreation', function()
-    return isCharacterCreationFlowActive()
+    return Multichar.isCharacterCreationFlowActive()
 end)
