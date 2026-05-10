@@ -84,7 +84,7 @@ local function call(method, ...)
     if not adapter or not adapter[method] then return false end
     local ok, err = pcall(adapter[method], Appearance.getResourceName(), ...)
     if not ok then
-        print(('[bridge/appearance] %s falhou: %s'):format(method, tostring(err)))
+        lib.print.error(('[bridge/appearance] %s falhou: %s'):format(method, tostring(err)))
         return false
     end
     return true
@@ -102,7 +102,7 @@ function Appearance.startCustomization(cb, cfg)
     end
     local ok, err = pcall(adapter.startCustomization, Appearance.getResourceName(), cb, cfg)
     if not ok then
-        print(('[bridge/appearance] startCustomization falhou: %s'):format(tostring(err)))
+        lib.print.error(('[bridge/appearance] startCustomization falhou: %s'):format(tostring(err)))
         if cb then cb(nil) end
         return false
     end

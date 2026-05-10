@@ -160,7 +160,7 @@ local function setupPreviewCam(scenario, pedCoords, camConfig)
     end)
     
     if isCreating then
-        lib.print.warn('[mri_Qmultichar] [CAMERA] setupPreviewCam chamado durante criação de personagem, ignorando...')
+        DebugPrint('[mri_Qmultichar] [CAMERA] setupPreviewCam chamado durante criação de personagem, ignorando...')
         return
     end
     
@@ -513,7 +513,7 @@ local function previewPed(citizenId, jobName)
     end)
     
     if isCreating then
-        lib.print.warn('[mri_Qmultichar] [PREVIEW] previewPed chamado durante criação de personagem, ignorando...')
+        DebugPrint('[mri_Qmultichar] [PREVIEW] previewPed chamado durante criação de personagem, ignorando...')
         return
     end
     

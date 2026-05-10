@@ -445,7 +445,7 @@ function Multichar.beginCharacterCreation(charData)
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando criação de personagem...')
 
             if isSpawning then
-                lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Spawn já em andamento, cancelando...')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Spawn já em andamento, cancelando...')
                 isCreatingCharacter = false
                 return
             end
@@ -555,7 +555,7 @@ function Multichar.beginCharacterCreation(charData)
 
                     if distance > 5.0 then
                         if isIlleniumCustomizationActive then
-                            lib.print.warn(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
+                            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
                             RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
                             while not HasCollisionLoadedAroundEntity(cache.ped) do
                                 Wait(0)

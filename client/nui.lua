@@ -207,7 +207,7 @@ end)
 
 RegisterNUICallback('getPreviewData', function(data, cb)
     if Multichar.isCharacterCreationFlowActive() then
-        lib.print.warn('[mri_Qmultichar] [PREVIEW] getPreviewData chamado durante fluxo de criação, ignorando...')
+        DebugPrint('[mri_Qmultichar] [PREVIEW] getPreviewData chamado durante fluxo de criação, ignorando...')
         cb({ success = false })
         return
     end
