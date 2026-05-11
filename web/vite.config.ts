@@ -10,8 +10,6 @@ export default defineConfig({
     },
   },
   build: {
-    // Build sai na pasta `html/` na raiz do resource (irmã de `web/`).
-    // O fxmanifest aponta `ui_page` direto pra `html/index.html`.
     outDir: path.resolve(__dirname, '../html'),
     emptyOutDir: true,
     rollupOptions: {
