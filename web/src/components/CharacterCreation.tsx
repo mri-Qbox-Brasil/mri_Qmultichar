@@ -1,17 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
-  MriButton,
-  MriCard,
-  MriCardContent,
-  MriCardHeader,
   MriDatePicker,
-  MriInput,
   MriModal,
-  MriSectionHeader,
   MriSelect,
 } from '@mriqbox/ui-kit'
 import { ArrowLeft, ShieldPlus, X } from 'lucide-react'
 import { nationalities } from '../data/nationalities'
+import { Input } from './ui/input'
 
 declare function GetParentResourceName(): string
 
@@ -104,157 +99,159 @@ export function CharacterCreation({
 
   return (
     <>
-      <div className="w-full max-w-3xl px-4">
-        <MriCard className="rounded-3xl border border-border/80 bg-card/95 shadow-2xl shadow-black/30">
-          <MriCardHeader className="space-y-4 border-b border-border/70 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <MriButton
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 rounded-2xl"
-                onClick={onCancel}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </MriButton>
+      <div className="w-full max-w-2xl px-4 animate-fade-in">
+        <div className="card-premium rounded-3xl border border-white/5 p-6 shadow-2xl space-y-6">
+          {/* Cabeçalho */}
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <button
+              type="button"
+              className="h-9 w-9 rounded-xl border border-white/5 bg-[#101116] hover:bg-[#181920] text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center cursor-pointer"
+              onClick={onCancel}
+              disabled={loading}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
 
-              <div className="flex-1 text-center">
-                <MriSectionHeader
-                  icon={ShieldPlus}
-                  title={locales.character_creation?.title ?? ''}
-                  className="!mb-0 justify-center"
+            <div className="flex-1 text-center px-4">
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-primary text-glow-primary flex items-center justify-center gap-2">
+                <ShieldPlus className="h-4 w-4 shrink-0" />
+                {locales.character_creation?.title ?? 'Criação de Personagem'}
+              </h2>
+              <p className="mt-1 text-[11px] text-muted-foreground uppercase tracking-wide">
+                {locales.character_creation?.description}
+              </p>
+            </div>
+
+            <div className="flex h-9 min-w-[2.25rem] items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-3 text-xs font-bold text-primary shadow-sm shadow-primary/10">
+              {slot}
+            </div>
+          </div>
+
+          {/* Formulário */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                  {locales.character_creation?.first_name || 'Nome'}
+                </label>
+                <Input
+                  required
+                  value={formData.firstname}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, firstname: event.target.value }))}
+                  placeholder={locales.character_creation?.first_name_placeholder}
+                  className="h-10 rounded-xl bg-[#090a0e]/60 border-white/5 focus-visible:ring-primary focus-visible:ring-offset-0 focus:border-primary placeholder:text-zinc-600 text-sm text-white"
+                  disabled={loading}
                 />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {locales.character_creation?.description}
-                </p>
               </div>
 
-              <div className="flex h-11 min-w-[2.75rem] items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary">
-                {slot}
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                  {locales.character_creation?.last_name || 'Sobrenome'}
+                </label>
+                <Input
+                  required
+                  value={formData.lastname}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, lastname: event.target.value }))}
+                  placeholder={locales.character_creation?.last_name_placeholder}
+                  className="h-10 rounded-xl bg-[#090a0e]/60 border-white/5 focus-visible:ring-primary focus-visible:ring-offset-0 focus:border-primary placeholder:text-zinc-600 text-sm text-white"
+                  disabled={loading}
+                />
               </div>
             </div>
-          </MriCardHeader>
 
-          <MriCardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.first_name}
-                  </label>
-                  <MriInput
-                    required
-                    value={formData.firstname}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, firstname: event.target.value }))}
-                    placeholder={locales.character_creation?.first_name_placeholder}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.last_name}
-                  </label>
-                  <MriInput
-                    required
-                    value={formData.lastname}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, lastname: event.target.value }))}
-                    placeholder={locales.character_creation?.last_name_placeholder}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.nationality}
-                  </label>
-                  <MriSelect
-                    portal={false}
-                    value={formData.nationality}
-                    options={nationalityOptions}
-                    onChange={(value) => setFormData((prev) => ({ ...prev, nationality: value }))}
-                    placeholder={locales.character_creation?.nationality_placeholder}
-                    searchPlaceholder={locales.character_creation?.nationality_search}
-                    emptyMessage={locales.character_creation?.nationality_empty}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    {locales.character_creation?.gender}
-                  </label>
-                  <MriSelect
-                    portal={false}
-                    value={formData.gender}
-                    options={genderOptions}
-                    onChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  {locales.character_creation?.birthdate}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                  {locales.character_creation?.nationality || 'Nacionalidade'}
                 </label>
-                <MriDatePicker
-                  value={birthdate}
-                  onChange={(date) => setBirthdate(date ?? null)}
-                  placeholder={locales.character_creation?.birthdate_placeholder}
-                  fromDate={MIN_BIRTHDATE}
-                  toDate={MAX_BIRTHDATE}
+                <MriSelect
+                  portal={false}
+                  value={formData.nationality}
+                  options={nationalityOptions}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, nationality: value }))}
+                  placeholder={locales.character_creation?.nationality_placeholder}
+                  searchPlaceholder={locales.character_creation?.nationality_search}
+                  emptyMessage={locales.character_creation?.nationality_empty}
                 />
               </div>
 
-              <div className="grid gap-3 pt-2 md:grid-cols-2">
-                <MriButton
-                  type="button"
-                  variant="outline"
-                  className="h-12 rounded-2xl"
-                  disabled={loading}
-                  onClick={onCancel}
-                >
-                  {locales.buttons?.cancel}
-                </MriButton>
-
-                <MriButton
-                  type="submit"
-                  className="h-12 rounded-2xl"
-                  disabled={loading}
-                  isLoading={loading}
-                >
-                  {loading
-                    ? locales.character_creation?.creating
-                    : locales.character_creation?.create}
-                </MriButton>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                  {locales.character_creation?.gender || 'Gênero'}
+                </label>
+                <MriSelect
+                  portal={false}
+                  value={formData.gender}
+                  options={genderOptions}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}
+                />
               </div>
-            </form>
-          </MriCardContent>
-        </MriCard>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                {locales.character_creation?.birthdate || 'Data de Nascimento'}
+              </label>
+              <MriDatePicker
+                value={birthdate}
+                onChange={(date) => setBirthdate(date ?? null)}
+                placeholder={locales.character_creation?.birthdate_placeholder}
+                fromDate={MIN_BIRTHDATE}
+                toDate={MAX_BIRTHDATE}
+              />
+            </div>
+
+            {/* Ações */}
+            <div className="grid gap-3 pt-2 md:grid-cols-2">
+              <button
+                type="button"
+                className="h-11 rounded-xl border border-white/5 bg-[#101116] hover:bg-[#181920] text-zinc-300 font-semibold text-xs uppercase transition-all duration-300 flex items-center justify-center cursor-pointer"
+                disabled={loading}
+                onClick={onCancel}
+              >
+                {locales.buttons?.cancel || 'Cancelar'}
+              </button>
+
+              <button
+                type="submit"
+                className="h-11 rounded-xl bg-primary text-black font-bold tracking-wide text-xs uppercase shadow-lg shadow-primary/10 transition-all duration-300 glow-primary-hover hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center cursor-pointer border-none"
+                disabled={loading}
+              >
+                {loading
+                  ? locales.character_creation?.creating || 'Criando...'
+                  : locales.character_creation?.create || 'Criar'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
       {errorMessage && (
         <MriModal
           onClose={() => setErrorMessage(null)}
           hideBlur
-          className="w-[min(92vw,28rem)] max-w-[28rem] overflow-hidden rounded-3xl border border-border/80 bg-card p-0 shadow-2xl"
+          className="w-[min(92vw,28rem)] max-w-[28rem] overflow-hidden rounded-3xl border border-white/5 bg-[#090a0e]/95 p-0 shadow-2xl"
         >
-          <div className="flex items-center justify-between border-b border-border/70 px-5 py-4">
-            <h3 className="text-lg font-semibold text-foreground">
-              {locales.character_creation?.warning_title}
+          <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+              {locales.character_creation?.warning_title || 'Aviso'}
             </h3>
-            <MriButton
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-2xl"
+            <button
+              type="button"
+              className="h-8 w-8 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center cursor-pointer"
               onClick={() => setErrorMessage(null)}
             >
               <X className="h-4 w-4" />
-            </MriButton>
+            </button>
           </div>
           <div className="space-y-4 p-5">
-            <p className="text-sm leading-6 text-muted-foreground">{errorMessage}</p>
-            <MriButton className="h-11 w-full rounded-2xl" onClick={() => setErrorMessage(null)}>
+            <p className="text-xs leading-5 text-muted-foreground">{errorMessage}</p>
+            <button
+              className="h-10 w-full rounded-xl bg-primary text-black font-bold text-xs uppercase shadow-md transition-all duration-300 hover:brightness-105 active:translate-y-0 flex items-center justify-center cursor-pointer border-none"
+              onClick={() => setErrorMessage(null)}
+            >
               OK
-            </MriButton>
+            </button>
           </div>
         </MriModal>
       )}

@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 160 100% 45%;
+    --primary-foreground: 144 100% 10%;
+    --secondary: 240 5% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 5% 15%;
+    --muted-foreground: 240 5% 60%;
+    --accent: 240 5% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 15%;
+    --input: 240 5% 15%;
+    --ring: 160 100% 45%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-transparent text-foreground antialiased;
+    font-family: 'Saira', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Truque do 1%: força o buffer de cor do CEF a ficar opaco. */
+html, body, #root {
+  background-color: rgba(0, 0, 0, 0.01) !important;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mri-app-shell {
+  background: transparent;
+  height: 100vh;
+}
+
+/* Popovers do Radix renderizam em portal no <body>; o SettingsPanel sobe a z-index
+   acima de 99999, então elevamos os popovers (color picker, etc.) acima dele. */
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
+}
+
+* {
+  transition-duration: 0.01s;
+}
