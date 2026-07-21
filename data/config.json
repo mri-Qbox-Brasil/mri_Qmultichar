@@ -1,0 +1,64 @@
+{
+    "showroom": {
+        "stages": [
+            {
+                "x": -119.91,
+                "y": -976.42,
+                "zOffset": -1.06,
+                "heading": 219.2,
+                "scenario": "WORLD_HUMAN_SEAT_WALL",
+                "z": 305.34
+            },
+            {
+                "x": -1221.39,
+                "y": -1517.02,
+                "zOffset": 0,
+                "heading": 138.74,
+                "scenario": "WORLD_HUMAN_AA_COFFEE",
+                "z": 3.25
+            },
+            {
+                "x": -1642.55,
+                "y": -1113.87,
+                "zOffset": 0.0,
+                "heading": 288.34,
+                "z": 12.03,
+                "scenario": "WORLD_HUMAN_TOURIST_MAP"
+            },
+            {
+                "x": 179.12,
+                "y": -1203.53,
+                "zOffset": 0,
+                "heading": 224.99,
+                "scenario": "WORLD_HUMAN_STUPOR",
+                "z": 28.3
+            },
+            {
+                "x": -1206.81,
+                "y": -1562.28,
+                "zOffset": 0,
+                "heading": 300.66,
+                "scenario": "WORLD_HUMAN_MUSCLE_FLEX",
+                "z": 3.61
+            }
+        ],
+        "nametag": {
+            "enabled": true,
+            "width": 3.8,
+            "height": 1.15,
+            "back": 0.75
+        }
+    },
+    "landing": {
+        "showContinue": true
+    },
+    "branding": {
+        "subtitle": "MOSTWANTED RP",
+        "title": "MRI",
+        "logoUrl": "https://i.ibb.co/Kj7K5W2P/mri2.png"
+    },
+    "slots": {
+        "default": 5,
+        "max": 10
+    }
+}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Saira:wght@700;800;900&display=swap');
+
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: transparent; overflow: hidden;
+    }
+    #n {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+    }
+
+    /* entrada / saída ao trocar de nome */
+    #n.in  { animation: mc-in  0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+    #n.out { animation: mc-out 0.26s cubic-bezier(0.5, 0, 0.75, 0) both; }
+    @keyframes mc-in {
+      from { opacity: 0; transform: translateY(14px) scale(0.92); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes mc-out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to   { opacity: 0; transform: translateY(-12px) scale(1.05); }
+    }
+
+    /* as duas camadas ocupam a MESMA célula do grid (sobrepostas) */
+    .txt {
+      grid-area: 1 / 1;
+      font-family: 'Saira', Arial, sans-serif; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.01em; white-space: nowrap; line-height: 1;
+    }
+    /* camada base: nome branco, legível */
+    #t { color: #fff; filter: drop-shadow(0 6px 34px rgba(0, 0, 0, 0.6)); }
+    /* camada de brilho: só a banda de luz clipada no texto, desliza e some */
+    #g {
+      color: transparent; -webkit-text-fill-color: transparent;
+      background-image: linear-gradient(
+        115deg,
+        transparent 42%, rgba(255, 255, 255, 0.15) 47%,
+        rgba(255, 255, 255, 0.95) 50%,
+        rgba(255, 255, 255, 0.15) 53%, transparent 58%
+      );
+      background-repeat: no-repeat; background-size: 220% 100%;
+      -webkit-background-clip: text; background-clip: text;
+      animation: mc-glare 4.5s ease-in-out infinite;
+    }
+    /* a banda passa rápido no começo e fica FORA do texto o resto do tempo,
+       então o loop volta sem piscar (nas duas pontas o texto está sem banda). */
+    @keyframes mc-glare {
+      0%   { background-position: 135% 0; }
+      18%  { background-position: -35% 0; }
+      100% { background-position: -35% 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="n"><span id="t" class="txt"></span><span id="g" class="txt" aria-hidden="true"></span></div>
+  <script>
+    const box = document.getElementById('n')
+    const t = document.getElementById('t')
+    const g = document.getElementById('g')
+
+    function fit() {
+      const maxW = window.innerWidth * 0.94
+      const maxH = window.innerHeight * 0.9
+      let s = 40
+      t.style.fontSize = s + 'px'
+      let guard = 500
+      while (t.offsetWidth < maxW && t.offsetHeight < maxH && s < 3000 && guard-- > 0) {
+        s += 16
+        t.style.fontSize = s + 'px'
+      }
+      s = Math.max(40, s - 16)
+      t.style.fontSize = s + 'px'
+      g.style.fontSize = s + 'px'
+    }
+
+    function enter(name) {
+      t.textContent = name
+      g.textContent = name
+      fit()
+      box.classList.remove('out', 'in')
+      void box.offsetWidth // reinicia a animação
+      box.classList.add('in')
+    }
+
+    // Na troca, o nome novo entra na hora (sem "sair" o antigo) — senão o nome
+    // velho fica visível atrás do ped novo por um instante durante o glide.
+    function setName(name) {
+      if (name === lastName) return // ignora reenvio do mesmo nome
+      lastName = name
+      enter(name)
+    }
+    let lastName = ''
+
+    window.addEventListener('message', (e) => {
+      if (e.data && typeof e.data.name === 'string') setName(e.data.name)
+    })
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { if (t.textContent) fit() })
+    }
+  </script>
+</body>
+</html>
