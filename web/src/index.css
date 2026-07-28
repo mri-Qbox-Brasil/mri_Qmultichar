@@ -60,6 +60,12 @@ html, body, #root {
   z-index: 999999 !important;
 }
 
+/* Forçar a remoção de fundos pretos em overlays (MriModal, Shadcn Dialog, Radix) */
+div[data-state="open"][class*="fixed"][class*="inset-0"] {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -77,10 +83,8 @@ html, body, #root {
   transition-duration: 0.15s;
 }
 
-/* Efeitos premium / Dashboard Admin */
 .card-premium {
-  background: linear-gradient(135deg, rgba(8, 8, 12, 0.93) 0%, rgba(4, 4, 6, 0.97) 100%);
-  backdrop-filter: blur(16px);
+  background: linear-gradient(135deg, rgba(8, 8, 12, 0.98) 0%, rgba(4, 4, 6, 0.99) 100%);
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 

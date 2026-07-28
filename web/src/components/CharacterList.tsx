@@ -89,23 +89,35 @@ export function CharacterList({
   }, [characters])
 
   const getCharacterForSlot = (slot: number): Character | undefined => {
+    // 1. Tenta encontrar um personagem mapeado exatamente para este slot (por cid)
     const byCid = characters.find((character) => character.cid === slot)
     if (byCid) return byCid
 
-    const usedCitizenIds = new Set<string>()
+    // 2. Identifica todos os personagens que já estão mapeados para algum dos slots visíveis
+    const mappedCitizenIds = new Set<string>()
     slots.forEach((currentSlot) => {
-      if (currentSlot !== slot) {
-        const character = characters.find((candidate) => candidate.cid === currentSlot)
-        if (character) {
-          usedCitizenIds.add(character.citizenid)
-        }
+      const char = characters.find((candidate) => candidate.cid === currentSlot)
+      if (char) {
+        mappedCitizenIds.add(char.citizenid)
       }
     })
 
-    for (const character of characters) {
-      if (!usedCitizenIds.has(character.citizenid) && (!character.cid || character.cid === slot)) {
-        return character
+    // 3. Encontra personagens que não estão mapeados em nenhum dos slots visíveis (ex: cid maior que maxSlots, ou nulo)
+    const unmappedCharacters = characters.filter((char) => !mappedCitizenIds.has(char.citizenid))
+
+    // 4. Encontra todos os slots visíveis que estão vazios (não possuem nenhum personagem associado por cid)
+    const emptySlots: number[] = []
+    slots.forEach((currentSlot) => {
+      const char = characters.find((candidate) => candidate.cid === currentSlot)
+      if (!char) {
+        emptySlots.push(currentSlot)
       }
+    })
+
+    // 5. Se este slot atual for um dos vazios, distribui os personagens não mapeados na ordem em que aparecem
+    const emptyIndex = emptySlots.indexOf(slot)
+    if (emptyIndex !== -1 && emptyIndex < unmappedCharacters.length) {
+      return unmappedCharacters[emptyIndex]
     }
 
     return undefined

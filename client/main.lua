@@ -190,7 +190,12 @@ local function prepareFreemodePedForCreation(gender)
     SetPlayerModel(cache.playerId, model)
     SetModelAsNoLongerNeeded(model)
 
-    Wait(150)
+    local timeout = 500
+    while GetEntityModel(PlayerPedId()) ~= model and timeout > 0 do
+        Citizen.Wait(10)
+        timeout = timeout - 10
+    end
+    Citizen.Wait(50)
 
     local ped = PlayerPedId()
     SetEntityVisible(ped, true, false)

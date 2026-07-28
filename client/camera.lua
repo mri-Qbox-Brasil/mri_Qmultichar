@@ -495,9 +495,18 @@ local function randomPed()
     local ped = randomPeds[math.random(1, #randomPeds)]
     lib.requestModel(ped.model, 60000)
     SetPlayerModel(cache.playerId, ped.model)
-    Appearance.setPedAppearance(PlayerPedId(), ped)
     SetModelAsNoLongerNeeded(ped.model)
-    SetEntityVisible(PlayerPedId(), true, 0)
+
+    local timeout = 500
+    while GetEntityModel(PlayerPedId()) ~= ped.model and timeout > 0 do
+        Citizen.Wait(10)
+        timeout = timeout - 10
+    end
+    Citizen.Wait(50)
+
+    local playerPed = PlayerPedId()
+    Appearance.setPedAppearance(playerPed, ped)
+    SetEntityVisible(playerPed, true, 0)
 
     destroyPreviewCam()
     Citizen.Wait(100)
@@ -529,11 +538,21 @@ local function previewPed(citizenId, jobName)
 
     local clothing, model = lib.callback.await('qbx_core:server:getPreviewPedData', false, citizenId)
     if model and clothing then
-        lib.requestModel(model, 60000)
-        SetPlayerModel(cache.playerId, model)
-        SetEntityVisible(PlayerPedId(), true)
-        Appearance.setPedAppearance(PlayerPedId(), json.decode(clothing))
-        SetModelAsNoLongerNeeded(model)
+        local modelHash = tonumber(model) or GetHashKey(model)
+        lib.requestModel(modelHash, 60000)
+        SetPlayerModel(cache.playerId, modelHash)
+        SetModelAsNoLongerNeeded(modelHash)
+
+        local timeout = 500
+        while GetEntityModel(PlayerPedId()) ~= modelHash and timeout > 0 do
+            Citizen.Wait(10)
+            timeout = timeout - 10
+        end
+        Citizen.Wait(50)
+
+        local playerPed = PlayerPedId()
+        SetEntityVisible(playerPed, true)
+        Appearance.setPedAppearance(playerPed, json.decode(clothing))
     else
         randomPed()
         return

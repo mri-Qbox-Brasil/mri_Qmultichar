@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import {
   MriDatePicker,
   MriModal,
@@ -42,6 +42,7 @@ export function CharacterCreation({
   const [birthdate, setBirthdate] = useState<Date | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const submitButtonRef = useRef<HTMLButtonElement>(null)
 
   const genderOptions = useMemo(
     () => [
@@ -58,6 +59,11 @@ export function CharacterCreation({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
+
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    if (submitter && submitter !== submitButtonRef.current) {
+      return
+    }
 
     if (!birthdate) {
       setErrorMessage(locales.character_creation?.select_birthdate ?? null)
@@ -165,7 +171,6 @@ export function CharacterCreation({
                   {locales.character_creation?.nationality || 'Nacionalidade'}
                 </label>
                 <MriSelect
-                  portal={false}
                   value={formData.nationality}
                   options={nationalityOptions}
                   onChange={(value) => setFormData((prev) => ({ ...prev, nationality: value }))}
@@ -180,7 +185,6 @@ export function CharacterCreation({
                   {locales.character_creation?.gender || 'Gênero'}
                 </label>
                 <MriSelect
-                  portal={false}
                   value={formData.gender}
                   options={genderOptions}
                   onChange={(value) => setFormData((prev) => ({ ...prev, gender: value }))}
@@ -213,6 +217,7 @@ export function CharacterCreation({
               </button>
 
               <button
+                ref={submitButtonRef}
                 type="submit"
                 className="h-11 rounded-xl bg-primary text-black font-bold tracking-wide text-xs uppercase shadow-lg shadow-primary/10 transition-all duration-300 glow-primary-hover hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center cursor-pointer border-none"
                 disabled={loading}
