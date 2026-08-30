@@ -183,27 +183,41 @@ local function isNuiFocusedSafe()
     return IsNuiFocused() == true
 end
 
-local function prepareFreemodePedForCreation(gender)
+-- Troca o modelo (delegada ao appearance) e posiciona o ped. O posicionamento vem
+-- logo depois da troca: SetPlayerModel recria o ped e o novo nasce na posição
+-- default da engine (aeroporto) até alguém colocá-lo no lugar.
+---@param gender number|string 1 = feminino
+---@param coords vector4 posição + heading da criação
+local function prepareFreemodePedForCreation(gender, coords)
     local model = tonumber(gender) == 1 and `mp_f_freemode_01` or `mp_m_freemode_01`
 
-    lib.requestModel(model, 60000)
-    SetPlayerModel(cache.playerId, model)
-    SetModelAsNoLongerNeeded(model)
+    RequestCollisionAtCoord(coords.x, coords.y, coords.z)
 
-    Wait(150)
+    if not Appearance.setPlayerModel(model) then
+        -- último recurso: mesma receita do illenium, na mão
+        lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] appearance sem setPlayerModel; trocando o modelo na mão')
+        lib.requestModel(model, 60000)
+        SetPlayerModel(cache.playerId, model)
+        SetModelAsNoLongerNeeded(model)
+        Wait(150)
+        SetPedDefaultComponentVariation(PlayerPedId())
+        if model == `mp_m_freemode_01` then
+            SetPedHeadBlendData(PlayerPedId(), 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, false)
+        else
+            SetPedHeadBlendData(PlayerPedId(), 45, 21, 0, 20, 15, 0, 0.3, 0.1, 0.0, false)
+        end
+    end
 
     local ped = PlayerPedId()
+
+    SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, true)
+    SetEntityHeading(ped, coords.w)
+
     SetEntityVisible(ped, true, false)
     ClearPedTasksImmediately(ped)
     ClearPedDecorations(ped)
-    SetPedDefaultComponentVariation(ped)
 
-    if model == `mp_m_freemode_01` then
-        SetPedHeadBlendData(ped, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, false)
-    else
-        SetPedHeadBlendData(ped, 45, 21, 0, 20, 15, 0, 0.3, 0.1, 0.0, false)
-    end
-
+    -- estado "cru" pro editor abrir
     for componentId = 0, 11 do
         SetPedComponentVariation(ped, componentId, 0, 0, 2)
     end
@@ -212,25 +226,17 @@ local function prepareFreemodePedForCreation(gender)
         ClearPedProp(ped, propId)
     end
 
-    SetPedComponentVariation(ped, 2, 0, 0, 2)
     SetPedHairColor(ped, 0, 0)
     return ped
 end
 
-local function openIlleniumCharacterCreator(gender)
+local function openIlleniumCharacterCreator()
     if not Appearance.isReady() then
         lib.print.error('[mri_Qmultichar] [CRIAÇÃO] nenhum resource de appearance compatível está iniciado')
         return false
     end
 
-    local illeniumLocation = getIlleniumLocation()
-    local ped = prepareFreemodePedForCreation(gender)
-
-    RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-    SetEntityCoords(ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
-    SetEntityHeading(ped, illeniumLocation.w)
-    SetEntityVisible(ped, true, false)
-
+    -- ped já trocado e posicionado em prepareFreemodePedForCreation
     isIlleniumCustomizationActive = true
 
     local ok = Appearance.startCustomization(function(appearance)
@@ -486,17 +492,16 @@ function Multichar.beginCharacterCreation(charData)
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Carregando colisão na localização do illenium...')
             RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-            while not HasCollisionLoadedAroundEntity(cache.ped) do
+            while not HasCollisionLoadedAroundEntity(PlayerPedId()) do
                 Wait(0)
             end
 
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Reposicionando personagem para localização do illenium...')
-            SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
-            SetEntityHeading(cache.ped, illeniumLocation.w)
-            SetEntityVisible(cache.ped, true, false)
+            -- troca de modelo + posicionamento com a tela ainda preta
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Preparando ped na localização do illenium...')
+            prepareFreemodePedForCreation(charData.gender, illeniumLocation)
 
             Citizen.Wait(200)
-            local newPos = GetEntityCoords(cache.ped)
+            local newPos = GetEntityCoords(PlayerPedId())
             DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Nova posição após reposicionar: %.2f, %.2f, %.2f',
                 newPos.x, newPos.y, newPos.z))
 
@@ -523,76 +528,42 @@ function Multichar.beginCharacterCreation(charData)
             isInCharacterCreation = true
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isInCharacterCreation = true')
 
+            -- Rede de segurança pro caso do callback do appearance nunca chegar.
+            -- Não toca na posição do ped: durante a edição quem manda é o appearance.
             CreateThread(function()
-                local illeniumLocation = getIlleniumLocation()
                 local maxWaitTime = 300000
                 local startTime = GetGameTimer()
-                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento iniciada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de segurança iniciada')
 
                 while isInCharacterCreation do
                     if GetGameTimer() - startTime > maxWaitTime then
-                        lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Timeout na thread de monitoramento, desativando...')
+                        lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Timeout na thread de segurança, finalizando...')
                         finishCharacterCreation('monitor_timeout')
                         break
                     end
 
+                    -- confirma depois de um respiro (o editor ainda pode estar abrindo)
                     if not isIlleniumCustomizationActive then
                         Wait(2000)
 
-                        if not isIlleniumCustomizationActive then
-                            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium não está mais ativo, desativando monitoramento...')
+                        if not isIlleniumCustomizationActive and isInCharacterCreation then
+                            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Editor fechado sem callback, finalizando...')
                             finishCharacterCreation('monitor_detected_closed')
                             break
-                        end
-                    end
-
-                    if LocalPlayer.state.isLoggedIn and not isIlleniumCustomizationActive then
-                        DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado (isLoggedIn = true), desativando monitoramento...')
-                        finishCharacterCreation('monitor_player_loaded')
-                        break
-                    end
-
-                    local currentCoords = GetEntityCoords(cache.ped)
-                    local distance = #(vector3(currentCoords.x, currentCoords.y, currentCoords.z) - vector3(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z))
-
-                    if distance > 5.0 then
-                        if isIlleniumCustomizationActive then
-                            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Jogador se afastou (distância: %.2f), reposicionando...', distance))
-                            RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-                            while not HasCollisionLoadedAroundEntity(cache.ped) do
-                                Wait(0)
-                            end
-                            SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
-                            SetEntityHeading(cache.ped, illeniumLocation.w)
-
-                            local afterPos = GetEntityCoords(cache.ped)
-                            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Reposicionado para: %.2f, %.2f, %.2f',
-                                afterPos.x, afterPos.y, afterPos.z))
-                        else
-                            Wait(3000)
-                            if LocalPlayer.state.isLoggedIn then
-                                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Personagem carregado após fechar illenium, desativando...')
-                                finishCharacterCreation('monitor_closed_after_loaded')
-                                break
-                            else
-                                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium fechado durante monitoramento, desativando...')
-                                finishCharacterCreation('monitor_closed_without_load')
-                                break
-                            end
                         end
                     end
 
                     Wait(500)
                 end
 
-                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de monitoramento finalizada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de segurança finalizada')
             end)
 
             DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Abrindo appearance (%s)...', Appearance.getResourceName() or '?'))
 
             Citizen.Wait(500)
 
-            if not openIlleniumCharacterCreator(charData.gender) then
+            if not openIlleniumCharacterCreator() then
                 lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Fallback para qb-clothes:client:CreateFirstCharacter')
                 isIlleniumCustomizationActive = true
                 TriggerEvent('qb-clothes:client:CreateFirstCharacter')

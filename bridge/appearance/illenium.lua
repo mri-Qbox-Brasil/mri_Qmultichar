@@ -10,6 +10,10 @@ function adapter.startCustomization(resourceName, cb, cfg)
     exports[resourceName]:startPlayerCustomization(cb, cfg)
 end
 
+function adapter.setPlayerModel(resourceName, model)
+    exports[resourceName]:setPlayerModel(model)
+end
+
 function adapter.saveAppearance(_, data)
     TriggerServerEvent('illenium-appearance:server:saveAppearance', data)
 end

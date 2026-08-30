@@ -11,31 +11,54 @@ local function isStarted(name)
     return s == 'started' or s == 'starting'
 end
 
+-- `provide 'x'` e `provides { 'x' }` podem cair em chaves de metadata diferentes
+local PROVIDE_KEYS = { 'provide', 'provides' }
+
+local function resourceProvides(resourceName, providedName)
+    for _, key in ipairs(PROVIDE_KEYS) do
+        local n = GetNumResourceMetadata(resourceName, key) or 0
+        for j = 0, n - 1 do
+            if GetResourceMetadata(resourceName, key, j) == providedName then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function findProviderOf(providedName)
     for i = 0, GetNumResources() - 1 do
         local name = GetResourceByFindIndex(i)
         if name and name ~= GetCurrentResourceName() and isStarted(name) then
-            local n = GetNumResourceMetadata(name, 'provide') or 0
-            for j = 0, n - 1 do
-                if GetResourceMetadata(name, 'provide', j) == providedName then
-                    return name
-                end
+            if resourceProvides(name, providedName) then
+                return name
             end
         end
     end
 end
 
+-- Um nome de `provide` responde 'started' no GetResourceState, mas os exports só
+-- existem sob o nome REAL do resource. GetResourceByFindIndex só lista nomes reais.
+local function isRealResource(name)
+    for i = 0, GetNumResources() - 1 do
+        if GetResourceByFindIndex(i) == name then return true end
+    end
+    return false
+end
+
 local function tryResolve(target)
-    if isStarted(target) then return target end
+    if isStarted(target) and isRealResource(target) then return target end
     return findProviderOf(target)
 end
 
 local function pickAdapterFor(name)
     if adapters[name] then return adapters[name] end
-    local n = GetNumResourceMetadata(name, 'provide') or 0
-    for j = 0, n - 1 do
-        local provided = GetResourceMetadata(name, 'provide', j)
-        if adapters[provided] then return adapters[provided] end
+    for _, key in ipairs(PROVIDE_KEYS) do
+        local n = GetNumResourceMetadata(name, key) or 0
+        for j = 0, n - 1 do
+            local provided = GetResourceMetadata(name, key, j)
+            if adapters[provided] then return adapters[provided] end
+        end
     end
 end
 
@@ -111,6 +134,13 @@ end
 
 function Appearance.saveAppearance(data)
     return call('saveAppearance', data)
+end
+
+---Troca o modelo do ped pelo appearance (ele já faz componentes default + head blend).
+---@param model number|string
+---@return boolean ok false se o adapter não suporta
+function Appearance.setPlayerModel(model)
+    return call('setPlayerModel', model)
 end
 
 AddEventHandler('onClientResourceStop', function(name)

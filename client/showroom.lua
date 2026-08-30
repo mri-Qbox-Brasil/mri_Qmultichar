@@ -479,14 +479,19 @@ function Showroom.build(characters, preferId)
         SetCamCoord(sceneCam, cur.x, cur.y, cur.z)
         PointCamAtCoord(sceneCam, cur.lx, cur.ly, cur.lz)
     else
-        -- sem personagens: enquadra o palco vazio
-        local fx, fy = forwardOf(cfg.heading)
-        local gz = groundZAt(cfg.origin.x, cfg.origin.y, cfg.origin.z)
-        cur = {
-            x = cfg.origin.x + fx * cfg.cam.distance, y = cfg.origin.y + fy * cfg.cam.distance, z = gz + cfg.cam.height,
-            lx = cfg.origin.x, ly = cfg.origin.y, lz = gz + cfg.cam.lookHeight,
+        -- Sem personagens: enquadra a MESMA stage que recebeu o foco de streaming
+        -- lá em cima (`focusStage`). Antes a câmera ia pro `cfg.origin` do
+        -- config.lua enquanto o SetFocusPosAndVel apontava pra `stages[1]` do
+        -- painel — lugares diferentes, então a câmera ficava numa área não
+        -- streamada e o mundo aparecia sem textura/LOD.
+        setNametag('')
+        local fe = {
+            pos = { x = focusStage.x, y = focusStage.y },
+            groundZ = focusStage.z + (focusStage.zOffset or 0.0),
+            heading = focusStage.heading,
         }
-        target = { x = cur.x, y = cur.y, z = cur.z, lx = cur.lx, ly = cur.ly, lz = cur.lz }
+        target = camPoseFor(fe)
+        cur = { x = target.x, y = target.y, z = target.z, lx = target.lx, ly = target.ly, lz = target.lz }
         copyPose(glideStart, cur)
         glideAt = 0
         SetCamCoord(sceneCam, cur.x, cur.y, cur.z)

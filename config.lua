@@ -177,7 +177,7 @@ Config.CharacterCreation = {
     profanityWords = {
         ['bad word'] = true,
     },
-    createLocation = vector4(-66.28, -822.13, 285.61 - 1, 70.82),
+    createLocation = vector4(-1377.26, -1431.22, 2.58, 86.60),
 }
 
 Config.DeleteTables = {
@@ -186,7 +186,6 @@ Config.DeleteTables = {
 Config.Appearance = {
     resource = 'auto',
     autoPreference = {
-        'mri_Qappearance',
         'illenium-appearance',
         'fivem-appearance',
     },
