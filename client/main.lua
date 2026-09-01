@@ -258,7 +258,13 @@ local function openIlleniumCharacterCreator()
         return false
     end
 
-    Wait(200)
+    -- Espera o editor assumir o foco da NUI. Era um Wait(200) fixo: na criacao
+    -- do primeiro personagem o appearance ainda esta inicializando e passa
+    -- disso, entao caia no fallback e os dois fluxos disputavam bucket e ped.
+    local deadline = GetGameTimer() + 5000
+    while not isNuiFocusedSafe() and GetGameTimer() < deadline do
+        Wait(50)
+    end
 
     if not isNuiFocusedSafe() then
         isIlleniumCustomizationActive = false
@@ -461,6 +467,15 @@ function Multichar.beginCharacterCreation(charData)
             isSpawning = true
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isSpawning = true')
 
+            -- Escurece ANTES de desmontar o showroom: o destroy devolve o ped do
+            -- player visivel e solta a camera, entao com a tela aberta da pra ver
+            -- o ped na cena e a viagem ate o aeroporto que o SetPlayerModel causa.
+            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade out...')
+            DoScreenFadeOut(500)
+            while not IsScreenFadedOut() do
+                Wait(0)
+            end
+
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo showroom...')
             Showroom.destroy()
             Multichar.closeMultichar()
@@ -479,12 +494,6 @@ function Multichar.beginCharacterCreation(charData)
             local currentPos = GetEntityCoords(cache.ped)
             DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição atual: %.2f, %.2f, %.2f',
                 currentPos.x, currentPos.y, currentPos.z))
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade out...')
-            DoScreenFadeOut(500)
-            while not IsScreenFadedOut() do
-                Wait(0)
-            end
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Limpando preview de jobs...')
             FreezeEntityPosition(PlayerPedId(), false)
@@ -563,6 +572,10 @@ function Multichar.beginCharacterCreation(charData)
 
             Citizen.Wait(500)
 
+            -- Ultimo recurso, so se o editor nao abrir mesmo apos o timeout. Este
+            -- caminho refaz bucket e roupas por conta propria (o mri_Qappearance
+            -- atende o evento e chama InitializeCharacter), entao pode conflitar
+            -- com o bucket 2 e o ped ja preparados aqui.
             if not openIlleniumCharacterCreator() then
                 lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Fallback para qb-clothes:client:CreateFirstCharacter')
                 isIlleniumCustomizationActive = true
