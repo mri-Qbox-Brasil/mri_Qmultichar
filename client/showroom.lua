@@ -512,7 +512,9 @@ function Showroom.build(characters, preferId)
         end
     end)
 
-    DoScreenFadeIn(800)
+    if not keepFaded then
+        DoScreenFadeIn(800)
+    end
 end
 
 ---Busca a lista de personagens e monta o showroom (usado no logout/reabrir).
@@ -527,7 +529,11 @@ function Showroom.open(characters, preferId)
     Showroom.build(characters, preferId)
 end
 
-function Showroom.destroy()
+---@param keepFaded boolean|nil true = nao faz fade-in ao sair. Use quando quem
+--- chama vai continuar a transicao (ex: entrar no personagem -> UI do spawn):
+--- abrir a tela no meio mostra o mundo com a camera solta e o ped escondido,
+--- e o jogo parece travado ate a proxima UI aparecer.
+function Showroom.destroy(keepFaded)
     active = false
     buildToken = buildToken + 1
 

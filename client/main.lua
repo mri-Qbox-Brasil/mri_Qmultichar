@@ -288,7 +288,7 @@ local function spawnLastLocation()
         Wait(0)
     end
 
-    Showroom.destroy()
+    Showroom.destroy(true)
 
     Citizen.Wait(200)
 
@@ -405,7 +405,7 @@ function Multichar.beginCharacterLoad(citizenId, options)
 
             TriggerServerEvent('mri_Qmultichar:server:recordLastPlayed', citizenId)
 
-            Showroom.destroy()
+            Showroom.destroy(true)
             Multichar.closeMultichar()
 
             Citizen.Wait(200)
@@ -477,7 +477,7 @@ function Multichar.beginCharacterCreation(charData)
             end
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo showroom...')
-            Showroom.destroy()
+            Showroom.destroy(true)
             Multichar.closeMultichar()
 
             Citizen.Wait(500)

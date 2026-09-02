@@ -4,7 +4,7 @@ game 'gta5'
 name 'mri_Qmultichar'
 description 'Multichar externo com NUI moderna baseada em shadcn/ui'
 author 'MRI'
-version '1.0.4'
+version '1.0.5'
 
 ox_lib 'locale'
 
