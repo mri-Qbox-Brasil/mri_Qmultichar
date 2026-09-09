@@ -428,17 +428,24 @@ function Showroom.build(characters, preferId)
 
     -- carrega colisão/streaming no palco e espera a cena carregar (o foco já
     -- está no palco, então o streaming acontece ali)
+    -- Sai assim que o chao resolve, com um settle curto pras texturas/LOD
+    -- entrarem. Antes o break exigia `waited >= 700`, entao mesmo com o chao
+    -- pronto em 50ms o loop girava ate completar 700ms — era piso fixo, nao
+    -- teto. O 3000 continua sendo o teto de streaming (nao e rede de seguranca:
+    -- estourando, o mundo aparece montando).
+    local SETTLE_MS = 150
     local grounded = false
     local waited = 0
+    local settleUntil
     while waited < 3000 do
         RequestCollisionAtCoord(focusStage.x, focusStage.y, focusStage.z)
         Wait(50)
         waited = waited + 50
-        if GetGroundZFor_3dCoord(focusStage.x, focusStage.y, focusStage.z + 10.0, false) then
+        if not grounded and GetGroundZFor_3dCoord(focusStage.x, focusStage.y, focusStage.z + 10.0, false) then
             grounded = true
-            -- ganha um tempinho extra pras texturas/LOD depois que a colisão entra
-            if waited >= 700 then break end
+            settleUntil = waited + SETTLE_MS
         end
+        if grounded and waited >= settleUntil then break end
     end
     if not grounded then
         Wait(200)

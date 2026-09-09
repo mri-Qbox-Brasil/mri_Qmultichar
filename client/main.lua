@@ -734,18 +734,33 @@ CreateThread(function()
             end
 
             FreezeEntityPosition(cache.ped, true)
-            Wait(1000)
 
+            -- Sem espera fixa aqui: o Wait(1000) que existia nao aguardava nada
+            -- verificavel — o gate real e o loop de colisao logo abaixo, que ja
+            -- espera o mundo estar solido sob o ped.
             RequestCollisionAtCoord(randomLocation.pedCoords.x, randomLocation.pedCoords.y, randomLocation.pedCoords.z)
-            while not HasCollisionLoadedAroundEntity(cache.ped) do Wait(0) end
+            -- Teto de 25s: rede de seguranca pra o login nunca travar pra sempre
+            -- se a colisao nao vier. Alto de proposito pra nao mascarar medicao.
+            local collisionDeadline = GetGameTimer() + 25000
+            while not HasCollisionLoadedAroundEntity(cache.ped) and GetGameTimer() < collisionDeadline do
+                Wait(0)
+            end
+            if not HasCollisionLoadedAroundEntity(cache.ped) then
+                lib.print.warn('[mri_Qmultichar] Colisao nao carregou em 25s; seguindo mesmo assim.')
+            end
 
             SetEntityCoords(cache.ped, randomLocation.pedCoords.x, randomLocation.pedCoords.y, randomLocation.pedCoords.z, false, false, false, false)
             SetEntityHeading(cache.ped, randomLocation.pedCoords.w)
 
             NetworkStartSoloTutorialSession()
 
-            while not NetworkIsInTutorialSession() do
+            -- Mesma rede de seguranca de 25s do loop de colisao acima.
+            local tutorialDeadline = GetGameTimer() + 25000
+            while not NetworkIsInTutorialSession() and GetGameTimer() < tutorialDeadline do
                 Wait(0)
+            end
+            if not NetworkIsInTutorialSession() then
+                lib.print.warn('[mri_Qmultichar] Sessao de tutorial nao iniciou em 25s; seguindo mesmo assim.')
             end
 
             Wait(250)
@@ -759,11 +774,16 @@ CreateThread(function()
             Wait(100)
             DebugPrint('[mri_Qmultichar] Abrindo NUI...')
 
-            local timeout = 50
-            while not Multichar.isNuiReady() and timeout > 0 do
-                Wait(100)
-                timeout = timeout - 1
-                if timeout % 10 == 0 then
+            -- Polling de 16ms (1 frame) em vez de 100ms: este handshake e a
+            -- ULTIMA etapa antes da tela aparecer, entao a granularidade grossa
+            -- entrava inteira no tempo percebido. Teto de 25s pelo mesmo motivo
+            -- dos loops acima — nao mascarar o tempo real da NUI na medicao.
+            local nuiDeadline = GetGameTimer() + 25000
+            local nextLog = GetGameTimer() + 1000
+            while not Multichar.isNuiReady() and GetGameTimer() < nuiDeadline do
+                Wait(16)
+                if GetGameTimer() >= nextLog then
+                    nextLog = GetGameTimer() + 1000
                     DebugPrint('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
                 end
             end
