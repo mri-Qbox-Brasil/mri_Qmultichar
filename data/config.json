@@ -1,64 +1,64 @@
 {
-    "landing": {
-        "showContinue": true
-    },
     "branding": {
-        "logoUrl": "",
+        "subtitle": "",
         "title": "",
-        "subtitle": ""
+        "logoUrl": ""
     },
     "showroom": {
         "stages": [
             {
-                "scenario": "WORLD_HUMAN_SEAT_WALL",
-                "y": -976.42,
-                "x": -119.91,
-                "heading": 219.2,
-                "z": 305.34,
-                "zOffset": -1.06
+                "scenario": "WORLD_HUMAN_STAND_IMPATIENT",
+                "z": 2.41,
+                "heading": 174.2,
+                "zOffset": 0.03,
+                "y": -1415.74,
+                "x": -1379.1
             },
             {
-                "scenario": "WORLD_HUMAN_AA_COFFEE",
-                "y": -1517.02,
-                "x": -1221.39,
-                "heading": 138.74,
-                "z": 3.25,
-                "zOffset": 0
+                "scenario": "SIT_GROUND",
+                "z": 4.61,
+                "heading": 198.74,
+                "zOffset": 0,
+                "y": -1411.68,
+                "x": -1381.27
             },
             {
                 "scenario": "WORLD_HUMAN_TOURIST_MAP",
-                "y": -1113.87,
-                "x": -1642.55,
-                "heading": 288.34,
-                "z": 12.03,
-                "zOffset": 0
+                "z": 3.06,
+                "heading": 183.34,
+                "zOffset": 0,
+                "y": -1413.29,
+                "x": -1377.75
             },
             {
-                "scenario": "WORLD_HUMAN_STUPOR",
-                "y": -1203.53,
-                "x": 179.12,
-                "heading": 224.99,
-                "z": 28.3,
-                "zOffset": 0
+                "scenario": "WORLD_HUMAN_SEAT_LEDGE",
+                "z": 5.79,
+                "heading": 176.99,
+                "zOffset": -1.04,
+                "y": -1411.79,
+                "x": -1375.43
             },
             {
-                "scenario": "WORLD_HUMAN_MUSCLE_FLEX",
-                "y": -1562.28,
-                "x": -1206.81,
-                "heading": 300.66,
-                "z": 3.61,
-                "zOffset": 0
+                "scenario": "WORLD_HUMAN_DRUG_DEALER_HARD",
+                "z": 2.34,
+                "heading": 132.66,
+                "zOffset": 0,
+                "y": -1415.24,
+                "x": -1374.04
             }
         ],
         "nametag": {
+            "back": 0.75,
             "enabled": true,
             "width": 3.8,
-            "height": 1.15,
-            "back": 0.75
+            "height": 1.15
         }
     },
     "slots": {
-        "default": 5,
-        "max": 10
+        "max": 10,
+        "default": 5
+    },
+    "landing": {
+        "showContinue": true
     }
 }

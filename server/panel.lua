@@ -120,7 +120,7 @@ end)
 
 -- Registro como plugin do mri_Qadmin (aba embutida). Opcional: se o Qadmin não
 -- estiver rodando, o /adminchar standalone continua funcionando.
-CreateThread(function()
+local function doRegister()
     if GetResourceState('mri_Qadmin') ~= 'started' then return end
     local ok, err = pcall(function()
         exports['mri_Qadmin']:RegisterPlugin({
@@ -136,4 +136,23 @@ CreateThread(function()
     if not ok then
         lib.print.warn(string.format('[mri_Qmultichar] Falha ao registrar plugin no mri_Qadmin: %s', tostring(err)))
     end
+end
+
+-- Sinal oficial do Qadmin: emitido sempre que o registry dele fica pronto,
+-- inclusive num `ensure mri_Qadmin` com este resource já de pé. Sem escutar,
+-- o registro era one-shot no boot e o plugin sumia do painel a cada restart
+-- do Qadmin, sem voltar até reiniciar o multichar.
+AddEventHandler('mri_Qadmin:server:pluginsReady', doRegister)
+
+-- Qadmin inicia/reinicia → re-registra automaticamente. Redundante com o
+-- pluginsReady de propósito: cobre o caso de o registry já estar pronto antes
+-- deste handler existir. O RegisterPlugin é idempotente por `id`.
+AddEventHandler('onServerResourceStart', function(resourceName)
+    if resourceName == 'mri_Qadmin' then doRegister() end
+end)
+
+-- Este resource inicia com o Qadmin já rodando → registra imediatamente.
+CreateThread(function()
+    Wait(0)
+    doRegister()
 end)
