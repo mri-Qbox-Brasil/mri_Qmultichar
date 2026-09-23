@@ -268,10 +268,25 @@ RegisterNUICallback('close', function(_, cb)
     cb({ success = true })
 end)
 
+-- Estilo visual do painel /uiconfig do ox_lib (radius, cores de status, etc).
+-- Em thread própria: se o ox_lib não tiver o callback (sem a mri/), só isso
+-- fica esperando e a abertura do multichar não trava.
+local function pushUiConfig()
+    CreateThread(function()
+        local uiConfig = lib.callback.await('ox_lib:getUiConfig', false)
+        if type(uiConfig) ~= 'table' then return end
+        SendNUIMessage({ action = 'applyUiConfig', uiConfig = uiConfig })
+    end)
+end
+
 RegisterNUICallback('nuiStarted', function(_, cb)
     local wasNotReady = not isNuiReady
     isNuiReady = true
     DebugPrint('[mri_Qmultichar] NUI sinalizou que está pronta (Handshake OK)')
+
+    if wasNotReady then
+        pushUiConfig()
+    end
 
     if wasNotReady and isNuiOpen then
         DebugPrint('[mri_Qmultichar] NUI pronta após fallback, reenviando dados de abertura...')
@@ -285,6 +300,12 @@ end)
 RegisterNetEvent('mri_Qmultichar:client:accentColorChanged', function(newColor)
     if not isNuiOpen then return end
     SendNUIMessage({ action = 'updateAccentColor', accentColor = newColor })
+end)
+
+-- Broadcast do ox_lib quando o admin salva o /uiconfig — reaplica sem restart.
+RegisterNetEvent('ox_lib:uiConfigChanged', function(newConfig)
+    if type(newConfig) ~= 'table' then return end
+    SendNUIMessage({ action = 'applyUiConfig', uiConfig = newConfig })
 end)
 
 -- Broadcast do painel /adminchar (branding/landing) — atualiza a NUI ao vivo.
