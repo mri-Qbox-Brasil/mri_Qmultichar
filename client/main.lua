@@ -275,6 +275,14 @@ local function openIlleniumCharacterCreator()
     return true
 end
 
+-- O ps-housing so monta os imoveis no client no OnPlayerLoaded e avisa com
+-- initialisedProperties; entrar antes disso quebra o EnterShell dele. Se o
+-- player ja esta logado (relog ou restart deste resource), ja foram montados.
+local housingReady = LocalPlayer.state.isLoggedIn == true
+AddEventHandler('ps-housing:client:initialisedProperties', function()
+    housingReady = true
+end)
+
 local function spawnLastLocation()
     if isSpawning then
         return
@@ -303,12 +311,20 @@ local function spawnLastLocation()
 
     Citizen.Wait(1000)
 
-    TriggerServerEvent('mri_Qmultichar:server:enterLastProperty')
-
     TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
     TriggerEvent('QBCore:Client:OnPlayerLoaded')
-    TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
-    TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
+
+    -- Depois do OnPlayerLoaded: e nele que o ps-housing monta os imoveis no client.
+    local insideMeta = QBX.PlayerData.metadata.inside
+    if GetResourceState('ps-housing') == 'started' and insideMeta and insideMeta.property_id then
+        local deadline = GetGameTimer() + 10000
+        while not housingReady and GetGameTimer() < deadline do Wait(50) end
+        if housingReady then
+            TriggerServerEvent('ps-housing:server:enterProperty', tostring(insideMeta.property_id))
+        else
+            lib.print.warn('[mri_Qmultichar] ps-housing nao carregou os imoveis; entrada no imovel cancelada.')
+        end
+    end
 
     while not IsScreenFadedIn() do
         Wait(0)
@@ -346,8 +362,6 @@ local function spawnDefault()
 
     TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
     TriggerEvent('QBCore:Client:OnPlayerLoaded')
-    TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
-    TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
 
     if not isInCharacterCreation then
         isInCharacterCreation = true
@@ -522,8 +536,6 @@ function Multichar.beginCharacterCreation(charData)
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Disparando eventos do qbx_core...')
             TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
             TriggerEvent('QBCore:Client:OnPlayerLoaded')
-            TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
-            TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
 
             Wait(500)
 

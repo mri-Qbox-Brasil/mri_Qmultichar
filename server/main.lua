@@ -295,16 +295,6 @@ RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
     DebugPrint(string.format('[mri_Qmultichar] [SERVER] Bucket %d definido para source %d', bucket, source))
 end)
 
----Recoloca o jogador dentro do imóvel em que deslogou. O ps-housing é dono do
----metadata `inside` e confere o acesso; versões sem a API de spawn são ignoradas.
-RegisterNetEvent('mri_Qmultichar:server:enterLastProperty', function()
-    local source = source
-    if GetResourceState('ps-housing') ~= 'started' then return end
-    local ok, propertyId = pcall(exports['ps-housing'].getInsideProperty, exports['ps-housing'], source)
-    if not ok or not propertyId then return end
-    pcall(exports['ps-housing'].spawnInProperty, exports['ps-housing'], source, tostring(propertyId))
-end)
-
 local function doesTableExist(tableName)
     local result = MySQL.single.await('SELECT COUNT(*) as count FROM information_schema.TABLES WHERE TABLE_NAME = ? AND TABLE_SCHEMA in (SELECT DATABASE())', {tableName})
     return result and result.count > 0
