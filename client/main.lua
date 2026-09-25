@@ -303,10 +303,7 @@ local function spawnLastLocation()
 
     Citizen.Wait(1000)
 
-    local insideMeta = QBX.PlayerData.metadata.inside
-    if GetResourceState('ps-housing') == 'started' and insideMeta.propertyId then
-        TriggerServerEvent('ps-housing:server:enterProperty', tostring(insideMeta.propertyId))
-    end
+    TriggerServerEvent('mri_Qmultichar:server:enterLastProperty')
 
     TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
     TriggerEvent('QBCore:Client:OnPlayerLoaded')
