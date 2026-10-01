@@ -13,6 +13,36 @@ local defaultConfig = {
     landing = {
         showContinue = true,
     },
+    -- música de fundo, trocada na aba Tela inicial (o valor vive no data/config.json)
+    music = {
+        enabled = false,
+        url = '',
+        volume = 0.3,
+        loop = true,
+        autoplay = true,
+        -- faixas das outras fases da criação; vazio = segue a faixa da fase anterior
+        cues = { creation = '', editor = '', arrival = '' },
+    },
+    -- histórias de chegada (client/stories/<id>.lua). spawn = onde o jogador termina a
+    -- cena; no contêiner, onde ele pisa ao sair, de costas pro contêiner. Os valores
+    -- vivem no data/config.json; aqui só o formato.
+    arrivals = {
+        container = { enabled = false, spawn = {}, track = '' },
+        plane = { enabled = false, spawn = {}, track = '' },
+    },
+    -- abertura (tela de título antes do showroom): planos da cidade em loop, cada um
+    -- { x, y, z, rx, rz, fov } (posição e rotação da câmera). Sem plano = sem abertura.
+    intro = {
+        enabled = false,
+        shots = {},
+    },
+    -- hora e clima fixos enquanto a tela de personagens está aberta
+    ambience = {
+        enabled = false,
+        hour = 19,
+        minute = 0,
+        weather = 'EXTRASUNNY',
+    },
     -- slots de personagem geridos pelo painel (substituem os comandos).
     slots = {
         default = 3, -- slots que todo jogador tem por padrão
@@ -22,13 +52,6 @@ local defaultConfig = {
     -- cada uma: { x, y, z, heading, scenario }. vazio = usa a fileira automática do config.lua.
     showroom = {
         stages = {},
-        -- nome 3D atrás do ped (DUI). tunável in-game pelo /adminchar.
-        nametag = {
-            enabled = true,
-            back = 0.75,
-            height = 1.15,
-            width = 3.8,
-        },
     },
 }
 
@@ -108,13 +131,61 @@ lib.callback.register('mri_Qmultichar:server:saveConfig', function(source, paylo
 
     -- garante o shape completo mesmo que o painel mande parcial
     fillDefaults(payload, defaultConfig)
+
+    local music = payload.music
+    music.enabled = music.enabled == true
+    music.url = type(music.url) == 'string' and music.url:sub(1, 300) or ''
+    music.volume = math.max(0.0, math.min(1.0, tonumber(music.volume) or 0.3))
+    music.loop = music.loop ~= false
+    music.autoplay = music.autoplay ~= false
+    for _, cue in ipairs({ 'creation', 'editor', 'arrival' }) do
+        local url = music.cues[cue]
+        music.cues[cue] = type(url) == 'string' and url:sub(1, 300) or ''
+    end
+    -- only the stories that exist; anything else from an older config is dropped
+    local arrivals = {}
+    for id in pairs(defaultConfig.arrivals) do
+        local a = type(payload.arrivals[id]) == 'table' and payload.arrivals[id] or {}
+        local p = a.spawn
+        local placed = type(p) == 'table' and type(p.x) == 'number' and type(p.y) == 'number' and type(p.z) == 'number'
+        arrivals[id] = {
+            enabled = a.enabled == true,
+            spawn = placed and { x = p.x, y = p.y, z = p.z, heading = tonumber(p.heading) or 0.0 } or {},
+            -- the story's own track (same link formats as the music tab); empty = the arrival track
+            track = type(a.track) == 'string' and a.track:sub(1, 300) or '',
+        }
+    end
+    payload.arrivals = arrivals
+    local intro = payload.intro
+    intro.enabled = intro.enabled == true
+    local shots = {}
+    for _, s in ipairs(type(intro.shots) == 'table' and intro.shots or {}) do
+        if type(s) == 'table' and type(s.x) == 'number' and type(s.y) == 'number' and type(s.z) == 'number' then
+            shots[#shots + 1] = {
+                x = s.x, y = s.y, z = s.z,
+                rx = tonumber(s.rx) or 0.0,
+                rz = tonumber(s.rz) or 0.0,
+                fov = math.max(10.0, math.min(90.0, tonumber(s.fov) or 50.0)),
+            }
+        end
+    end
+    intro.shots = shots
+    local ambience = payload.ambience
+    ambience.enabled = ambience.enabled == true
+    ambience.hour = math.floor(math.max(0, math.min(23, tonumber(ambience.hour) or 19)))
+    ambience.minute = math.floor(math.max(0, math.min(59, tonumber(ambience.minute) or 0)))
+    local knownWeather = false
+    for _, w in ipairs(Config.Intro.weathers) do
+        if w.id == ambience.weather then knownWeather = true break end
+    end
+    if not knownWeather then ambience.weather = 'EXTRASUNNY' end
     config = payload
 
     if not saveToDisk() then
         return false, 'falha ao salvar'
     end
 
-    TriggerClientEvent('mri_Qmultichar:client:configChanged', -1, config)
+    TriggerClientEvent('mri_Qmultichar:client:configChanged', -1, config, ArrivalsOffered(config))
     return true, config
 end)
 

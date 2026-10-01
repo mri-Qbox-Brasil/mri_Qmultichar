@@ -9,9 +9,8 @@ local isCreatingCharacter = false
 local isInCharacterCreation = false
 local isIlleniumCustomizationActive = false
 local isLoadingCharacter = false
-
-local lastDeleteTime = 0
-local DELETE_COOLDOWN = 3000
+-- chegada escolhida no capítulo Chegada: { id, config, credit }, toca quando o editor fecha
+local pendingArrival = nil
 
 local function awaitPlayerData(maxWaitMs)
     local elapsed = 0
@@ -35,24 +34,7 @@ local function awaitPlayerData(maxWaitMs)
 end
 
 local function getQbxConfig()
-    local success, qbxConfig = pcall(function()
-        return require('@qbx_core/config/client')
-    end)
-
-    if success and qbxConfig and qbxConfig.characters then
-        return qbxConfig
-    end
-
-    return {
-        characters = {
-            locations = {
-                {
-                    pedCoords = vector4(-66.28, -822.13, 285.61 - 1, 70.82),
-                },
-            },
-            startingApartment = false,
-        }
-    }
+    return require('@qbx_core/config/client')
 end
 
 local function isResourceStarted(resourceName)
@@ -64,10 +46,6 @@ function Multichar.isCharacterCreationFlowActive()
     return isCreatingCharacter or isInCharacterCreation
 end
 
-function Multichar.markDeleteTimestamp()
-    lastDeleteTime = GetGameTimer()
-end
-
 local function finishCharacterCreation(reason, waitTime)
     local shouldReset = Multichar.isCharacterCreationFlowActive() or isIlleniumCustomizationActive
 
@@ -75,6 +53,13 @@ local function finishCharacterCreation(reason, waitTime)
 
     if not shouldReset then
         return
+    end
+
+    -- the editor just released its camera: take it in this same frame, no cut
+    local arrival = pendingArrival
+    pendingArrival = nil
+    if arrival then
+        Prelude.takeCamera()
     end
 
     if waitTime and waitTime > 0 then
@@ -97,10 +82,26 @@ local function finishCharacterCreation(reason, waitTime)
         end
     end)
 
-    TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+    FreezeEntityPosition(PlayerPedId(), false)
+    Showroom.studioEnd()
+    Intro.ambienceStop()
     isInCharacterCreation = false
     isCreatingCharacter = false
     DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Criação finalizada, flags resetadas')
+
+    -- a cena roda na instância da criação (os outros não veem o veículo local); o
+    -- mundo normal só depois dela
+    -- a trilha da criação acaba aqui, ou depois da chegada
+    if arrival then
+        CreateThread(function()
+            Arrival.play(arrival.id, arrival.config, arrival.credit)
+            SendNUIMessage({ action = 'musicEnd' })
+            TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+        end)
+    else
+        SendNUIMessage({ action = 'musicEnd' })
+        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+    end
 end
 
 local function useStartingApartment()
@@ -130,19 +131,6 @@ local function chooseConfiguredSpawn(citizenId)
     end
 
     return false
-end
-
-local function getIlleniumLocation()
-    if Config and Config.CharacterCreation and Config.CharacterCreation.createLocation then
-        return Config.CharacterCreation.createLocation
-    end
-
-    local qbxConfig = getQbxConfig()
-    if qbxConfig and qbxConfig.characters and qbxConfig.characters.locations and #qbxConfig.characters.locations > 0 then
-        return qbxConfig.characters.locations[1].pedCoords
-    end
-
-    return vector4(-66.28, -822.13, 285.61 - 1, 70.82)
 end
 
 local function getIlleniumCharacterConfig()
@@ -187,7 +175,7 @@ end
 -- logo depois da troca: SetPlayerModel recria o ped e o novo nasce na posição
 -- default da engine (aeroporto) até alguém colocá-lo no lugar.
 ---@param gender number|string 1 = feminino
----@param coords vector4 posição + heading da criação
+---@param coords vector4 ponto do ped de preview no palco (Showroom.creationStagePose)
 local function prepareFreemodePedForCreation(gender, coords)
     local model = tonumber(gender) == 1 and `mp_f_freemode_01` or `mp_m_freemode_01`
 
@@ -210,23 +198,18 @@ local function prepareFreemodePedForCreation(gender, coords)
 
     local ped = PlayerPedId()
 
-    SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, true)
+    -- mesma chamada que pôs o preview no palco, pra os dois ficarem no mesmo ponto
+    SetEntityCoords(ped, coords.x, coords.y, coords.z, false, false, false, false)
     SetEntityHeading(ped, coords.w)
+    FreezeEntityPosition(ped, true)
 
-    SetEntityVisible(ped, true, false)
+    -- invisível até trocar de lugar com o preview (Showroom.creationFinale)
+    SetEntityVisible(ped, false, false)
     ClearPedTasksImmediately(ped)
     ClearPedDecorations(ped)
 
-    -- estado "cru" pro editor abrir
-    for componentId = 0, 11 do
-        SetPedComponentVariation(ped, componentId, 0, 0, 2)
-    end
-
-    for _, propId in ipairs({ 0, 1, 2, 6, 7 }) do
-        ClearPedProp(ped, propId)
-    end
-
-    SetPedHairColor(ped, 0, 0)
+    -- mesmo visual do preview, pro editor abrir a partir dele
+    Showroom.dressCreationPed(ped, tonumber(gender) == 1 and 1 or 0)
     return ped
 end
 
@@ -257,6 +240,9 @@ local function openIlleniumCharacterCreator()
         lib.print.error('[mri_Qmultichar] [CRIAÇÃO] Falha ao abrir startCustomization')
         return false
     end
+
+    -- a câmera do editor já está ativa: desmonta o showroom sem soltar a câmera
+    Showroom.creationHandoff(true)
 
     -- Espera o editor assumir o foco da NUI. Era um Wait(200) fixo: na criacao
     -- do primeiro personagem o appearance ainda esta inicializando e passa
@@ -300,14 +286,22 @@ local function spawnLastLocation()
 
     Citizen.Wait(200)
 
-    pcall(function()
-        exports.spawnmanager:spawnPlayer({
-            x = QBX.PlayerData.position.x,
-            y = QBX.PlayerData.position.y,
-            z = QBX.PlayerData.position.z,
-            heading = QBX.PlayerData.position.w
-        })
+    -- dados do personagem que o qbx_core acabou de carregar
+    local data = awaitPlayerData(5000)
+    if not data then
+        lib.print.error('[mri_Qmultichar] personagem carregado sem dados no client; spawn cancelado')
+        isSpawning = false
+        DoScreenFadeIn(500)
+        return
+    end
+
+    local pos = data.position
+    local ok, err = pcall(function()
+        exports.spawnmanager:spawnPlayer({ x = pos.x, y = pos.y, z = pos.z, heading = pos.w })
     end)
+    if not ok then
+        lib.print.error(('[mri_Qmultichar] spawnmanager falhou ao spawnar na última posição: %s'):format(tostring(err)))
+    end
 
     Citizen.Wait(1000)
 
@@ -315,7 +309,7 @@ local function spawnLastLocation()
     TriggerEvent('QBCore:Client:OnPlayerLoaded')
 
     -- Depois do OnPlayerLoaded: e nele que o ps-housing monta os imoveis no client.
-    local insideMeta = QBX.PlayerData.metadata.inside
+    local insideMeta = data.metadata and data.metadata.inside
     if GetResourceState('ps-housing') == 'started' and insideMeta and insideMeta.property_id then
         local deadline = GetGameTimer() + 10000
         while not housingReady and GetGameTimer() < deadline do Wait(50) end
@@ -329,47 +323,6 @@ local function spawnLastLocation()
     while not IsScreenFadedIn() do
         Wait(0)
     end
-
-    isSpawning = false
-end
-
-local function spawnDefault()
-    if isSpawning then
-        return
-    end
-
-    isSpawning = true
-
-    local illeniumLocation = getIlleniumLocation()
-
-    SetEntityVisible(cache.ped, true, false)
-
-    RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-    while not HasCollisionLoadedAroundEntity(cache.ped) do
-        Wait(0)
-    end
-
-    SetEntityCoords(cache.ped, illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, false, false, false, true)
-    SetEntityHeading(cache.ped, illeniumLocation.w)
-
-    Citizen.Wait(500)
-
-    DoScreenFadeIn(250)
-
-    while not IsScreenFadedIn() do
-        Wait(0)
-    end
-
-    TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
-    TriggerEvent('QBCore:Client:OnPlayerLoaded')
-
-    if not isInCharacterCreation then
-        isInCharacterCreation = true
-    end
-
-    Wait(500)
-
-    TriggerEvent('qb-clothes:client:CreateFirstCharacter')
 
     isSpawning = false
 end
@@ -434,22 +387,41 @@ function Multichar.beginCharacterLoad(citizenId, options)
     return true
 end
 
+-- A NUI já considerou a criação aceita (o callback respondeu antes do qbx_core
+-- criar): avisa a falha pra ela voltar pro último capítulo com o erro.
+local function creationFailed()
+    Showroom.creationRecover()
+    SendNUIMessage({ action = 'creationFailed', message = locale('character_creation.generic_error') })
+end
+
 function Multichar.beginCharacterCreation(charData)
     if isCreatingCharacter then
         return false, 'Criação de personagem já em andamento'
-    end
-
-    local timeSinceDelete = GetGameTimer() - lastDeleteTime
-    local cooldownTime = DELETE_COOLDOWN * 2
-    if timeSinceDelete < cooldownTime then
-        local remainingTime = math.ceil((cooldownTime - timeSinceDelete) / 1000)
-        return false, string.format('Aguarde %d segundo(s) após deletar um personagem', remainingTime)
     end
 
     local slotCheck = lib.callback.await('mri_Qmultichar:server:checkSlotAvailable', false, charData.cid)
     if not slotCheck or not slotCheck.available then
         lib.print.warn(string.format('[mri_Qmultichar] Slot %d não está disponível. Personagem ainda existe?', charData.cid))
         return false, 'Este slot ainda está ocupado. Aguarde alguns segundos e tente novamente.'
+    end
+
+    pendingArrival = nil
+    if type(charData.arrival) == 'string' then
+        local panel = lib.callback.await('mri_Qmultichar:server:getConfig', false)
+        local a = panel and panel.arrivals and panel.arrivals[charData.arrival]
+        if a and a.enabled then
+            pendingArrival = {
+                id = charData.arrival,
+                config = a,
+                credit = {
+                    name = ('%s %s'):format(charData.firstname, charData.lastname),
+                    nationality = charData.nationality,
+                    birthdate = charData.birthdate,
+                },
+            }
+        else
+            lib.print.warn(('[mri_Qmultichar] [CRIAÇÃO] chegada %s desligada ou inexistente no painel'):format(charData.arrival))
+        end
     end
 
     isCreatingCharacter = true
@@ -472,94 +444,44 @@ function Multichar.beginCharacterCreation(charData)
             if isSpawning then
                 DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Spawn já em andamento, cancelando...')
                 isCreatingCharacter = false
+                creationFailed()
                 return
             end
 
             isSpawning = true
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isSpawning = true')
 
-            -- Escurece ANTES de desmontar o showroom: o destroy devolve o ped do
-            -- player visivel e solta a camera, entao com a tela aberta da pra ver
-            -- o ped na cena e a viagem ate o aeroporto que o SetPlayerModel causa.
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade out...')
-            DoScreenFadeOut(500)
-            while not IsScreenFadedOut() do
-                Wait(0)
+            -- O palco do showroom é o estúdio: o ped do jogador vai pro ponto do
+            -- preview (invisível), o final leva a câmera ao plano inicial do editor e
+            -- os dois peds trocam de lugar. O editor abre ali, sem fade nem teleporte.
+            local stage = Showroom.creationStagePose()
+            if not stage then
+                lib.print.error('[mri_Qmultichar] [CRIAÇÃO] Showroom sem ped de preview; não há palco pra criação')
+                isSpawning = false
+                isCreatingCharacter = false
+                creationFailed()
+                return
             end
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Fechando NUI e destruindo showroom...')
-            Showroom.destroy(true)
-            Multichar.closeMultichar()
-
-            Citizen.Wait(500)
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] NUI fechada, aguardando...')
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Definindo bucket 2 para criação...')
             TriggerServerEvent('mri_Qmultichar:server:setBucket', 2)
-            Citizen.Wait(200)
+            prepareFreemodePedForCreation(charData.gender, stage)
+            Showroom.creationFinale()
 
-            local illeniumLocation = getIlleniumLocation()
-            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Localização do illenium: %.2f, %.2f, %.2f, %.2f',
-                illeniumLocation.x, illeniumLocation.y, illeniumLocation.z, illeniumLocation.w))
-
-            local currentPos = GetEntityCoords(cache.ped)
-            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição atual: %.2f, %.2f, %.2f',
-                currentPos.x, currentPos.y, currentPos.z))
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Limpando preview de jobs...')
-            FreezeEntityPosition(PlayerPedId(), false)
-            ClearPedTasks(PlayerPedId())
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Carregando colisão na localização do illenium...')
-            RequestCollisionAtCoord(illeniumLocation.x, illeniumLocation.y, illeniumLocation.z)
-            while not HasCollisionLoadedAroundEntity(PlayerPedId()) do
-                Wait(0)
-            end
-
-            -- troca de modelo + posicionamento com a tela ainda preta
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Preparando ped na localização do illenium...')
-            prepareFreemodePedForCreation(charData.gender, illeniumLocation)
-
-            Citizen.Wait(200)
-            local newPos = GetEntityCoords(PlayerPedId())
-            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Nova posição após reposicionar: %.2f, %.2f, %.2f',
-                newPos.x, newPos.y, newPos.z))
-
-            Citizen.Wait(300)
-
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Iniciando fade in...')
-            DoScreenFadeIn(250)
-            while not IsScreenFadedIn() do
-                Wait(0)
-            end
+            Multichar.closeMultichar(true) -- a HUD segue escondida: o editor vem em seguida
 
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Disparando eventos do qbx_core...')
             TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
             TriggerEvent('QBCore:Client:OnPlayerLoaded')
-
-            Wait(500)
-
-            local posBeforeIllenium = GetEntityCoords(cache.ped)
-            DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição antes de abrir illenium: %.2f, %.2f, %.2f',
-                posBeforeIllenium.x, posBeforeIllenium.y, posBeforeIllenium.z))
+            Intro.ambienceResume()
 
             isInCharacterCreation = true
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isInCharacterCreation = true')
 
-            -- Rede de segurança pro caso do callback do appearance nunca chegar.
+            -- Finaliza se o editor fechar sem o appearance chamar o callback.
             -- Não toca na posição do ped: durante a edição quem manda é o appearance.
             CreateThread(function()
-                local maxWaitTime = 300000
-                local startTime = GetGameTimer()
-                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de segurança iniciada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Vigia do editor iniciada')
 
                 while isInCharacterCreation do
-                    if GetGameTimer() - startTime > maxWaitTime then
-                        lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Timeout na thread de segurança, finalizando...')
-                        finishCharacterCreation('monitor_timeout')
-                        break
-                    end
-
                     -- confirma depois de um respiro (o editor ainda pode estar abrindo)
                     if not isIlleniumCustomizationActive then
                         Wait(2000)
@@ -574,35 +496,27 @@ function Multichar.beginCharacterCreation(charData)
                     Wait(500)
                 end
 
-                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Thread de segurança finalizada')
+                DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Vigia do editor finalizada')
             end)
 
             DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Abrindo appearance (%s)...', Appearance.getResourceName() or '?'))
-
-            Citizen.Wait(500)
 
             -- Ultimo recurso, so se o editor nao abrir mesmo apos o timeout. Este
             -- caminho refaz bucket e roupas por conta propria (o mri_Qappearance
             -- atende o evento e chama InitializeCharacter), entao pode conflitar
             -- com o bucket 2 e o ped ja preparados aqui.
             if not openIlleniumCharacterCreator() then
+                -- editor não abriu: solta a câmera do showroom (se ainda for dele)
+                Showroom.creationHandoff(false)
                 lib.print.warn('[mri_Qmultichar] [CRIAÇÃO] Fallback para qb-clothes:client:CreateFirstCharacter')
                 isIlleniumCustomizationActive = true
                 TriggerEvent('qb-clothes:client:CreateFirstCharacter')
             end
 
-            DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Illenium aberto, aguardando...')
-
-            CreateThread(function()
-                Wait(2000)
-                if isInCharacterCreation then
-                    local posAfterIllenium = GetEntityCoords(cache.ped)
-                    DebugPrint(string.format('[mri_Qmultichar] [CRIAÇÃO] Posição após 2s do illenium: %.2f, %.2f, %.2f',
-                        posAfterIllenium.x, posAfterIllenium.y, posAfterIllenium.z))
-                end
-            end)
-
             isSpawning = false
+        else
+            lib.print.warn(('[mri_Qmultichar] [CRIAÇÃO] qbx_core não criou o personagem: %s'):format(tostring(newData)))
+            creationFailed()
         end
 
         isCreatingCharacter = false
@@ -776,50 +690,65 @@ CreateThread(function()
             ShutdownLoadingScreen()
             ShutdownLoadingScreenNui()
 
-            DebugPrint('[mri_Qmultichar] Montando showroom...')
-            Citizen.Wait(100)
-            Showroom.build(characters, lastPlayed)
-
-            Wait(100)
-            DebugPrint('[mri_Qmultichar] Abrindo NUI...')
+            -- hora e clima do menu já valem na abertura e no showroom
+            local panel = lib.callback.await('mri_Qmultichar:server:getConfig', false)
+            Intro.ambienceStart(panel and panel.ambience)
 
             -- Polling de 16ms (1 frame) em vez de 100ms: este handshake e a
             -- ULTIMA etapa antes da tela aparecer, entao a granularidade grossa
             -- entrava inteira no tempo percebido. Teto de 25s pelo mesmo motivo
             -- dos loops acima — nao mascarar o tempo real da NUI na medicao.
-            local nuiDeadline = GetGameTimer() + 25000
-            local nextLog = GetGameTimer() + 1000
-            while not Multichar.isNuiReady() and GetGameTimer() < nuiDeadline do
-                Wait(16)
-                if GetGameTimer() >= nextLog then
-                    nextLog = GetGameTimer() + 1000
-                    DebugPrint('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
+            local function awaitNui()
+                local nuiDeadline = GetGameTimer() + 25000
+                local nextLog = GetGameTimer() + 1000
+                while not Multichar.isNuiReady() and GetGameTimer() < nuiDeadline do
+                    Wait(16)
+                    if GetGameTimer() >= nextLog then
+                        nextLog = GetGameTimer() + 1000
+                        DebugPrint('[mri_Qmultichar] Aguardando NUI ficar pronta (Handshake)...')
+                    end
+                end
+
+                if not Multichar.isNuiReady() then
+                    lib.print.warn('[mri_Qmultichar] NUI demorou demais para sinalizar pronta, tentando abrir mesmo assim...')
                 end
             end
 
-            if not Multichar.isNuiReady() then
-                lib.print.warn('[mri_Qmultichar] NUI demorou demais para sinalizar pronta, tentando abrir mesmo assim...')
-            end
+            local withIntro = Intro.enabled(panel)
+            if withIntro then
+                -- tela de título sobre os planos da cidade; no Enter a câmera desce até
+                -- o palco e só então entra o menu
+                awaitNui()
+                DebugPrint('[mri_Qmultichar] Abrindo NUI na abertura...')
+                Multichar.openMultichar(true)
+                Intro.play(panel)
 
-            Multichar.openMultichar()
+                DebugPrint('[mri_Qmultichar] Montando showroom (voo da abertura)...')
+                Showroom.build(characters, lastPlayed, true)
+                Wait(math.floor(Config.Intro.approach.time * 1000))
+                SendNUIMessage({ action = 'introDone' })
+            else
+                DebugPrint('[mri_Qmultichar] Montando showroom...')
+                Citizen.Wait(100)
+                Showroom.build(characters, lastPlayed)
+
+                Wait(100)
+                awaitNui()
+                DebugPrint('[mri_Qmultichar] Abrindo NUI...')
+                Multichar.openMultichar()
+            end
 
             CreateThread(function()
                 Wait(2000)
                 if not Multichar.isNuiOpen() then
                     lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando abrir novamente...')
-                    Multichar.openMultichar()
+                    Multichar.openMultichar(Intro.isPlaying())
                 end
             end)
 
             break
         end
     end
-
-    while Multichar.isNuiOpen() do
-        SetEntityInvincible(PlayerPedId(), true)
-        Wait(250)
-    end
-    SetEntityInvincible(PlayerPedId(), false)
 end)
 
 exports('isInCharacterCreation', function()

@@ -10,11 +10,13 @@ local function resolveAccentColor()
         return convar
     end
 
-    if isValidHex(Config.AccentColor) then
-        return Config.AccentColor
-    end
-
     return '#00E699'
+end
+
+-- Fundo da suíte; '' = padrão da NUI (#09090B).
+local function resolveBackgroundColor()
+    local convar = GetConvar('mri:backgroundColor', '')
+    return isValidHex(convar) and convar or ''
 end
 
 CreateThread(function()
@@ -50,13 +52,10 @@ CreateThread(function()
     Config.DeleteTables[#Config.DeleteTables + 1] = { 'mri_qmultichar_photos', 'citizenid' }
 end)
 
--- default/teto de slots geridos pelo painel (/adminchar), com fallback no config.lua.
+-- default/teto de slots geridos pelo painel (/adminchar).
 local function panelSlots()
-    local cfg = GetPanelConfig and GetPanelConfig() or nil
-    local s = cfg and cfg.slots or nil
-    local default = (s and tonumber(s.default)) or Config.CharacterSlots.defaultSlots
-    local max = (s and tonumber(s.max)) or Config.CharacterSlots.maxSlots
-    return default, max
+    local s = GetPanelConfig().slots
+    return tonumber(s.default), tonumber(s.max)
 end
 
 local function getPlayerSlots(license, license2)
@@ -119,7 +118,7 @@ local function setLastPlayed(license, license2, citizenId)
         MySQL.update.await('UPDATE mri_qmultichar_slots SET last_citizenid = ? WHERE id = ?', { citizenId, existing.id })
     else
         MySQL.insert.await('INSERT INTO mri_qmultichar_slots (license, license2, slots, last_citizenid) VALUES (?, ?, ?, ?)', {
-            license, license2, Config.CharacterSlots.defaultSlots, citizenId
+            license, license2, (panelSlots()), citizenId
         })
     end
 end
@@ -185,13 +184,6 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         end
     end
 
-    local musicConfig = Config.Music or {
-        enabled = false,
-        url = '',
-        volume = 0.3,
-        loop = true,
-        autoplay = true,
-    }
 
     local localeFile = LoadResourceFile(GetCurrentResourceName(), string.format('locales/%s.json', Config.Locale or 'pt-br'))
     local locales = {}
@@ -215,18 +207,31 @@ lib.callback.register('mri_Qmultichar:server:getCharacters', function(source)
         slots = slots,
         lastPlayed = lastPlayed,
         accentColor = resolveAccentColor(),
+        backgroundColor = resolveBackgroundColor(),
         allowAccentOverride = Config.AllowAccentOverride ~= false,
         branding = panelConfig.branding,
         landing = panelConfig.landing,
-        defaults = {
-            cameraEffects = Config.CameraEffects ~= false,
-            cameraEffectType = Config.CameraEffectType or 'cinema',
-            streamerMode = Config.StreamerMode == true,
-        },
-        music = musicConfig,
+        music = panelConfig.music,
+        arrivals = ArrivalsOffered(panelConfig),
+        ambience = panelConfig.ambience,
         locales = locales,
     }
 end)
+
+---Stories the creation offers: enabled and with a destination marked.
+---@param panelConfig table
+---@return string[]
+function ArrivalsOffered(panelConfig)
+    local offered = {}
+    local arrivals = panelConfig.arrivals or {}
+    for _, id in ipairs({ 'container', 'plane' }) do
+        local a = arrivals[id]
+        if a and a.enabled and type(a.spawn) == 'table' and type(a.spawn.x) == 'number' then
+            offered[#offered + 1] = id
+        end
+    end
+    return offered
+end
 
 ---Grava o último personagem jogado. Disparado pelo cliente após um load bem-sucedido.
 RegisterNetEvent('mri_Qmultichar:server:recordLastPlayed', function(citizenId)
@@ -329,11 +334,35 @@ local function DeleteCharacterData(citizenId)
     return true
 end
 
-lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, citizenId)
-    if not citizenId then
-        return false
-    end
+-- deleção em andamento por jogador: chamada repetida não roda duas transações do mesmo personagem
+local deletingBySource = {}
 
+-- qbx_core deletes in the background; characterDeleted (fired by its deletePlayer) confirms it
+local DELETE_TIMEOUT_MS = 5000
+local pendingDeletes = {}
+
+AddEventHandler('qbx_core:server:characterDeleted', function(citizenId)
+    local pending = pendingDeletes[citizenId]
+    if not pending then return end
+    pendingDeletes[citizenId] = nil
+    pending:resolve(true)
+end)
+
+---@param citizenId string
+---@return boolean deleted
+local function deleteThroughCore(citizenId)
+    local pending = promise.new()
+    pendingDeletes[citizenId] = pending
+    exports.qbx_core:DeleteCharacter(citizenId)
+    SetTimeout(DELETE_TIMEOUT_MS, function()
+        if pendingDeletes[citizenId] ~= pending then return end
+        pendingDeletes[citizenId] = nil
+        pending:resolve(false)
+    end)
+    return Citizen.Await(pending)
+end
+
+local function deleteCharacter(source, citizenId)
     local license = GetPlayerIdentifierByType(source, 'license')
     local license2 = GetPlayerIdentifierByType(source, 'license2')
 
@@ -349,14 +378,7 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         return false
     end
 
-    local storage = require('@qbx_core/server/storage/main')
-    local pcallSuccess, deleteResult = pcall(function()
-        return storage.deletePlayer(citizenId)
-    end)
-
-    if not pcallSuccess then
-        lib.print.warn(string.format('[mri_Qmultichar] Erro interno do qbx_core ao deletar (pode ser ignorado). CitizenID: %s, Erro: %s', citizenId, tostring(deleteResult)))
-    elseif not deleteResult then
+    if not deleteThroughCore(citizenId) then
         lib.print.error(string.format('[mri_Qmultichar] Falha ao deletar personagem. CitizenID: %s', citizenId))
         return false
     end
@@ -366,17 +388,29 @@ lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, 
         lib.print.error(string.format('[mri_Qmultichar] Falha ao deletar dados adicionais do personagem via export. CitizenID: %s', citizenId))
     end
 
-    Wait(200)
-
-    local verifyResult = MySQL.single.await('SELECT citizenid FROM players WHERE citizenid = ?', {citizenId})
-    if verifyResult then
-        lib.print.error(string.format('[mri_Qmultichar] Personagem ainda existe após deleção! CitizenID: %s', citizenId))
-        return false
-    end
-
     DebugPrint(string.format('[mri_Qmultichar] Personagem deletado com sucesso. Source: %s, CitizenID: %s', source, citizenId))
 
     return true
+end
+
+lib.callback.register('mri_Qmultichar:server:deleteCharacter', function(source, citizenId)
+    if not citizenId or deletingBySource[source] then
+        return false
+    end
+
+    deletingBySource[source] = true
+    local ok, result = pcall(deleteCharacter, source, citizenId)
+    deletingBySource[source] = nil
+
+    if not ok then
+        lib.print.error(string.format('[mri_Qmultichar] Erro ao deletar personagem. CitizenID: %s, Erro: %s', citizenId, tostring(result)))
+        return false
+    end
+    return result
+end)
+
+AddEventHandler('playerDropped', function()
+    deletingBySource[source] = nil
 end)
 
 lib.callback.register('mri_Qmultichar:server:checkSlotAvailable', function(source, slot)
@@ -468,6 +502,14 @@ AddConvarChangeListener('mri:color', function(name)
     local newColor = resolveAccentColor()
     DebugPrint(string.format('[mri_Qmultichar] convar mri:color alterada para %s, propagando aos clientes', newColor))
     TriggerClientEvent('mri_Qmultichar:client:accentColorChanged', -1, newColor)
+end)
+
+-- Idem para a convar `mri:backgroundColor`.
+AddConvarChangeListener('mri:backgroundColor', function(name)
+    if name ~= 'mri:backgroundColor' then return end
+    local color = GetConvar('mri:backgroundColor', '')
+    if color ~= '' and not isValidHex(color) then return end
+    TriggerClientEvent('mri_Qmultichar:client:backgroundColorChanged', -1, color)
 end)
 
 local function AddDeleteTable(tableName, columnName)

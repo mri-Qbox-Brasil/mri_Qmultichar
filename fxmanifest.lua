@@ -4,7 +4,7 @@ game 'gta5'
 name 'mri_Qmultichar'
 description 'Multichar externo com NUI moderna baseada em shadcn/ui'
 author 'MRI'
-version '1.2.2'
+version '1.3.0'
 
 ox_lib 'locale'
 
@@ -21,8 +21,11 @@ client_scripts {
     'client/headshots.lua',
     'client/nui.lua',
     'client/main.lua',
-    'client/camera.lua',
     'client/showroom.lua',
+    'client/prelude.lua',
+    'client/arrival.lua',
+    'client/stories/*.lua',
+    'client/intro.lua',
     'client/controller.lua',
     'client/admin.lua',
 }

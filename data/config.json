@@ -1,64 +1,143 @@
 {
+    "landing": {
+        "showContinue": true
+    },
+    "music": {
+        "url": "https://www.youtube.com/watch?v=g6hY7dB54bc",
+        "volume": 0.3,
+        "autoplay": true,
+        "loop": true,
+        "enabled": true,
+        "cues": {
+            "editor": "https://www.youtube.com/watch?v=KlzwX2qCoKQ",
+            "creation": "https://www.youtube.com/watch?v=F5Q6c1Y-o_A",
+            "arrival": "https://www.youtube.com/watch?v=jZoFzZ8pBmg"
+        }
+    },
+    "intro": {
+        "shots": [
+            {
+                "x": -420,
+                "fov": 50,
+                "rz": -35.31,
+                "rx": -1.95,
+                "z": 140,
+                "y": -1260
+            },
+            {
+                "x": -1880,
+                "fov": 50,
+                "rz": -43.83,
+                "rx": -4.13,
+                "z": 45,
+                "y": -1330
+            },
+            {
+                "x": 730,
+                "fov": 50,
+                "rz": 0,
+                "rx": -14.04,
+                "z": 400,
+                "y": 1000
+            },
+            {
+                "x": 1300,
+                "fov": 50,
+                "rz": 48.81,
+                "rx": -7.5,
+                "z": 90,
+                "y": -3300
+            },
+            {
+                "x": -1500,
+                "fov": 50,
+                "rz": -36.87,
+                "rx": -5.71,
+                "z": 70,
+                "y": -3250
+            }
+        ],
+        "enabled": true
+    },
+    "ambience": {
+        "weather": "EXTRASUNNY",
+        "hour": 19,
+        "minute": 0,
+        "enabled": true
+    },
     "branding": {
-        "subtitle": "",
         "title": "",
+        "subtitle": "",
         "logoUrl": ""
+    },
+    "arrivals": {
+        "container": {
+            "enabled": true,
+            "spawn": {
+                "x": -439.36,
+                "heading": 270.66,
+                "z": 7.61,
+                "y": -2282.81
+            },
+            "track": "https://www.youtube.com/watch?v=WT5Xa7xUrTA"
+        },
+        "plane": {
+            "enabled": true,
+            "spawn": {
+                "x": -1037.74,
+                "heading": 327.9,
+                "z": 20.17,
+                "y": -2738.04
+            },
+            "track": ""
+        }
     },
     "showroom": {
         "stages": [
             {
-                "scenario": "WORLD_HUMAN_STAND_IMPATIENT",
-                "z": 2.41,
-                "heading": 174.2,
+                "x": -1379.1,
+                "heading": 168.2,
                 "zOffset": 0.03,
-                "y": -1415.74,
-                "x": -1379.1
+                "scenario": "WORLD_HUMAN_STAND_IMPATIENT",
+                "z": 2.48,
+                "y": -1417.79
             },
             {
-                "scenario": "SIT_GROUND",
-                "z": 4.61,
+                "x": -1381.27,
                 "heading": 198.74,
                 "zOffset": 0,
-                "y": -1411.68,
-                "x": -1381.27
+                "scenario": "SIT_GROUND",
+                "z": 4.61,
+                "y": -1411.68
             },
             {
-                "scenario": "WORLD_HUMAN_TOURIST_MAP",
-                "z": 3.06,
+                "x": -1377.75,
                 "heading": 183.34,
                 "zOffset": 0,
-                "y": -1413.29,
-                "x": -1377.75
+                "scenario": "WORLD_HUMAN_TOURIST_MAP",
+                "z": 3.06,
+                "y": -1413.29
             },
             {
-                "scenario": "WORLD_HUMAN_SEAT_LEDGE",
-                "z": 5.79,
+                "x": -1375.43,
                 "heading": 176.99,
                 "zOffset": -1.04,
-                "y": -1411.79,
-                "x": -1375.43
+                "scenario": "WORLD_HUMAN_SEAT_LEDGE",
+                "z": 5.79,
+                "y": -1411.79
             },
             {
-                "scenario": "WORLD_HUMAN_DRUG_DEALER_HARD",
-                "z": 2.34,
+                "x": -1374.04,
                 "heading": 132.66,
                 "zOffset": 0,
-                "y": -1415.24,
-                "x": -1374.04
+                "scenario": "WORLD_HUMAN_DRUG_DEALER_HARD",
+                "z": 2.34,
+                "y": -1415.24
             }
-        ],
-        "nametag": {
-            "back": 0.75,
-            "enabled": true,
-            "width": 3.8,
-            "height": 1.15
-        }
+        ]
     },
     "slots": {
         "max": 10,
         "default": 5
-    },
-    "landing": {
-        "showContinue": true
     }
 }

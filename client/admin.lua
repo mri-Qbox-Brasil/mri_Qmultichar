@@ -18,7 +18,7 @@ end
 local function currentAccent()
     local convar = GetConvar('mri:color', '')
     if convar ~= '' then return convar end
-    return Config.AccentColor or '#00E699'
+    return '#00E699'
 end
 
 RegisterCommand('adminchar', function()
@@ -38,6 +38,7 @@ RegisterCommand('adminchar', function()
     SendNUIMessage({
         action = 'openAdmin',
         accentColor = currentAccent(),
+        backgroundColor = GetConvar('mri:backgroundColor', ''),
         locales = loadLocales(),
     })
 end, false)
@@ -49,6 +50,7 @@ RegisterNUICallback('adminGetConfig', function(_, cb)
         config = config,
         locales = loadLocales(),
         animations = Config.Showroom.animations,
+        weathers = Config.Intro.weathers,
     })
 end)
 
@@ -77,12 +79,37 @@ end)
 
 -- ===== Modo de posicionar (ghost ped + raycast + scroll) =============
 
-local function reopenPanel()
+local QADMIN_PLUGIN_ID = 'multichar'
+
+local function isEmbeddedRequest(data)
+    return type(data) == 'table' and data.embedded == true
+end
+
+local function hidePanel(embedded)
+    if embedded then
+        if GetResourceState('mri_Qadmin') == 'started' then
+            pcall(function() exports['mri_Qadmin']:ClosePlugin(QADMIN_PLUGIN_ID) end)
+        end
+        return
+    end
+    if adminOpen then
+        adminOpen = false
+        SetNuiFocus(false, false)
+        SendNUIMessage({ action = 'closeAdmin' })
+    end
+end
+
+local function reopenPanel(embedded)
+    if embedded and GetResourceState('mri_Qadmin') == 'started' then
+        local ok, opened = pcall(function() return exports['mri_Qadmin']:OpenPlugin(QADMIN_PLUGIN_ID) end)
+        if ok and opened then return end
+    end
     adminOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({
         action = 'openAdmin',
         accentColor = currentAccent(),
+        backgroundColor = GetConvar('mri:backgroundColor', ''),
         locales = loadLocales(),
     })
 end
@@ -105,6 +132,51 @@ local function rightFromDir(fwd)
     local len = #r
     if len < 0.0001 then return vector3(1.0, 0.0, 0.0) end
     return r / len
+end
+
+-- controles que o freecam toma pra si: olhar, movimento, ataque/arma, scroll, setas, E...
+local FREECAM_CONTROLS = {
+    1, 2,                   -- olhar (mouse)
+    24, 25, 47, 257, 140, 37, -- atk/mira/arma
+    14, 15, 16, 17,         -- scroll
+    30, 31, 32, 33, 34, 35, -- movimento (analógico, W/S, A/D)
+    21,                     -- shift (rápido)
+    22, 36,                 -- espaço/ctrl (câmera sobe/desce)
+    38,                     -- E
+    172, 173, 174, 175,     -- setas
+}
+
+-- Um frame do freecam: mouse gira, WASD/espaço/ctrl movem, Shift acelera. O streaming
+-- segue a câmera (senão áreas distantes ficam sem chão/LOD).
+---@return vector3 camPos, vector3 camRot, vector3 fwd, boolean fast
+local function stepFreecam(cam, camPos, camRot)
+    for i = 1, #FREECAM_CONTROLS do
+        DisableControlAction(0, FREECAM_CONTROLS[i], true)
+    end
+
+    local fast = IsDisabledControlPressed(0, 21)
+    local lookX = GetDisabledControlNormal(0, 1)
+    local lookY = GetDisabledControlNormal(0, 2)
+    camRot = vector3(
+        math.max(-89.0, math.min(89.0, camRot.x - lookY * 5.0)),
+        0.0,
+        camRot.z - lookX * 8.0
+    )
+    local fwd = dirFromRot(camRot)
+    local right = rightFromDir(fwd)
+    local spd = fast and 0.65 or 0.16
+    local mx, my, mz = 0.0, 0.0, 0.0
+    if IsDisabledControlPressed(0, 32) then mx, my, mz = mx + fwd.x, my + fwd.y, mz + fwd.z end
+    if IsDisabledControlPressed(0, 33) then mx, my, mz = mx - fwd.x, my - fwd.y, mz - fwd.z end
+    if IsDisabledControlPressed(0, 34) then mx, my = mx - right.x, my - right.y end
+    if IsDisabledControlPressed(0, 35) then mx, my = mx + right.x, my + right.y end
+    if IsDisabledControlPressed(0, 22) then mz = mz + 1.0 end
+    if IsDisabledControlPressed(0, 36) then mz = mz - 1.0 end
+    camPos = vector3(camPos.x + mx * spd, camPos.y + my * spd, camPos.z + mz * spd)
+    SetCamCoord(cam, camPos.x, camPos.y, camPos.z)
+    SetCamRot(cam, camRot.x, camRot.y, camRot.z, 2)
+    SetFocusPosAndVel(camPos.x, camPos.y, camPos.z, 0.0, 0.0, 0.0)
+    return camPos, camRot, fwd, fast
 end
 
 -- raycast de `from` na direção `dir` (até 300m); retorna o ponto de impacto
@@ -155,7 +227,7 @@ end
 -- targetIndex (1-based) opcional: se apontar uma posição existente, entra em modo
 -- "reposicionar" (move só aquela; Enter salva onde o ghost estiver). Sem ele, é
 -- modo "adicionar" (E acrescenta novas posições no fim; Enter salva tudo).
-local function startPlacement(targetIndex)
+local function startPlacement(targetIndex, embedded)
     if placing then return end
     placing = true
 
@@ -196,47 +268,9 @@ local function startPlacement(targetIndex)
         while placing do
             Wait(0)
 
-            -- assume o controle: olhar, movimento, ataque/arma, scroll, setas, E...
-            DisableControlAction(0, 1, true); DisableControlAction(0, 2, true)   -- olhar (mouse)
-            DisableControlAction(0, 24, true); DisableControlAction(0, 25, true) -- atk/mira
-            DisableControlAction(0, 47, true); DisableControlAction(0, 257, true)
-            DisableControlAction(0, 140, true); DisableControlAction(0, 37, true)
-            DisableControlAction(0, 14, true); DisableControlAction(0, 15, true) -- scroll
-            DisableControlAction(0, 16, true); DisableControlAction(0, 17, true)
-            DisableControlAction(0, 30, true); DisableControlAction(0, 31, true) -- move analog
-            DisableControlAction(0, 32, true); DisableControlAction(0, 33, true) -- W/S
-            DisableControlAction(0, 34, true); DisableControlAction(0, 35, true) -- A/D
-            DisableControlAction(0, 21, true) -- shift (rápido)
-            DisableControlAction(0, 22, true) -- espaço (câmera sobe)
-            DisableControlAction(0, 36, true) -- ctrl (câmera desce)
-            DisableControlAction(0, 38, true) -- E (colocar)
-            DisableControlAction(0, 172, true); DisableControlAction(0, 173, true) -- setas ↑↓
-            DisableControlAction(0, 174, true); DisableControlAction(0, 175, true) -- setas ←→
-
-            -- ===== freecam: mouse gira, WASD/espaço/ctrl movem =====
-            local fast = IsDisabledControlPressed(0, 21)
-            local lookX = GetDisabledControlNormal(0, 1)
-            local lookY = GetDisabledControlNormal(0, 2)
-            camRot = vector3(
-                math.max(-89.0, math.min(89.0, camRot.x - lookY * 5.0)),
-                0.0,
-                camRot.z - lookX * 8.0
-            )
-            local fwd = dirFromRot(camRot)
-            local right = rightFromDir(fwd)
-            local spd = fast and 0.65 or 0.16
-            local mx, my, mz = 0.0, 0.0, 0.0
-            if IsDisabledControlPressed(0, 32) then mx, my, mz = mx + fwd.x, my + fwd.y, mz + fwd.z end
-            if IsDisabledControlPressed(0, 33) then mx, my, mz = mx - fwd.x, my - fwd.y, mz - fwd.z end
-            if IsDisabledControlPressed(0, 34) then mx, my = mx - right.x, my - right.y end
-            if IsDisabledControlPressed(0, 35) then mx, my = mx + right.x, my + right.y end
-            if IsDisabledControlPressed(0, 22) then mz = mz + 1.0 end
-            if IsDisabledControlPressed(0, 36) then mz = mz - 1.0 end
-            camPos = vector3(camPos.x + mx * spd, camPos.y + my * spd, camPos.z + mz * spd)
-            SetCamCoord(cam, camPos.x, camPos.y, camPos.z)
-            SetCamRot(cam, camRot.x, camRot.y, camRot.z, 2)
-            -- streaming segue a freecam (senão áreas distantes ficam sem chão/LOD)
-            SetFocusPosAndVel(camPos.x, camPos.y, camPos.z, 0.0, 0.0, 0.0)
+            -- freecam: câmera solta (WASD + mouse); o raycast sai dela
+            local fwd, fast
+            camPos, camRot, fwd, fast = stepFreecam(cam, camPos, camRot)
 
             -- ===== mira no chão a partir da freecam =====
             local hit = raycastFrom(camPos, fwd)
@@ -316,7 +350,7 @@ local function startPlacement(targetIndex)
         if DoesEntityExist(ghost) then DeleteEntity(ghost) end
         lib.hideTextUI()
         placing = false
-        reopenPanel()
+        reopenPanel(embedded)
     end)
 end
 
@@ -331,12 +365,7 @@ RegisterNUICallback('adminTeleportStage', function(data, cb)
     local s = stages and stages[idx]
     if not s or type(s.x) ~= 'number' then return end
 
-    -- fecha o painel
-    if adminOpen then
-        adminOpen = false
-        SetNuiFocus(false, false)
-        SendNUIMessage({ action = 'closeAdmin' })
-    end
+    hidePanel(isEmbeddedRequest(data))
 
     CreateThread(function()
         DoScreenFadeOut(300)
@@ -363,11 +392,172 @@ end)
 
 RegisterNUICallback('adminEnterPlacement', function(data, cb)
     cb({ success = true })
-    if adminOpen then
-        adminOpen = false
-        SetNuiFocus(false, false)
-        SendNUIMessage({ action = 'closeAdmin' })
-    end
+    if placing then return end
+    local embedded = isEmbeddedRequest(data)
+    hidePanel(embedded)
     local idx = type(data) == 'table' and tonumber(data.index) or nil
-    startPlacement(idx)
+    startPlacement(idx, embedded)
+end)
+
+-- ===== Chegadas (capítulo Chegada da criação) ========================
+
+-- Ponto de uma chegada = onde o admin está agora. Dentro de um veículo vale o veículo
+-- (a atracação do barco é marcada pilotando até ela, de frente pra onde ele chega).
+RegisterNUICallback('adminCaptureArrival', function(_, cb)
+    local ped = PlayerPedId()
+    local veh = GetVehiclePedIsIn(ped, false)
+    local entity = veh ~= 0 and veh or ped
+    local c = GetEntityCoords(entity)
+    cb({ success = true, pose = { x = round2(c.x), y = round2(c.y), z = round2(c.z), heading = round2(GetEntityHeading(entity)) } })
+end)
+
+-- Toca a chegada salva no próprio admin, numa instância à parte (o veículo da cena é
+-- local), e reabre o painel no fim. O admin termina no destino.
+RegisterNUICallback('adminTestArrival', function(data, cb)
+    cb({ success = true })
+    if type(data) ~= 'table' or type(data.id) ~= 'string' or Arrival.isPlaying() then return end
+    local embedded = isEmbeddedRequest(data)
+
+    local cfgData = lib.callback.await('mri_Qmultichar:server:getConfig', false) or {}
+    local a = cfgData.arrivals and cfgData.arrivals[data.id]
+    if not a then return end
+
+    local player = exports.qbx_core:GetPlayerData()
+    local ci = player and player.charinfo or {}
+    hidePanel(embedded)
+    CreateThread(function()
+        TriggerServerEvent('mri_Qmultichar:server:setBucket', 2)
+        Prelude.takeCamera()
+        Arrival.play(data.id, a, {
+            name = ('%s %s'):format(ci.firstname or '', ci.lastname or ''),
+            nationality = ci.nationality or '',
+            birthdate = ci.birthdate or '',
+        })
+        TriggerServerEvent('mri_Qmultichar:server:setBucket', 0)
+        reopenPanel(embedded)
+    end)
+end)
+
+-- ===== Abertura (planos da tela de título) ============================
+
+local capturing = false
+
+local function shotHelp(index, fov)
+    local head = index and ('**Refazer plano %d**'):format(index) or '**Novo plano da abertura**'
+    lib.showTextUI(
+        ('%s  \n[WASD+Mouse] Voar  ·  [Espaço/Ctrl] Câmera ↑↓  ·  [Shift] rápido  \n[Scroll] Zoom: %.0f°  \n[Enter] Salvar plano  ·  [Backspace] Cancelar'):format(head, fov),
+        { position = 'top-center' }
+    )
+end
+
+-- Freecam pra enquadrar um plano; Enter grava posição, rotação e zoom da câmera e salva.
+-- index (1-based) = refaz aquele plano, partindo dele; sem index, acrescenta no fim.
+local function startShotCapture(index, embedded)
+    if capturing or placing then return end
+    capturing = true
+
+    local cfgData = lib.callback.await('mri_Qmultichar:server:getConfig', false) or {}
+    cfgData.intro = cfgData.intro or {}
+    local shots = type(cfgData.intro.shots) == 'table' and cfgData.intro.shots or {}
+    local editing = index and shots[index] or nil
+
+    local player = PlayerPedId()
+    FreezeEntityPosition(player, true)
+    local camPos, camRot, fov
+    if editing then
+        camPos = vector3(editing.x, editing.y, editing.z)
+        camRot = vector3(tonumber(editing.rx) or 0.0, 0.0, tonumber(editing.rz) or 0.0)
+        fov = tonumber(editing.fov) or 50.0
+    else
+        camPos = GetGameplayCamCoord()
+        camRot = GetGameplayCamRot(2)
+        fov = GetGameplayCamFov()
+    end
+    local cam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
+    SetCamCoord(cam, camPos.x, camPos.y, camPos.z)
+    SetCamRot(cam, camRot.x, camRot.y, camRot.z, 2)
+    SetCamFov(cam, fov)
+    SetCamActive(cam, true)
+    RenderScriptCams(true, false, 0, true, true)
+    shotHelp(editing and index or nil, fov)
+
+    CreateThread(function()
+        local save = false
+        while true do
+            Wait(0)
+            local _, fast
+            camPos, camRot, _, fast = stepFreecam(cam, camPos, camRot)
+
+            -- scroll pra cima aproxima (fov menor), pra baixo afasta
+            local step = fast and 5.0 or 1.0
+            local zoomed = false
+            if IsDisabledControlJustPressed(0, 15) then fov = math.max(10.0, fov - step); zoomed = true
+            elseif IsDisabledControlJustPressed(0, 14) then fov = math.min(90.0, fov + step); zoomed = true end
+            if zoomed then
+                SetCamFov(cam, fov)
+                shotHelp(editing and index or nil, fov)
+            end
+
+            if IsDisabledControlJustPressed(0, 191) or IsDisabledControlJustPressed(0, 201) then
+                save = true
+                break
+            end
+            if IsDisabledControlJustPressed(0, 194) or IsDisabledControlJustPressed(0, 202) then
+                break
+            end
+        end
+
+        RenderScriptCams(false, false, 0, true, true)
+        DestroyCam(cam, false)
+        ClearFocus()
+        FreezeEntityPosition(player, false)
+        lib.hideTextUI()
+
+        if save then
+            local shot = {
+                x = round2(camPos.x), y = round2(camPos.y), z = round2(camPos.z),
+                rx = round2(camRot.x), rz = round2(camRot.z % 360.0), fov = round2(fov),
+            }
+            if editing then shots[index] = shot else shots[#shots + 1] = shot end
+            cfgData.intro.shots = shots
+            lib.callback.await('mri_Qmultichar:server:saveConfig', false, cfgData)
+        end
+
+        capturing = false
+        reopenPanel(embedded)
+    end)
+end
+
+RegisterNUICallback('adminCaptureShot', function(data, cb)
+    cb({ success = true })
+    if capturing or placing then return end
+    local embedded = isEmbeddedRequest(data)
+    hidePanel(embedded)
+    startShotCapture(type(data) == 'table' and tonumber(data.index) or nil, embedded)
+end)
+
+-- Toca a abertura salva (com a hora e o clima do menu, se ligados) até Enter ou
+-- Backspace, e reabre o painel. O admin fica onde estava.
+RegisterNUICallback('adminTestIntro', function(data, cb)
+    cb({ success = true })
+    if capturing or placing or Intro.isPlaying() then return end
+    local embedded = isEmbeddedRequest(data)
+    local cfgData = lib.callback.await('mri_Qmultichar:server:getConfig', false) or {}
+
+    hidePanel(embedded)
+    CreateThread(function()
+        local player = PlayerPedId()
+        FreezeEntityPosition(player, true)
+        Intro.ambienceStart(cfgData.ambience)
+        SendNUIMessage({ action = 'introPreview', branding = cfgData.branding })
+
+        Intro.play(cfgData, true)
+
+        SendNUIMessage({ action = 'introPreviewEnd' })
+        Intro.ambienceStop()
+        RenderScriptCams(false, false, 0, true, true)
+        FreezeEntityPosition(player, false)
+        DoScreenFadeIn(Config.Intro.dipMs)
+        reopenPanel(embedded)
+    end)
 end)
