@@ -31,7 +31,8 @@ end
 RegisterNUICallback('musicPush', function(data, cb)
     cb({ success = true })
     if type(data) ~= 'table' or type(data.url) ~= 'string' then return end
-    LocalPlayer.state:set(MUSIC_KEY, { url = data.url, loop = data.loop ~= false, priority = 'scene' }, false)
+    -- nothing on the mri_Qbox screen: its NUI sits under ours and could not take clicks anyway
+    LocalPlayer.state:set(MUSIC_KEY, { url = data.url, loop = data.loop ~= false, priority = 'scene', display = 'none' }, false)
 end)
 
 RegisterNUICallback('musicPop', function(_, cb)

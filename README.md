@@ -75,7 +75,8 @@ Com o módulo "Trilha sonora" do `mri_Qbox` ligado, as fases viram pedidos pra e
 a seguir o slider de efeitos sonoros das configurações de áudio do GTA, abaixa quando o jogador fala e volta ao
 que o servidor estava tocando quando a criação termina. A criação continua abaixando a
 música pelos efeitos (`duck`); o reforço de volume do final só existe no player próprio.
-Sem o `mri_Qbox`, nada muda.
+Os pedidos vão com `display = 'none'` (mri_Qbox v2.1 ou mais nova): a faixa toca sem aviso
+nem player na tela do mri_Qbox, que fica por baixo da tela do multichar enquanto ela tem o foco. Sem o `mri_Qbox`, nada muda.
 
 As faixas que vêm configuradas são livres pra usar com crédito: Music by Karl Casey @ White Bat
 Audio (https://karlcasey.bandcamp.com). Menu: "L.A. Sunset". Criação: "Echoes". Editor:
