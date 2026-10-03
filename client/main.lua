@@ -342,14 +342,16 @@ function Multichar.beginCharacterLoad(citizenId, options)
         return false, 'Spawn já em andamento'
     end
 
+    -- Lock before the await: a second click during validation would log in twice and qbx_core kicks for it.
+    isLoadingCharacter = true
+
     if not options.skipValidation then
         local validation = lib.callback.await('mri_Qmultichar:server:validateCharacterSelection', false, citizenId)
         if not validation or not validation.allowed then
+            isLoadingCharacter = false
             return false, validation and validation.message or 'Você não pode selecionar este personagem.'
         end
     end
-
-    isLoadingCharacter = true
 
     CreateThread(function()
         if isSpawning then
