@@ -62,15 +62,16 @@ local function fetchInitialPayload()
 end
 
 ---@param intro boolean|nil true = abre na tela de título da abertura (Intro)
+---@return boolean opened
 function Multichar.openMultichar(intro)
-    if isNuiOpen then return end
+    if isNuiOpen then return true end
 
     DebugPrint('[mri_Qmultichar] Preparando dados para abrir NUI...')
 
     local payload = fetchInitialPayload()
     if not payload then
         lib.print.error('[mri_Qmultichar] Falha ao obter payload inicial do servidor')
-        return
+        return false
     end
 
     isNuiOpen = true
@@ -98,6 +99,7 @@ function Multichar.openMultichar(intro)
         arrivals = payload.arrivals,
         locales = payload.locales or {},
     })
+    return true
 end
 
 ---@param keepHud boolean|nil true = deixa a HUD escondida (a criação segue direto pro editor)

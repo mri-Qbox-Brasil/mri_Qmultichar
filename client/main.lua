@@ -716,13 +716,21 @@ CreateThread(function()
                 end
             end
 
+            -- retry before the menu exists: a later one reopened the screen after Continuar
+            local function openNui(intro)
+                if Multichar.openMultichar(intro) then return end
+                lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando abrir novamente...')
+                Wait(2000)
+                Multichar.openMultichar(intro)
+            end
+
             local withIntro = Intro.enabled(panel)
             if withIntro then
                 -- tela de título sobre os planos da cidade; no Enter a câmera desce até
                 -- o palco e só então entra o menu
                 awaitNui()
                 DebugPrint('[mri_Qmultichar] Abrindo NUI na abertura...')
-                Multichar.openMultichar(true)
+                openNui(true)
                 Intro.play(panel)
 
                 DebugPrint('[mri_Qmultichar] Montando showroom (voo da abertura)...')
@@ -737,16 +745,8 @@ CreateThread(function()
                 Wait(100)
                 awaitNui()
                 DebugPrint('[mri_Qmultichar] Abrindo NUI...')
-                Multichar.openMultichar()
+                openNui()
             end
-
-            CreateThread(function()
-                Wait(2000)
-                if not Multichar.isNuiOpen() then
-                    lib.print.warn('[mri_Qmultichar] NUI não abriu, tentando abrir novamente...')
-                    Multichar.openMultichar(Intro.isPlaying())
-                end
-            end)
 
             break
         end
