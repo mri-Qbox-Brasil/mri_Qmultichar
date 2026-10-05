@@ -66,6 +66,7 @@
         "creating": "Criando...",
         "create_error": "Erro ao criar personagem:",
         "generic_error": "Erro ao criar personagem",
+        "preview_error": "Seu jogo não conseguiu montar o personagem. Algum pacote de roupas da cidade pode estar com defeito; avise a staff.",
         "warning_title": "Aviso",
         "cancel": "Cancelar",
         "invalid_name": "Nome inválido",

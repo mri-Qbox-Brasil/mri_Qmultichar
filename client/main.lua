@@ -407,6 +407,14 @@ function Multichar.beginCharacterCreation(charData)
         return false, 'Este slot ainda está ocupado. Aguarde alguns segundos e tente novamente.'
     end
 
+    -- O palco do showroom é o estúdio: o ped do jogador vai pro ponto do preview.
+    -- Confere antes do qbx_core criar, senão o personagem fica gravado sem entrar.
+    local stage = Showroom.creationStagePose()
+    if not stage then
+        lib.print.error('[mri_Qmultichar] [CRIAÇÃO] Showroom sem ped de preview; não há palco pra criação')
+        return false, locale('character_creation.preview_error')
+    end
+
     pendingArrival = nil
     if type(charData.arrival) == 'string' then
         local panel = lib.callback.await('mri_Qmultichar:server:getConfig', false)
@@ -453,17 +461,9 @@ function Multichar.beginCharacterCreation(charData)
             isSpawning = true
             DebugPrint('[mri_Qmultichar] [CRIAÇÃO] Flag isSpawning = true')
 
-            -- O palco do showroom é o estúdio: o ped do jogador vai pro ponto do
-            -- preview (invisível), o final leva a câmera ao plano inicial do editor e
-            -- os dois peds trocam de lugar. O editor abre ali, sem fade nem teleporte.
-            local stage = Showroom.creationStagePose()
-            if not stage then
-                lib.print.error('[mri_Qmultichar] [CRIAÇÃO] Showroom sem ped de preview; não há palco pra criação')
-                isSpawning = false
-                isCreatingCharacter = false
-                creationFailed()
-                return
-            end
+            -- O ped do jogador vai pro ponto do preview (invisível), o final leva a
+            -- câmera ao plano inicial do editor e os dois peds trocam de lugar. O
+            -- editor abre ali, sem fade nem teleporte.
             TriggerServerEvent('mri_Qmultichar:server:setBucket', 2)
             prepareFreemodePedForCreation(charData.gender, stage)
             Showroom.creationFinale()

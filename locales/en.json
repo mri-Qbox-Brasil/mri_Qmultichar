@@ -66,6 +66,7 @@
         "creating": "Creating...",
         "create_error": "Error creating character:",
         "generic_error": "Error creating character",
+        "preview_error": "Your game could not build the character. A clothing pack on this server may be broken; let the staff know.",
         "warning_title": "Warning",
         "cancel": "Cancel",
         "invalid_name": "Invalid name",

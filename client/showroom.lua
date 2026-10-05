@@ -285,8 +285,13 @@ local function createStagePed(model, stage)
     -- SetEntityCoords (não NoOffset) faz o snap do ped ao solo sozinho.
     local finalZ = stageZ(stage)
 
-    local ped = CreatePed(4, model, x, y, finalZ, stage.heading, false, false)
+    -- broken addon clothing for the model makes the native itself throw
+    local ok, ped = pcall(CreatePed, 4, model, x, y, finalZ, stage.heading, false, false)
     SetModelAsNoLongerNeeded(model)
+    if not ok then
+        lib.print.error(('[mri_Qmultichar] CreatePed falhou no modelo %s: %s'):format(model, ped))
+        return nil, gz
+    end
     if not DoesEntityExist(ped) then return nil, gz end
 
     SetEntityInvincible(ped, true)
@@ -797,7 +802,11 @@ local function syncCreation()
             if creation ~= state then break end
 
             local ped, gz = createStagePed(FREEMODE[gender], state.stage)
-            if not ped then break end
+            if not ped then
+                state.failed = true
+                break
+            end
+            state.failed = nil
             if creation ~= state then DeleteEntity(ped) break end
             Showroom.dressCreationPed(ped, gender)
             crossfade(ped, entry and entry.ped, first and (enter.pedFadeMs or 320) or 320)
@@ -943,10 +952,10 @@ end
 -- Espera o preview do gênero pedido estar montado.
 local function awaitPreview(state)
     local waited = 0
-    while creation == state and (state.busy or not state.entry) and waited < 3000 do
+    while creation == state and not state.failed and (state.busy or not state.entry) and waited < 3000 do
         Wait(50); waited = waited + 50
     end
-    return creation == state and state.entry ~= nil
+    return creation == state and not state.failed and state.entry ~= nil
 end
 
 ---Ponto do ped de preview no palco (x, y, z e heading da mesma chamada que o pôs
