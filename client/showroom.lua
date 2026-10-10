@@ -273,12 +273,23 @@ local function stageAnim(stage)
     return a[math.random(1, #a)].id
 end
 
+-- Waits for the ped's clothes and head to stream in; until then GTA draws it invisible.
+local function awaitPedStreaming(ped, timeoutMs)
+    local deadline = GetGameTimer() + (timeoutMs or 15000)
+    while DoesEntityExist(ped) and GetGameTimer() < deadline
+        and not (HaveAllStreamingRequestsCompleted(ped) and HasPedHeadBlendFinished(ped)) do
+        Wait(50)
+    end
+end
+
 -- Cria um ped local parado no palco da stage (chão real + offset do painel).
 ---@return number|nil ped, number groundZ
 local function createStagePed(model, stage)
     local x, y, gz = stage.x, stage.y, stage.z
 
-    if not lib.requestModel(model, 15000) then
+    -- requestModel throws on timeout; slow PCs with many addon packs need the long wait
+    if not pcall(lib.requestModel, model, 60000) then
+        lib.print.error(('[mri_Qmultichar] modelo %s não carregou em 60s'):format(model))
         return nil, gz
     end
 
@@ -290,6 +301,7 @@ local function createStagePed(model, stage)
     SetModelAsNoLongerNeeded(model)
     if not ok then
         lib.print.error(('[mri_Qmultichar] CreatePed falhou no modelo %s: %s'):format(model, ped))
+        Multichar.reportBrokenModel(model)
         return nil, gz
     end
     if not DoesEntityExist(ped) then return nil, gz end
@@ -323,6 +335,7 @@ local function spawnCharacterPed(character, stage)
             Appearance.setPedAppearance(ped, decoded)
         end
     end
+    awaitPedStreaming(ped)
 
     local animId = stageAnim(stage)
     PlayShowroomAnim(ped, animId)
@@ -809,6 +822,8 @@ local function syncCreation()
             state.failed = nil
             if creation ~= state then DeleteEntity(ped) break end
             Showroom.dressCreationPed(ped, gender)
+            awaitPedStreaming(ped)
+            if creation ~= state then DeleteEntity(ped) break end
             crossfade(ped, entry and entry.ped, first and (enter.pedFadeMs or 320) or 320)
 
             entry = { ped = ped, groundZ = gz, pos = { x = state.stage.x, y = state.stage.y }, heading = state.stage.heading }
@@ -952,7 +967,7 @@ end
 -- Espera o preview do gênero pedido estar montado.
 local function awaitPreview(state)
     local waited = 0
-    while creation == state and not state.failed and (state.busy or not state.entry) and waited < 3000 do
+    while creation == state and not state.failed and (state.busy or not state.entry) and waited < 90000 do
         Wait(50); waited = waited + 50
     end
     return creation == state and not state.failed and state.entry ~= nil
@@ -977,12 +992,16 @@ local SWAP_SETTLE = 450
 ---frame. Bloqueia até terminar.
 function Showroom.creationFinale()
     local state = creation
-    if not state or not awaitPreview(state) then return end
+    local playerPed = PlayerPedId()
+    -- no preview to swap with (failed or slow to stream): the player ped would stay hidden in the editor
+    if not state or not awaitPreview(state) then
+        SetEntityVisible(playerPed, true, false)
+        return
+    end
 
     state.finale = true
     SendNUIMessage({ action = 'creationFinale' })
 
-    local playerPed = PlayerPedId()
     local time = shotFor('finale').time or 1.8
     local pose = editorPose(playerPed)
     moveCamera(pose, state.entry, time)
@@ -1001,6 +1020,7 @@ function Showroom.creationFinale()
     end
     Wait(SWAP_SETTLE)
 
+    awaitPedStreaming(playerPed)
     SetEntityVisible(playerPed, true, false)
     if DoesEntityExist(preview) then DeleteEntity(preview) end
     state.entry.ped = playerPed

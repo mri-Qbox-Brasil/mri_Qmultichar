@@ -289,6 +289,8 @@ end)
 
 RegisterNetEvent('mri_Qmultichar:server:setBucket', function(bucket)
     local source = source
+    -- Own bucket per player (same as mri_Qappearance), so players picking or creating at once never meet.
+    bucket = bucket == 0 and 0 or source
     DebugPrint(string.format('[mri_Qmultichar] [SERVER] Definindo bucket %d para source %d', bucket, source))
 
     if exports.qbx_core and exports.qbx_core.SetPlayerBucket then
@@ -575,3 +577,7 @@ exports('setPlayerSlots', setPlayerSlots)
 exports('SetCharacterSlots', setPlayerSlots)
 exports('AddDeleteTable', AddDeleteTable)
 exports('DeleteCharacterData', DeleteCharacterData)
+
+RegisterNetEvent('mri_Qmultichar:server:brokenModelQuit', function()
+    DropPlayer(source, locale('broken_model.drop'))
+end)

@@ -324,5 +324,12 @@
         "container_2": "Ele prometeu trabalho. Cobrou adiantado.",
         "container_3": "Bem-vindo a Los Santos.",
         "container_4": "Agora você deve."
+    },
+    "broken_model": {
+        "title": "Pacote de roupas quebrado",
+        "body": "Este servidor tem um pacote de roupas com defeito no modelo %s. O jogo não consegue montar o personagem e fecha sozinho se você continuar.",
+        "hint": "Avise a administração: o último pacote de roupas adicionado precisa sair do servidor.",
+        "quit": "Sair do servidor",
+        "drop": "Pacote de roupas quebrado no servidor. Avise a administração: o último pacote de roupas adicionado precisa sair."
     }
 }

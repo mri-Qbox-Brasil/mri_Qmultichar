@@ -414,3 +414,25 @@ end)
 
 exports('openMultichar', Multichar.openMultichar)
 exports('closeMultichar', Multichar.closeMultichar)
+
+-- CreatePed throws on the freemode model when an addon clothing pack is broken; the creator would crash the game.
+local MODEL_NAMES = { [`mp_m_freemode_01`] = 'mp_m_freemode_01', [`mp_f_freemode_01`] = 'mp_f_freemode_01' }
+local brokenReported = false
+
+function Multichar.reportBrokenModel(model)
+    if brokenReported then return end
+    brokenReported = true
+    SetNuiFocus(true, true)
+    SendNUIMessage({
+        action = 'brokenModel',
+        title = locale('broken_model.title'),
+        body = locale('broken_model.body', MODEL_NAMES[model] or tostring(model)),
+        hint = locale('broken_model.hint'),
+        quit = locale('broken_model.quit'),
+    })
+end
+
+RegisterNUICallback('brokenModelQuit', function(_, cb)
+    cb({ success = true })
+    TriggerServerEvent('mri_Qmultichar:server:brokenModelQuit')
+end)

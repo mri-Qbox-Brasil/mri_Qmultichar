@@ -324,5 +324,12 @@
         "container_2": "He promised work. Took the money up front.",
         "container_3": "Welcome to Los Santos.",
         "container_4": "Now you owe."
+    },
+    "broken_model": {
+        "title": "Broken clothing pack",
+        "body": "This server has a broken clothing pack on the %s model. The game cannot build the character and will crash if you continue.",
+        "hint": "Tell the staff: the last clothing pack added needs to be removed from the server.",
+        "quit": "Leave server",
+        "drop": "Broken clothing pack on the server. Tell the staff: the last clothing pack added needs to be removed."
     }
 }
