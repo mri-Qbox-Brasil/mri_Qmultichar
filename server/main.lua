@@ -433,6 +433,9 @@ lib.callback.register('mri_Qmultichar:server:checkSlotAvailable', function(sourc
     end
 end)
 
+-- source -> { citizenId, position } of a character chosen but not spawned yet (position is the database json)
+local pendingSpawn = {}
+
 lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', function(source, citizenId)
     if not citizenId then
         return {
@@ -454,9 +457,40 @@ lib.callback.register('mri_Qmultichar:server:validateCharacterSelection', functi
         }
     end
 
+    -- read before the login: after it, any core save writes the selection spot until the spawn
+    local row = MySQL.single.await('SELECT position FROM players WHERE citizenid = ?', { citizenId })
+    pendingSpawn[source] = { citizenId = citizenId, position = row and row.position }
+
     return {
         allowed = true,
     }
+end)
+
+local function writePosition(citizenId, position)
+    MySQL.update('UPDATE players SET position = ? WHERE citizenid = ?', { position, citizenId })
+end
+
+-- Spawned (mri_Qspawn or the last location here): the real spot replaces whatever was saved during the selection.
+RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
+    local src = source
+    local pending = pendingSpawn[src]
+    if not pending then return end
+    pendingSpawn[src] = nil
+    -- the server copy of the ped lags the client teleport a little
+    SetTimeout(1500, function()
+        local ped = GetPlayerPed(src)
+        if ped == 0 then return end
+        local coords = GetEntityCoords(ped)
+        writePosition(pending.citizenId, json.encode({ x = coords.x, y = coords.y, z = coords.z, w = GetEntityHeading(ped) }))
+    end)
+end)
+
+-- Left before spawning: the core save of the drop writes the selection spot, so the old position goes back after it.
+AddEventHandler('playerDropped', function()
+    local pending = pendingSpawn[source]
+    pendingSpawn[source] = nil
+    if not pending or not pending.position then return end
+    SetTimeout(2500, function() writePosition(pending.citizenId, pending.position) end)
 end)
 
 lib.callback.register('mri_Qmultichar:server:getCharacterPhotoData', function(source, citizenId)
