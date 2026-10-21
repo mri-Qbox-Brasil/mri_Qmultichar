@@ -23,6 +23,8 @@ local function applyAmbience()
     ClearOverrideWeather()
     SetWeatherTypeNowPersist(a.weather)
     NetworkOverrideClockTime(a.hour, a.minute, 0)
+    -- City blackout darkens the world-drawn nametag; the weather script restores it on EnableSync.
+    SetArtificialLightsState(false)
 end
 
 local function holdAmbience()
@@ -55,6 +57,9 @@ function Intro.ambienceStop()
     if not ambience then return end
     ambience = nil
     TriggerEvent('qb-weathersync:client:EnableSync')
+    -- cd_easytime client API (mri_Qweather answers it too): give the city blackout back.
+    local ok, data = pcall(function() return exports.cd_easytime:GetWeather() end)
+    if ok and type(data) == 'table' then SetArtificialLightsState(data.blackout == true) end
 end
 
 ---O OnPlayerLoaded da criação religa a sync (Renewed): o estúdio segue com a hora do menu.
